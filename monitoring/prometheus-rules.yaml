@@ -1,0 +1,267 @@
+# ===========================================================
+# Prometheus Alert Rules for ML Pipeline Monitoring
+# ===========================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ml-pipeline-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: ml-pipeline
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: enterprise-ml
+spec:
+  groups:
+  # ===========================================================
+  # GPU Monitoring Rules
+  # ===========================================================
+  - name: gpu.rules
+    rules:
+    - alert: GPUHighUtilization
+      expr: dcgm_gpu_utilization > 90
+      for: 10m
+      labels:
+        severity: warning
+        component: gpu
+        service: ml-pipeline
+      annotations:
+        summary: "GPU utilization is above 90% for more than 10 minutes"
+        description: "GPU {{ $labels.instance }} has been at {{ $value }}% utilization for more than 10 minutes"
+        runbook_url: "https://runbooks.example.com/gpu-high-utilization"
+    
+    - alert: GPULowUtilization
+      expr: dcgm_gpu_utilization < 10
+      for: 30m
+      labels:
+        severity: info
+        component: gpu
+        service: ml-pipeline
+      annotations:
+        summary: "GPU utilization is below 10% for more than 30 minutes"
+        description: "GPU {{ $labels.instance }} has been at {{ $value }}% utilization for more than 30 minutes"
+    
+    - alert: GPUMemoryHigh
+      expr: dcgm_gpu_memory_used_bytes / dcgm_gpu_memory_total_bytes > 0.9
+      for: 5m
+      labels:
+        severity: critical
+        component: gpu
+        service: ml-pipeline
+      annotations:
+        summary: "GPU memory usage is above 90%"
+        description: "GPU {{ $labels.instance }} memory usage is at {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.example.com/gpu-memory-high"
+    
+    - alert: GPUTemperatureHigh
+      expr: dcgm_gpu_temp > 85
+      for: 5m
+      labels:
+        severity: critical
+        component: gpu
+        service: ml-pipeline
+      annotations:
+        summary: "GPU temperature is above 85°C"
+        description: "GPU {{ $labels.instance }} temperature is {{ $value }}°C"
+        runbook_url: "https://runbooks.example.com/gpu-temperature-high"
+    
+    - alert: GPUThrottling
+      expr: dcgm_gpu_throttle_reasons > 0
+      for: 2m
+      labels:
+        severity: warning
+        component: gpu
+        service: ml-pipeline
+      annotations:
+        summary: "GPU is experiencing throttling"
+        description: "GPU {{ $labels.instance }} is throttling due to: {{ $labels.throttle_reason }}"
+  
+  # ===========================================================
+  # ML Pipeline Rules
+  # ===========================================================
+  - name: ml-pipeline.rules
+    rules:
+    - alert: PipelineJobFailed
+      expr: increase(tekton_pipelinerun_duration_seconds{status="Failed"}[1h]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: pipeline
+        service: ml-pipeline
+      annotations:
+        summary: "ML Pipeline job has failed"
+        description: "Pipeline {{ $labels.pipelinerun }} in namespace {{ $labels.namespace }} has failed"
+        runbook_url: "https://runbooks.example.com/pipeline-failure"
+    
+    - alert: PipelineJobDurationHigh
+      expr: tekton_pipelinerun_duration_seconds > 3600
+      for: 0m
+      labels:
+        severity: warning
+        component: pipeline
+        service: ml-pipeline
+      annotations:
+        summary: "ML Pipeline job is taking too long"
+        description: "Pipeline {{ $labels.pipelinerun }} has been running for {{ $value }} seconds"
+    
+    - alert: TrainingJobFailed
+      expr: kube_job_status_failed > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: training
+        service: ml-pipeline
+      annotations:
+        summary: "ML Training job has failed"
+        description: "Training job {{ $labels.job_name }} in namespace {{ $labels.namespace }} has failed"
+        runbook_url: "https://runbooks.example.com/training-failure"
+    
+    - alert: ModelAccuracyLow
+      expr: ml_model_accuracy < 0.8
+      for: 5m
+      labels:
+        severity: warning
+        component: model
+        service: ml-pipeline
+      annotations:
+        summary: "Model accuracy is below threshold"
+        description: "Model {{ $labels.model_name }} accuracy is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.example.com/model-accuracy-low"
+  
+  # ===========================================================
+  # Triton Inference Server Rules
+  # ===========================================================
+  - name: triton.rules
+    rules:
+    - alert: TritonServerDown
+      expr: up{job="triton-inference"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: inference
+        service: ml-pipeline
+      annotations:
+        summary: "Triton Inference Server is down"
+        description: "Triton server {{ $labels.instance }} is not responding"
+        runbook_url: "https://runbooks.example.com/triton-down"
+    
+    - alert: TritonHighLatency
+      expr: triton_inference_request_duration_us{quantile="0.95"} > 1000000
+      for: 5m
+      labels:
+        severity: warning
+        component: inference
+        service: ml-pipeline
+      annotations:
+        summary: "Triton inference latency is high"
+        description: "95th percentile latency for model {{ $labels.model }} is {{ $value }}μs"
+    
+    - alert: TritonHighErrorRate
+      expr: rate(triton_inference_request_failure[5m]) / rate(triton_inference_request_count[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        component: inference
+        service: ml-pipeline
+      annotations:
+        summary: "Triton inference error rate is high"
+        description: "Error rate for model {{ $labels.model }} is {{ $value | humanizePercentage }}"
+    
+    - alert: TritonModelQueueFull
+      expr: triton_model_queue_size > 100
+      for: 2m
+      labels:
+        severity: warning
+        component: inference
+        service: ml-pipeline
+      annotations:
+        summary: "Triton model queue is full"
+        description: "Model {{ $labels.model }} queue has {{ $value }} pending requests"
+  
+  # ===========================================================
+  # Dataset Processing Rules
+  # ===========================================================
+  - name: dataset.rules
+    rules:
+    - alert: DatasetProcessingFailed
+      expr: increase(dataset_processing_errors_total[1h]) > 0
+      for: 0m
+      labels:
+        severity: critical
+        component: dataset
+        service: ml-pipeline
+      annotations:
+        summary: "Dataset processing has failed"
+        description: "Dataset {{ $labels.dataset_name }} processing failed with {{ $value }} errors"
+        runbook_url: "https://runbooks.example.com/dataset-processing-failure"
+    
+    - alert: DatasetQualityLow
+      expr: dataset_quality_score < 0.8
+      for: 10m
+      labels:
+        severity: warning
+        component: dataset
+        service: ml-pipeline
+      annotations:
+        summary: "Dataset quality is below threshold"
+        description: "Dataset {{ $labels.dataset_name }} quality score is {{ $value }}"
+    
+    - alert: DatasetProcessingSlow
+      expr: dataset_processing_duration_seconds > 3600
+      for: 0m
+      labels:
+        severity: warning
+        component: dataset
+        service: ml-pipeline
+      annotations:
+        summary: "Dataset processing is taking too long"
+        description: "Dataset {{ $labels.dataset_name }} processing has been running for {{ $value }} seconds"
+  
+  # ===========================================================
+  # Infrastructure Rules
+  # ===========================================================
+  - name: infrastructure.rules
+    rules:
+    - alert: NodeHighCPU
+      expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+      for: 10m
+      labels:
+        severity: warning
+        component: infrastructure
+        service: ml-pipeline
+      annotations:
+        summary: "Node CPU usage is high"
+        description: "Node {{ $labels.instance }} CPU usage is {{ $value }}%"
+    
+    - alert: NodeHighMemory
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+      for: 10m
+      labels:
+        severity: warning
+        component: infrastructure
+        service: ml-pipeline
+      annotations:
+        summary: "Node memory usage is high"
+        description: "Node {{ $labels.instance }} memory usage is {{ $value }}%"
+    
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        component: infrastructure
+        service: ml-pipeline
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+    
+    - alert: PersistentVolumeFull
+      expr: (kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes) * 100 < 10
+      for: 5m
+      labels:
+        severity: critical
+        component: infrastructure
+        service: ml-pipeline
+      annotations:
+        summary: "Persistent volume is nearly full"
+        description: "PV {{ $labels.persistentvolumeclaim }} is {{ $value }}% full"
+        runbook_url: "https://runbooks.example.com/pv-full"

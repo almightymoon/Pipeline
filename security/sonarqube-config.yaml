@@ -1,0 +1,259 @@
+# ===========================================================
+# SonarQube Configuration for ML Pipeline
+# ===========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarqube-config
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: ml-pipeline
+data:
+  sonar-project.properties: |
+    # SonarQube Project Configuration
+    sonar.projectKey=ml-pipeline
+    sonar.projectName=ML Pipeline
+    sonar.projectVersion=1.0
+    sonar.projectDescription=Enterprise ML/AI CI/CD Pipeline
+    
+    # Source code configuration
+    sonar.sources=src,scripts,configs
+    sonar.tests=tests
+    sonar.test.inclusions=tests/**/*
+    sonar.exclusions=**/*.pyc,**/__pycache__/**,**/node_modules/**,**/target/**,**/.git/**,**/venv/**,**/env/**
+    
+    # Language-specific settings
+    sonar.language=py,java,js,ts
+    sonar.python.coverage.reportPaths=coverage.xml
+    sonar.java.coveragePlugin=jacoco
+    sonar.java.binaries=target/classes
+    sonar.java.libraries=target/lib/*
+    sonar.javascript.lcov.reportPaths=coverage/lcov.info
+    sonar.typescript.lcov.reportPaths=coverage/lcov.info
+    
+    # Quality gate configuration
+    sonar.qualitygate.wait=true
+    sonar.qualitygate.timeout=300
+    
+    # Security settings
+    sonar.security.hotspots.inheritFromParent=true
+    sonar.security.hotspots.onlyNewCode=false
+    
+    # Duplication settings
+    sonar.cpd.exclusions=**/*.min.js,**/*.bundle.js
+    
+    # Analysis settings
+    sonar.analysis.mode=publish
+    sonar.scm.provider=git
+    sonar.scm.forceReloadAll=true
+    
+    # Branch analysis
+    sonar.branch.name=main
+    sonar.branch.target=main
+    
+    # Pull request analysis
+    sonar.pullrequest.provider=github
+    sonar.pullrequest.github.repository=yourorg/ml-pipeline
+    
+    # Custom rules
+    sonar.issue.ignore.multicriteria=e1,e2,e3
+    sonar.issue.ignore.multicriteria.e1.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.py
+    sonar.issue.ignore.multicriteria.e2.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e2.resourceKey=**/*.java
+    sonar.issue.ignore.multicriteria.e3.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e3.resourceKey=**/*.js
+    
+  sonar-scanner.properties: |
+    # SonarQube Scanner Configuration
+    sonar.host.url=https://sonarqube.example.com
+    sonar.login=${SONAR_TOKEN}
+    sonar.projectKey=ml-pipeline
+    sonar.projectName=ML Pipeline
+    sonar.projectVersion=${BUILD_NUMBER}
+    
+    # Analysis settings
+    sonar.sources=src,scripts,configs
+    sonar.tests=tests
+    sonar.test.inclusions=tests/**/*
+    sonar.exclusions=**/*.pyc,**/__pycache__/**,**/node_modules/**,**/target/**,**/.git/**,**/venv/**,**/env/**
+    
+    # Coverage settings
+    sonar.python.coverage.reportPaths=coverage.xml
+    sonar.java.coveragePlugin=jacoco
+    sonar.java.binaries=target/classes
+    sonar.java.libraries=target/lib/*
+    
+    # Quality gate
+    sonar.qualitygate.wait=true
+    sonar.qualitygate.timeout=300
+    
+    # Security
+    sonar.security.hotspots.inheritFromParent=true
+    sonar.security.hotspots.onlyNewCode=false
+    
+    # Branch analysis
+    sonar.branch.name=${BRANCH_NAME}
+    sonar.branch.target=main
+    
+    # Pull request analysis
+    sonar.pullrequest.provider=github
+    sonar.pullrequest.github.repository=yourorg/ml-pipeline
+    sonar.pullrequest.key=${PULL_REQUEST_ID}
+    sonar.pullrequest.branch=${PULL_REQUEST_BRANCH}
+    sonar.pullrequest.base=${PULL_REQUEST_BASE}
+    
+  quality-gate.json: |
+    {
+      "name": "ML Pipeline Quality Gate",
+      "conditions": [
+        {
+          "metric": "new_coverage",
+          "op": "LT",
+          "error": "80"
+        },
+        {
+          "metric": "new_duplicated_lines_density",
+          "op": "GT",
+          "error": "3"
+        },
+        {
+          "metric": "new_maintainability_rating",
+          "op": "GT",
+          "error": "1"
+        },
+        {
+          "metric": "new_reliability_rating",
+          "op": "GT",
+          "error": "1"
+        },
+        {
+          "metric": "new_security_rating",
+          "op": "GT",
+          "error": "1"
+        },
+        {
+          "metric": "new_security_hotspots_reviewed",
+          "op": "LT",
+          "error": "100"
+        },
+        {
+          "metric": "new_code_smells",
+          "op": "GT",
+          "error": "0"
+        },
+        {
+          "metric": "new_bugs",
+          "op": "GT",
+          "error": "0"
+        },
+        {
+          "metric": "new_vulnerabilities",
+          "op": "GT",
+          "error": "0"
+        }
+      ]
+    }
+---
+# ===========================================================
+# SonarQube Scanner Task
+# ===========================================================
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: sonarqube-scanner
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: sonarqube-scanner
+    app.kubernetes.io/component: security
+spec:
+  description: "Run SonarQube code analysis and security scanning"
+  params:
+    - name: SONAR_HOST_URL
+      type: string
+      description: "SonarQube server URL"
+      default: "https://sonarqube.example.com"
+    - name: SONAR_PROJECT_KEY
+      type: string
+      description: "SonarQube project key"
+    - name: SONAR_TOKEN
+      type: string
+      description: "SonarQube authentication token"
+    - name: BRANCH_NAME
+      type: string
+      description: "Git branch name"
+      default: "main"
+    - name: PULL_REQUEST_ID
+      type: string
+      description: "Pull request ID (optional)"
+      default: ""
+    - name: PULL_REQUEST_BRANCH
+      type: string
+      description: "Pull request branch (optional)"
+      default: ""
+    - name: PULL_REQUEST_BASE
+      type: string
+      description: "Pull request base branch (optional)"
+      default: "main"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: sonar-token
+      description: "SonarQube token workspace"
+  steps:
+    - name: sonar-scanner
+      image: sonarsource/sonar-scanner-cli:latest
+      env:
+        - name: SONAR_HOST_URL
+          value: "$(params.SONAR_HOST_URL)"
+        - name: SONAR_LOGIN
+          valueFrom:
+            secretKeyRef:
+              name: sonar-token
+              key: token
+        - name: SONAR_PROJECT_KEY
+          value: "$(params.SONAR_PROJECT_KEY)"
+        - name: BRANCH_NAME
+          value: "$(params.BRANCH_NAME)"
+        - name: PULL_REQUEST_ID
+          value: "$(params.PULL_REQUEST_ID)"
+        - name: PULL_REQUEST_BRANCH
+          value: "$(params.PULL_REQUEST_BRANCH)"
+        - name: PULL_REQUEST_BASE
+          value: "$(params.PULL_REQUEST_BASE)"
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "Starting SonarQube analysis..."
+        
+        # Copy configuration files
+        cp /workspace/sonar-token/sonar-project.properties ./
+        cp /workspace/sonar-token/sonar-scanner.properties ./
+        
+        # Run SonarQube scanner
+        sonar-scanner \
+          -Dsonar.projectKey=$(params.SONAR_PROJECT_KEY) \
+          -Dsonar.host.url=$(params.SONAR_HOST_URL) \
+          -Dsonar.login=${SONAR_LOGIN} \
+          -Dsonar.branch.name=$(params.BRANCH_NAME) \
+          -Dsonar.pullrequest.key=$(params.PULL_REQUEST_ID) \
+          -Dsonar.pullrequest.branch=$(params.PULL_REQUEST_BRANCH) \
+          -Dsonar.pullrequest.base=$(params.PULL_REQUEST_BASE)
+        
+        echo "SonarQube analysis completed successfully"
+        
+        # Wait for quality gate
+        echo "Waiting for quality gate results..."
+        sonar-scanner \
+          -Dsonar.projectKey=$(params.SONAR_PROJECT_KEY) \
+          -Dsonar.host.url=$(params.SONAR_HOST_URL) \
+          -Dsonar.login=${SONAR_LOGIN} \
+          -Dsonar.qualitygate.wait=true \
+          -Dsonar.qualitygate.timeout=300
+        
+        echo "Quality gate check completed"
+      
+      workingDir: $(workspaces.source.path)

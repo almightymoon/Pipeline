@@ -1,0 +1,186 @@
+{
+  "train_batch_size": 32,
+  "train_micro_batch_size_per_gpu": 4,
+  "gradient_accumulation_steps": 2,
+  "gradient_clipping": 1.0,
+  "zero_optimization": {
+    "stage": 2,
+    "allgather_partitions": true,
+    "allgather_bucket_size": 2e8,
+    "overlap_comm": true,
+    "reduce_scatter": true,
+    "reduce_bucket_size": 2e8,
+    "contiguous_gradients": true,
+    "cpu_offload": false
+  },
+  "fp16": {
+    "enabled": true,
+    "loss_scale": 0,
+    "loss_scale_window": 1000,
+    "initial_scale_power": 16,
+    "hysteresis": 2,
+    "min_loss_scale": 1
+  },
+  "activation_checkpointing": {
+    "partition_activations": true,
+    "cpu_checkpointing": false,
+    "contiguous_memory_optimization": false,
+    "number_checkpoints": null,
+    "synchronize_checkpoint_boundary": false,
+    "profile": false
+  },
+  "wall_clock_breakdown": false,
+  "steps_per_print": 10,
+  "tensorboard": {
+    "enabled": true,
+    "output_path": "./logs/tensorboard/",
+    "job_name": "deepspeed-training"
+  },
+  "wandb": {
+    "enabled": true,
+    "project": "ml-pipeline-training",
+    "group": "deepspeed-experiments"
+  },
+  "communication_data_type": "fp32",
+  "compression_training": {
+    "weight_quantization": {
+      "shared_parameters": {
+        "enabled": true,
+        "quantizer_kernel": false,
+        "schedule_offset": 1000,
+        "quantize_groups": 1,
+        "quantize_verbose": false,
+        "quantization_type": "symmetric",
+        "rounding": "nearest",
+        "quantize_weight_in_forward": false,
+        "fp16_mixed_quantize": false,
+        "quantize_change_ratio": 0.001
+      },
+      "different_groups": {
+        "wq1": {
+          "params": {
+            "start_bits": 12,
+            "target_bits": 8,
+            "quantization_period": 1000
+          }
+        }
+      }
+    }
+  },
+  "curriculum_learning": {
+    "enabled": false,
+    "curriculum_type": "seqlen",
+    "min_difficulty": 8,
+    "max_difficulty": 1024,
+    "total_curriculum_step": 40000,
+    "curriculum_scheduler": {
+      "type": "fixed_linear",
+      "params": {}
+    }
+  },
+  "data_efficiency": {
+    "enabled": false,
+    "seed": 1234,
+    "data_sampling": {
+      "enabled": false,
+      "num_epochs": 1,
+      "curriculum_learning_enabled": false,
+      "data_sampling_weights": null
+    },
+    "data_routing": {
+      "enabled": false,
+      "cutoff_rank": 0,
+      "cutoff_top_k": 0,
+      "cutoff_threshold": 0.0,
+      "cutoff_prob": 0.0
+    }
+  },
+  "flops_profiler": {
+    "enabled": false,
+    "profile_step": 1,
+    "module_depth": -1,
+    "top_modules": 1,
+    "detailed": true,
+    "output_file": null
+  },
+  "comms_logger": {
+    "enabled": false,
+    "verbose": false,
+    "prof_all": false,
+    "debug": false
+  },
+  "monitor_config": {
+    "enabled": true,
+    "tag": "DeepSpeed",
+    "csv_monitor": {
+      "enabled": true,
+      "output_path": "./logs/csv/"
+    },
+    "tensorboard": {
+      "enabled": true,
+      "output_path": "./logs/tensorboard/",
+      "job_name": "deepspeed-monitor"
+    },
+    "wandb": {
+      "enabled": true,
+      "team": "ml-team",
+      "project": "deepspeed-monitoring"
+    }
+  },
+  "elasticity": {
+    "enabled": false,
+    "max_train_batch_size": null,
+    "micro_batch_sizes": null,
+    "min_gpus": null,
+    "max_gpus": null,
+    "min_time": null,
+    "max_time": null,
+    "ignore_non_elastic_batch_info": false,
+    "version": 1
+  },
+  "sparse_attention": {
+    "enabled": false,
+    "mode": "fixed",
+    "block": 16,
+    "different_layout_per_head": false,
+    "num_local_blocks": 4,
+    "num_global_blocks": 1,
+    "attention": "bidirectional",
+    "horizontal_global_attention": false,
+    "num_different_global_patterns": 4,
+    "num_random_blocks": 0,
+    "local_window_blocks": [4],
+    "global_block_indices": [0],
+    "global_block_end_indices": None,
+    "num_sliding_window_blocks": 3
+  },
+  "autotuning": {
+    "enabled": false,
+    "arg_mappings": null,
+    "exps_dir": "autotuning_exps",
+    "exp_name": "autotuning",
+    "metric": "tokens_per_second_per_gpu",
+    "model_info": {
+      "num_params": null,
+      "hidden_size": null,
+      "num_layers": null,
+      "vocab_size": null,
+      "num_attention_heads": null,
+      "max_position_embeddings": null
+    },
+    "resource_info": {
+      "num_gpus": null,
+      "num_nodes": null,
+      "gpu_memory": null,
+      "cpu_memory": null,
+      "inter_node_bandwidth": null,
+      "intra_node_bandwidth": null
+    },
+    "tuner_type": "gridsearch",
+    "tuner_early_stopping": 5,
+    "tuner_num_trials": 50,
+    "start_profile_step": 1,
+    "end_profile_step": 5,
+    "fast": true
+  }
+}

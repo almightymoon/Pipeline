@@ -1,0 +1,330 @@
+# ===========================================================
+# NVIDIA Triton Inference Server Deployment
+# ===========================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton-inference-server
+  namespace: ml-production
+  labels:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: inference
+    app.kubernetes.io/part-of: ml-pipeline
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: triton-inference
+      app.kubernetes.io/component: inference
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: triton-inference
+        app.kubernetes.io/component: inference
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: triton-sa
+      containers:
+      - name: triton-server
+        image: nvcr.io/nvidia/tritonserver:23.10-py3
+        command: ["tritonserver"]
+        args:
+        - --model-repository=/models
+        - --strict-model-config=false
+        - --allow-http=true
+        - --allow-grpc=true
+        - --allow-metrics=true
+        - --allow-gpu-metrics=true
+        - --log-verbose=1
+        - --log-info=true
+        - --log-warning=true
+        - --log-error=true
+        - --http-port=8000
+        - --grpc-port=8001
+        - --metrics-port=8002
+        - --model-control-mode=poll
+        - --repository-poll-secs=30
+        - --exit-on-error=false
+        - --stub-timeout-seconds=30
+        - --buffer-manager-thread-count=0
+        - --pinned-memory-pool-byte-size=268435456
+        - --cuda-memory-pool-byte-size=0:1073741824
+        - --response-cache-byte-size=1048576
+        - --min-supported-compute-capability=6.0
+        
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        - name: grpc
+          containerPort: 8001
+          protocol: TCP
+        - name: metrics
+          containerPort: 8002
+          protocol: TCP
+        
+        env:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "compute,utility"
+        - name: TRITON_SERVER_CPU_ONLY
+          value: "0"
+        - name: TRITON_SERVER_GPU_MEMORY_FRACTION
+          value: "0.8"
+        
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            memory: "8Gi"
+            cpu: "4"
+          requests:
+            nvidia.com/gpu: 1
+            memory: "4Gi"
+            cpu: "2"
+        
+        volumeMounts:
+        - name: model-repository
+          mountPath: /models
+          readOnly: true
+        - name: triton-config
+          mountPath: /opt/tritonserver/config
+          readOnly: true
+        - name: logs
+          mountPath: /opt/tritonserver/logs
+        
+        livenessProbe:
+          httpGet:
+            path: /v2/health/ready
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /v2/health/ready
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /v2/health/ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+      
+      volumes:
+      - name: model-repository
+        persistentVolumeClaim:
+          claimName: triton-models-pvc
+      - name: triton-config
+        configMap:
+          name: triton-config
+      - name: logs
+        persistentVolumeClaim:
+          claimName: triton-logs-pvc
+      
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: In
+                values: ["true"]
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values: ["triton-inference"]
+              topologyKey: kubernetes.io/hostname
+---
+# ===========================================================
+# Triton Inference Server Service
+# ===========================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton-inference-service
+  namespace: ml-production
+  labels:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: inference
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8002"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+    protocol: TCP
+  - name: grpc
+    port: 8001
+    targetPort: grpc
+    protocol: TCP
+  - name: metrics
+    port: 8002
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: inference
+---
+# ===========================================================
+# Triton Inference Server Ingress
+# ===========================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: triton-inference-ingress
+  namespace: ml-production
+  labels:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: inference
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - triton-inference.example.com
+    secretName: triton-inference-tls
+  rules:
+  - host: triton-inference.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: triton-inference-service
+            port:
+              number: 8000
+---
+# ===========================================================
+# Triton Configuration ConfigMap
+# ===========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: triton-config
+  namespace: ml-production
+  labels:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: config
+data:
+  triton-server.conf: |
+    # Triton Server Configuration
+    [server]
+    model_repository = /models
+    strict_model_config = false
+    allow_http = true
+    allow_grpc = true
+    allow_metrics = true
+    allow_gpu_metrics = true
+    log_verbose = 1
+    log_info = true
+    log_warning = true
+    log_error = true
+    http_port = 8000
+    grpc_port = 8001
+    metrics_port = 8002
+    model_control_mode = poll
+    repository_poll_secs = 30
+    exit_on_error = false
+    stub_timeout_seconds = 30
+    buffer_manager_thread_count = 0
+    pinned_memory_pool_byte_size = 268435456
+    cuda_memory_pool_byte_size = 0:1073741824
+    response_cache_byte_size = 1048576
+    min_supported_compute_capability = 6.0
+    
+    [model_control]
+    model_control_mode = poll
+    repository_poll_secs = 30
+    
+    [backend]
+    backend_config = python,execution_env=/opt/tritonserver/backends/python
+    backend_config = tensorrt,execution_env=/opt/tritonserver/backends/tensorrt
+    backend_config = onnxruntime,execution_env=/opt/tritonserver/backends/onnxruntime
+    
+    [metrics]
+    allow_gpu_metrics = true
+    allow_cpu_metrics = true
+    
+    [logging]
+    log_verbose = 1
+    log_info = true
+    log_warning = true
+    log_error = true
+---
+# ===========================================================
+# Service Account for Triton
+# ===========================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: triton-sa
+  namespace: ml-production
+  labels:
+    app.kubernetes.io/name: triton-inference
+    app.kubernetes.io/component: service-account
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: triton-role
+  namespace: ml-production
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: triton-rolebinding
+  namespace: ml-production
+subjects:
+- kind: ServiceAccount
+  name: triton-sa
+  namespace: ml-production
+roleRef:
+  kind: Role
+  name: triton-role
+  apiGroup: rbac.authorization.k8s.io

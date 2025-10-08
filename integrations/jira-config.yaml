@@ -1,0 +1,289 @@
+# ===========================================================
+# Jira Integration Configuration for ML Pipeline
+# ===========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-integration-config
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: jira-integration
+    app.kubernetes.io/component: integration
+    app.kubernetes.io/part-of: ml-pipeline
+data:
+  jira-config.yaml: |
+    # Jira Server Configuration
+    jira:
+      # Jira server URL
+      url: "https://jira.example.com"
+      
+      # Authentication
+      auth:
+        type: "basic"  # basic, oauth, token
+        username: "${JIRA_USERNAME}"
+        password: "${JIRA_PASSWORD}"
+        token: "${JIRA_API_TOKEN}"
+      
+      # Project Configuration
+      project:
+        key: "ML"
+        name: "ML Pipeline"
+        description: "Machine Learning Pipeline Project"
+        
+      # Issue Types
+      issue_types:
+        pipeline_failure:
+          name: "Pipeline Failure"
+          description: "CI/CD pipeline execution failure"
+          priority: "High"
+          assignee: "ml-team"
+          components: ["CI/CD", "Pipeline"]
+          
+        test_failure:
+          name: "Test Failure"
+          description: "Automated test execution failure"
+          priority: "Medium"
+          assignee: "qa-team"
+          components: ["Testing", "Quality Assurance"]
+          
+        model_performance:
+          name: "Model Performance Issue"
+          description: "Model performance degradation or issues"
+          priority: "High"
+          assignee: "ml-team"
+          components: ["ML Models", "Performance"]
+          
+        dataset_issue:
+          name: "Dataset Issue"
+          description: "Dataset quality or processing issues"
+          priority: "Medium"
+          assignee: "data-team"
+          components: ["Data", "Datasets"]
+          
+        gpu_issue:
+          name: "GPU Resource Issue"
+          description: "GPU utilization or availability issues"
+          priority: "High"
+          assignee: "infrastructure-team"
+          components: ["Infrastructure", "GPU"]
+          
+        security_issue:
+          name: "Security Issue"
+          description: "Security vulnerability or compliance issue"
+          priority: "Critical"
+          assignee: "security-team"
+          components: ["Security", "Compliance"]
+    
+    # Reporting Configuration
+    reporting:
+      # Pipeline Results Reporting
+      pipeline_results:
+        enabled: true
+        create_issue_on_failure: true
+        update_existing_issue: true
+        include_metrics: true
+        include_logs: true
+        log_lines: 100
+        
+        # Custom fields mapping
+        custom_fields:
+          pipeline_name: "customfield_10001"
+          pipeline_duration: "customfield_10002"
+          gpu_utilization: "customfield_10003"
+          model_accuracy: "customfield_10004"
+          test_coverage: "customfield_10005"
+          security_score: "customfield_10006"
+      
+      # Test Results Reporting
+      test_results:
+        enabled: true
+        create_issue_on_failure: true
+        include_coverage: true
+        include_performance_metrics: true
+        
+        # Test result fields
+        fields:
+          test_suite: "customfield_10007"
+          test_count: "customfield_10008"
+          pass_count: "customfield_10009"
+          fail_count: "customfield_10010"
+          coverage_percentage: "customfield_10011"
+          execution_time: "customfield_10012"
+      
+      # Model Performance Reporting
+      model_performance:
+        enabled: true
+        create_issue_on_degradation: true
+        performance_threshold: 0.8
+        
+        # Performance metrics fields
+        fields:
+          model_name: "customfield_10013"
+          model_version: "customfield_10014"
+          accuracy: "customfield_10015"
+          precision: "customfield_10016"
+          recall: "customfield_10017"
+          f1_score: "customfield_10018"
+          training_time: "customfield_10019"
+          inference_latency: "customfield_10020"
+      
+      # Dataset Quality Reporting
+      dataset_quality:
+        enabled: true
+        create_issue_on_quality_drop: true
+        quality_threshold: 0.8
+        
+        # Dataset quality fields
+        fields:
+          dataset_name: "customfield_10021"
+          dataset_version: "customfield_10022"
+          quality_score: "customfield_10023"
+          record_count: "customfield_10024"
+          completeness: "customfield_10025"
+          consistency: "customfield_10026"
+          validity: "customfield_10027"
+    
+    # Notification Configuration
+    notifications:
+      # Email notifications
+      email:
+        enabled: true
+        smtp_server: "smtp.example.com"
+        smtp_port: 587
+        username: "${SMTP_USERNAME}"
+        password: "${SMTP_PASSWORD}"
+        from_address: "ml-pipeline@example.com"
+        
+        # Recipients by issue type
+        recipients:
+          pipeline_failure: ["ml-team@example.com", "devops@example.com"]
+          test_failure: ["qa-team@example.com", "ml-team@example.com"]
+          model_performance: ["ml-team@example.com", "data-science@example.com"]
+          dataset_issue: ["data-team@example.com", "ml-team@example.com"]
+          gpu_issue: ["infrastructure@example.com", "ml-team@example.com"]
+          security_issue: ["security@example.com", "ml-team@example.com", "devops@example.com"]
+      
+      # Slack notifications
+      slack:
+        enabled: true
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        channel: "#ml-pipeline"
+        username: "ML Pipeline Bot"
+        
+        # Channel mapping by issue type
+        channels:
+          pipeline_failure: "#ml-pipeline-alerts"
+          test_failure: "#qa-alerts"
+          model_performance: "#ml-performance"
+          dataset_issue: "#data-alerts"
+          gpu_issue: "#infrastructure-alerts"
+          security_issue: "#security-alerts"
+      
+      # Microsoft Teams notifications
+      teams:
+        enabled: false
+        webhook_url: "${TEAMS_WEBHOOK_URL}"
+        
+    # Workflow Configuration
+    workflow:
+      # Auto-assignment rules
+      auto_assignment:
+        enabled: true
+        rules:
+          - condition: "component == 'CI/CD'"
+            assignee: "devops-team"
+          - condition: "component == 'Testing'"
+            assignee: "qa-team"
+          - condition: "component == 'ML Models'"
+            assignee: "ml-team"
+          - condition: "component == 'Data'"
+            assignee: "data-team"
+          - condition: "component == 'Infrastructure'"
+            assignee: "infrastructure-team"
+          - condition: "component == 'Security'"
+            assignee: "security-team"
+      
+      # Auto-transition rules
+      auto_transition:
+        enabled: true
+        rules:
+          - condition: "pipeline_status == 'success' AND issue_type == 'pipeline_failure'"
+            transition: "Resolve"
+            resolution: "Fixed"
+          - condition: "test_status == 'pass' AND issue_type == 'test_failure'"
+            transition: "Resolve"
+            resolution: "Fixed"
+          - condition: "model_accuracy > 0.9 AND issue_type == 'model_performance'"
+            transition: "Resolve"
+            resolution: "Fixed"
+      
+      # SLA Configuration
+      sla:
+        enabled: true
+        rules:
+          - issue_type: "pipeline_failure"
+            priority: "Critical"
+            response_time: "15m"
+            resolution_time: "2h"
+          - issue_type: "pipeline_failure"
+            priority: "High"
+            response_time: "30m"
+            resolution_time: "4h"
+          - issue_type: "test_failure"
+            priority: "Medium"
+            response_time: "1h"
+            resolution_time: "8h"
+          - issue_type: "model_performance"
+            priority: "High"
+            response_time: "30m"
+            resolution_time: "4h"
+          - issue_type: "gpu_issue"
+            priority: "High"
+            response_time: "30m"
+            resolution_time: "2h"
+          - issue_type: "security_issue"
+            priority: "Critical"
+            response_time: "5m"
+            resolution_time: "1h"
+    
+    # Integration with other tools
+    integrations:
+      # GitHub integration
+      github:
+        enabled: true
+        repository: "yourorg/ml-pipeline"
+        link_commits: true
+        link_pull_requests: true
+        
+      # Confluence integration
+      confluence:
+        enabled: true
+        space_key: "ML"
+        create_documentation: true
+        
+      # ServiceNow integration (for enterprise)
+      servicenow:
+        enabled: false
+        instance_url: "https://yourcompany.service-now.com"
+        table: "incident"
+        
+    # Security and Compliance
+    security:
+      # Data masking
+      data_masking:
+        enabled: true
+        mask_fields: ["password", "token", "secret", "key"]
+        mask_pattern: "***MASKED***"
+      
+      # Audit logging
+      audit_logging:
+        enabled: true
+        log_level: "INFO"
+        log_file: "/var/log/jira-integration.log"
+        include_sensitive_data: false
+      
+      # Rate limiting
+      rate_limiting:
+        enabled: true
+        requests_per_minute: 100
+        burst_size: 20

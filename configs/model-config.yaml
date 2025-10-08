@@ -1,0 +1,249 @@
+# ===========================================================
+# Model Configuration for Multi-GPU Training
+# Supports: PyTorch, TensorFlow, HuggingFace Transformers
+# ===========================================================
+
+# Model Architecture Configuration
+model:
+  name: "transformer-base"
+  type: "transformer"  # transformer, cnn, rnn, gan, etc.
+  framework: "pytorch"  # pytorch, tensorflow, jax
+  
+  # Transformer-specific config
+  transformer:
+    vocab_size: 50257
+    n_positions: 1024
+    n_embd: 768
+    n_layer: 12
+    n_head: 12
+    n_inner: 3072
+    activation_function: "gelu_new"
+    resid_pdrop: 0.1
+    embd_pdrop: 0.1
+    attn_pdrop: 0.1
+    layer_norm_epsilon: 1e-5
+    initializer_range: 0.02
+    summary_type: "cls_index"
+    summary_use_proj: true
+    summary_activation: null
+    summary_proj_to_labels: true
+    summary_first_dropout: 0.1
+    scale_attn_weights: true
+    use_cache: true
+    scale_attn_by_inverse_layer_idx: false
+    reorder_and_upcast_attn: false
+
+# Training Configuration
+training:
+  # Basic training parameters
+  learning_rate: 5e-5
+  weight_decay: 0.01
+  adam_epsilon: 1e-8
+  max_grad_norm: 1.0
+  warmup_steps: 1000
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  per_device_eval_batch_size: 4
+  gradient_accumulation_steps: 2
+  
+  # Optimization
+  optimizer: "adamw"
+  lr_scheduler_type: "cosine"
+  save_steps: 500
+  eval_steps: 500
+  logging_steps: 100
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  
+  # Mixed precision
+  fp16: true
+  bf16: false
+  dataloader_pin_memory: true
+  dataloader_num_workers: 4
+  
+  # Early stopping
+  early_stopping_patience: 3
+  early_stopping_threshold: 0.001
+
+# Data Configuration
+data:
+  # Dataset paths
+  train_file: "/datasets/processed/train.jsonl"
+  validation_file: "/datasets/processed/validation.jsonl"
+  test_file: "/datasets/processed/test.jsonl"
+  
+  # Data processing
+  max_seq_length: 512
+  preprocessing_num_workers: 4
+  overwrite_cache: false
+  pad_to_max_length: false
+  max_train_samples: null
+  max_eval_samples: null
+  max_predict_samples: null
+  
+  # Data validation
+  validation_split_percentage: 10
+  seed: 42
+
+# Model Parallelism Configuration
+parallelism:
+  # DeepSpeed configuration
+  deepspeed:
+    enabled: true
+    config_path: "configs/deepspeed.json"
+    zero_stage: 2
+    gradient_checkpointing: true
+    gradient_accumulation_steps: 2
+    
+  # Megatron configuration (for very large models)
+  megatron:
+    enabled: false
+    tensor_model_parallel_size: 1
+    pipeline_model_parallel_size: 1
+    num_layers_per_virtual_pipeline_stage: null
+    transformer_impl: "local"
+    
+  # Pipeline parallelism
+  pipeline:
+    enabled: false
+    stages: 1
+    micro_batch_size: 1
+    
+  # Data parallelism
+  data_parallel:
+    enabled: true
+    world_size: 1
+    rank: 0
+
+# GPU Configuration
+gpu:
+  # GPU allocation
+  gpu_count: 1
+  gpu_memory_fraction: 0.9
+  allow_growth: true
+  
+  # CUDA settings
+  cuda_visible_devices: "0"
+  mixed_precision: true
+  
+  # MIG (Multi-Instance GPU) configuration
+  mig:
+    enabled: false
+    instance_id: 0
+    slice_id: 0
+
+# Monitoring and Logging
+monitoring:
+  # Experiment tracking
+  wandb:
+    enabled: true
+    project: "ml-pipeline-training"
+    entity: "ml-team"
+    tags: ["transformer", "deepspeed", "multi-gpu"]
+    notes: "Multi-GPU training with DeepSpeed optimization"
+    
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: "./logs/tensorboard"
+    host: "0.0.0.0"
+    port: 6006
+    
+  # MLflow
+  mlflow:
+    enabled: true
+    tracking_uri: "http://mlflow.example.com:5000"
+    experiment_name: "transformer-training"
+    
+  # Custom metrics
+  metrics:
+    - "loss"
+    - "perplexity"
+    - "bleu_score"
+    - "rouge_score"
+    - "gpu_utilization"
+    - "memory_usage"
+    - "training_time"
+
+# Model Serving Configuration
+serving:
+  # Model formats to export
+  export_formats:
+    - "pytorch"
+    - "onnx"
+    - "torchscript"
+    
+  # ONNX export settings
+  onnx:
+    opset_version: 11
+    dynamic_axes:
+      input_ids: [0, 1]
+      attention_mask: [0, 1]
+    output_names: ["logits"]
+    
+  # Triton Inference Server
+  triton:
+    enabled: true
+    model_repository: "/models"
+    max_batch_size: 8
+    instance_count: 1
+    instance_kind: "GPU"
+    
+  # FastAPI serving
+  fastapi:
+    enabled: true
+    host: "0.0.0.0"
+    port: 8000
+    workers: 1
+    max_batch_size: 32
+    timeout: 30
+
+# Security and Compliance
+security:
+  # Model signing
+  sign_model: true
+  signing_key: "/secrets/model-signing-key"
+  
+  # Access control
+  require_authentication: true
+  allowed_users: ["ml-team", "data-scientists"]
+  
+  # Data privacy
+  data_encryption: true
+  model_encryption: true
+  audit_logging: true
+
+# Environment-specific overrides
+environments:
+  development:
+    training:
+      num_train_epochs: 1
+      per_device_train_batch_size: 2
+      logging_steps: 10
+    monitoring:
+      wandb:
+        enabled: false
+      tensorboard:
+        enabled: true
+        
+  staging:
+    training:
+      num_train_epochs: 2
+      per_device_train_batch_size: 4
+    gpu:
+      gpu_count: 2
+      
+  production:
+    training:
+      num_train_epochs: 5
+      per_device_train_batch_size: 8
+    gpu:
+      gpu_count: 4
+    parallelism:
+      deepspeed:
+        zero_stage: 3
+    security:
+      sign_model: true
+      require_authentication: true

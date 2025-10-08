@@ -1,0 +1,276 @@
+# ===========================================================
+# Dataset Transformation Configuration
+# Supports: JSON, CSV, Parquet, HDF5, and custom formats
+# ===========================================================
+
+# Dataset metadata
+dataset:
+  name: "ml-training-dataset"
+  version: "1.0.0"
+  description: "Multi-language AI/ML training dataset with JSON format"
+  created_by: "ml-pipeline"
+  created_at: "2024-01-01T00:00:00Z"
+  tags: ["training", "multi-language", "json"]
+  
+# Input configuration
+input:
+  # Source data locations
+  sources:
+    - type: "file_system"
+      path: "/datasets/raw"
+      pattern: "*.json"
+      recursive: true
+    - type: "s3"
+      bucket: "ml-datasets"
+      prefix: "raw/"
+      pattern: "*.json"
+    - type: "database"
+      connection_string: "postgresql://user:pass@db:5432/datasets"
+      query: "SELECT * FROM raw_data WHERE created_at > '2024-01-01'"
+  
+  # Data format specifications
+  formats:
+    json:
+      encoding: "utf-8"
+      schema_validation: true
+      schema_path: "schemas/input-schema.json"
+    csv:
+      delimiter: ","
+      encoding: "utf-8"
+      header: true
+    parquet:
+      compression: "snappy"
+      schema_evolution: true
+
+# Processing configuration
+processing:
+  # Data cleaning and preprocessing
+  cleaning:
+    enabled: true
+    steps:
+      - name: "remove_duplicates"
+        enabled: true
+        method: "hash_based"
+        columns: ["id", "text"]
+      - name: "handle_missing_values"
+        enabled: true
+        strategy: "drop"  # drop, fill, interpolate
+        threshold: 0.1  # drop if >10% missing
+      - name: "outlier_detection"
+        enabled: true
+        method: "iqr"  # iqr, zscore, isolation_forest
+        threshold: 3.0
+      - name: "text_normalization"
+        enabled: true
+        steps:
+          - "lowercase"
+          - "remove_punctuation"
+          - "remove_extra_whitespace"
+          - "unicode_normalization"
+  
+  # Feature engineering
+  feature_engineering:
+    enabled: true
+    steps:
+      - name: "text_tokenization"
+        enabled: true
+        tokenizer: "bert-base-uncased"
+        max_length: 512
+        padding: true
+        truncation: true
+      - name: "categorical_encoding"
+        enabled: true
+        method: "one_hot"  # one_hot, label, target
+        columns: ["category", "language"]
+      - name: "numerical_scaling"
+        enabled: true
+        method: "standard"  # standard, minmax, robust
+        columns: ["score", "confidence"]
+      - name: "datetime_features"
+        enabled: true
+        columns: ["created_at", "updated_at"]
+        features: ["year", "month", "day", "hour", "dayofweek"]
+  
+  # Data augmentation (for ML datasets)
+  augmentation:
+    enabled: true
+    techniques:
+      - name: "text_augmentation"
+        enabled: true
+        methods:
+          - "synonym_replacement"
+          - "random_insertion"
+          - "random_deletion"
+          - "random_swap"
+        augmentation_factor: 1.5
+      - name: "back_translation"
+        enabled: false
+        languages: ["es", "fr", "de"]
+        model: "facebook/mbart-large-50-many-to-many-mmt"
+      - name: "paraphrasing"
+        enabled: false
+        model: "tuner007/pegasus_paraphrase"
+
+# Output configuration
+output:
+  # Output formats
+  formats:
+    json:
+      enabled: true
+      path: "/datasets/processed"
+      filename_pattern: "{dataset_name}_{version}_{split}.json"
+      compression: "gzip"
+      pretty_print: false
+      ensure_ascii: false
+    parquet:
+      enabled: true
+      path: "/datasets/processed"
+      filename_pattern: "{dataset_name}_{version}_{split}.parquet"
+      compression: "snappy"
+      row_group_size: 50000
+    csv:
+      enabled: false
+      path: "/datasets/processed"
+      filename_pattern: "{dataset_name}_{version}_{split}.csv"
+      compression: "gzip"
+  
+  # Data splitting
+  splitting:
+    enabled: true
+    strategy: "stratified"  # random, stratified, temporal
+    splits:
+      train: 0.7
+      validation: 0.15
+      test: 0.15
+    stratification_column: "label"
+    random_seed: 42
+    shuffle: true
+  
+  # Quality assurance
+  quality_checks:
+    enabled: true
+    checks:
+      - name: "schema_validation"
+        enabled: true
+        schema_path: "schemas/output-schema.json"
+      - name: "data_distribution"
+        enabled: true
+        columns: ["label", "category"]
+        tolerance: 0.1
+      - name: "completeness_check"
+        enabled: true
+        required_columns: ["id", "text", "label"]
+        completeness_threshold: 0.95
+      - name: "consistency_check"
+        enabled: true
+        rules:
+          - "text_length > 0"
+          - "confidence >= 0.0 AND confidence <= 1.0"
+          - "created_at <= updated_at"
+
+# Versioning configuration
+versioning:
+  enabled: true
+  strategy: "semantic"  # semantic, timestamp, hash
+  auto_increment: true
+  metadata:
+    include_stats: true
+    include_schema: true
+    include_checksums: true
+    include_lineage: true
+  
+  # Artifact storage
+  storage:
+    type: "nexus"  # nexus, s3, gcs, azure
+    repository: "ml-datasets"
+    path: "datasets/{dataset_name}/{version}/"
+    retention_policy: "keep_last_10"
+
+# Monitoring and logging
+monitoring:
+  enabled: true
+  metrics:
+    - "processing_time"
+    - "input_records"
+    - "output_records"
+    - "quality_score"
+    - "error_count"
+  
+  logging:
+    level: "INFO"
+    format: "json"
+    output: "stdout"
+    file_path: "/logs/dataset-processing.log"
+  
+  alerts:
+    enabled: true
+    conditions:
+      - metric: "error_count"
+        operator: ">"
+        threshold: 10
+        action: "notify"
+      - metric: "quality_score"
+        operator: "<"
+        threshold: 0.8
+        action: "fail_pipeline"
+
+# Environment-specific configurations
+environments:
+  development:
+    processing:
+      cleaning:
+        enabled: true
+      feature_engineering:
+        enabled: false
+      augmentation:
+        enabled: false
+    output:
+      formats:
+        json:
+          enabled: true
+        parquet:
+          enabled: false
+    monitoring:
+      logging:
+        level: "DEBUG"
+  
+  staging:
+    processing:
+      cleaning:
+        enabled: true
+      feature_engineering:
+        enabled: true
+      augmentation:
+        enabled: true
+        techniques:
+          - name: "text_augmentation"
+            augmentation_factor: 1.2
+    output:
+      formats:
+        json:
+          enabled: true
+        parquet:
+          enabled: true
+    monitoring:
+      alerts:
+        enabled: true
+  
+  production:
+    processing:
+      cleaning:
+        enabled: true
+      feature_engineering:
+        enabled: true
+      augmentation:
+        enabled: true
+    output:
+      formats:
+        json:
+          enabled: true
+        parquet:
+          enabled: true
+    versioning:
+      auto_increment: true
+    monitoring:
+      alerts:
+        enabled: true
