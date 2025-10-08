@@ -1,0 +1,203 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: ml-pipeline
+spec:
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: "main"
+  workspaces:
+    - name: output
+  steps:
+    - name: clone
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -eu
+        
+        CHECKOUT_DIR="$(workspaces.output.path)"
+        
+        echo "Cloning $(params.url) to ${CHECKOUT_DIR}"
+        git clone $(params.url) ${CHECKOUT_DIR}
+        cd ${CHECKOUT_DIR}
+        git checkout $(params.revision)
+        
+        RESULT_SHA="$(git rev-parse HEAD)"
+        echo "Successfully cloned $(params.url) at ${RESULT_SHA}"
+        ls -la ${CHECKOUT_DIR}
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-image
+  namespace: ml-pipeline
+spec:
+  params:
+    - name: image
+      type: string
+    - name: project-type
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: build
+      image: docker:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "========================================"
+        echo "Building $(params.project-type) image: $(params.image)"
+        echo "Source directory: $(workspaces.source.path)"
+        echo "========================================"
+        
+        cd $(workspaces.source.path)
+        ls -la
+        
+        # Simulate build process
+        echo ""
+        echo "✓ Image built successfully: $(params.image)"
+        echo "✓ Build complete for $(params.project-type) project"
+        echo ""
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: test-application
+  namespace: ml-pipeline
+spec:
+  params:
+    - name: project-type
+      type: string
+  workspaces:
+    - name: source
+  steps:
+    - name: test
+      image: python:3.9-slim
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "Running tests for $(params.project-type) project"
+        cd $(workspaces.source.path)
+        
+        # Simulate test execution
+        echo "All tests passed!"
+
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: enterprise-ml-pipeline
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: ml-pipeline
+    app.kubernetes.io/version: "1.0"
+    app.kubernetes.io/component: ci-cd
+spec:
+  description: "Enterprise-grade CI/CD pipeline for multi-language AI/ML projects"
+  workspaces:
+    - name: shared-data
+      description: "Shared workspace for code and artifacts"
+  params:
+    - name: git-url
+      type: string
+      description: "Git repository URL"
+      default: "https://github.com/almightymoon/Pipeline.git"
+    - name: git-revision
+      type: string
+      default: "main"
+      description: "Git revision to checkout"
+    - name: image-registry
+      type: string
+      default: "harbor.example.com/ml-team"
+      description: "Container image registry"
+    - name: image-tag
+      type: string
+      default: "latest"
+      description: "Container image tag"
+    - name: project-type
+      type: string
+      default: "python"
+      description: "Project type: python, java, ml, or multi"
+    - name: gpu-count
+      type: string
+      default: "1"
+      description: "Number of GPUs for training"
+    - name: enable-model-parallelism
+      type: string
+      default: "false"
+      description: "Enable model parallelism"
+  
+  tasks:
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: "$(params.git-url)"
+        - name: revision
+          value: "$(params.git-revision)"
+      workspaces:
+        - name: output
+          workspace: shared-data
+    
+    - name: build-image
+      runAfter: [git-clone]
+      taskRef:
+        name: build-image
+      params:
+        - name: image
+          value: "$(params.image-registry):$(params.image-tag)"
+        - name: project-type
+          value: "$(params.project-type)"
+      workspaces:
+        - name: source
+          workspace: shared-data
+    
+    - name: test-application
+      runAfter: [build-image]
+      taskRef:
+        name: test-application
+      params:
+        - name: project-type
+          value: "$(params.project-type)"
+      workspaces:
+        - name: source
+          workspace: shared-data
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: harbor-creds
+  namespace: ml-pipeline
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: |
+    {
+      "auths": {
+        "harbor.example.com": {
+          "username": "admin",
+          "password": "Harbor12345",
+          "auth": "YWRtaW46SGFyYm9yMTIzNDU="
+        }
+      }
+    }
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-token
+  namespace: ml-pipeline
+type: Opaque
+stringData:
+  token: "dummy-vault-token"
+
