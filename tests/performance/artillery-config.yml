@@ -1,0 +1,168 @@
+config:
+  target: 'https://ml-pipeline.yourcompany.com'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 10
+      name: "Ramp up load"
+    - duration: 300
+      arrivalRate: 20
+      name: "Sustained load"
+    - duration: 120
+      arrivalRate: 30
+      name: "Peak load"
+    - duration: 60
+      arrivalRate: 0
+      name: "Ramp down"
+  
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      User-Agent: 'Artillery-LoadTest/1.0'
+  
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+  
+  ensure:
+    p95: 2000
+    p99: 5000
+    maxErrorRate: 0.1
+
+scenarios:
+  - name: "Health Check Scenario"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/v1/health"
+          name: "health_check"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "status"
+            - equals:
+              - "{{ status }}"
+              - "healthy"
+
+  - name: "Model Prediction Scenario"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/v1/predict"
+          name: "text_prediction"
+          json:
+            model_id: "distilbert-classification"
+            text: "{{ $randomString() }}"
+            confidence_threshold: 0.8
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "prediction"
+            - hasProperty: "confidence"
+            - equals:
+              - "{{ confidence }}"
+              - "{{ $greaterThan(0) }}"
+
+  - name: "Model List Scenario"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/v1/models"
+          name: "list_models"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "models"
+
+  - name: "Metrics Scenario"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/v1/metrics"
+          name: "get_metrics"
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  - name: "Status Scenario"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/v1/status"
+          name: "get_status"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "uptime"
+            - hasProperty: "version"
+
+  - name: "Error Scenario"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/v1/nonexistent"
+          name: "404_error"
+          expect:
+            - statusCode: 404
+
+before:
+  - function: "generateRandomText"
+  - function: "logTestStart"
+
+after:
+  - function: "logTestEnd"
+
+functions: |
+  function generateRandomText() {
+    const texts = [
+      "This is an excellent product with great quality and fast delivery.",
+      "Poor service and slow response times. Would not recommend.",
+      "Average experience, nothing special but acceptable quality.",
+      "Outstanding performance and excellent value for money.",
+      "Terrible customer service and disappointing product quality.",
+      "Good product but could use some improvements in design.",
+      "Amazing quality and exceeded all my expectations.",
+      "Mediocre service with room for significant improvement."
+    ];
+    
+    const randomText = texts[Math.floor(Math.random() * texts.length)];
+    return { text: randomText };
+  }
+  
+  function logTestStart(context, events, done) {
+    console.log('🚀 Starting Artillery Load Test');
+    console.log(`📊 Target: ${context.vars.target}`);
+    console.log(`⏰ Start Time: ${new Date().toISOString()}`);
+    return done();
+  }
+  
+  function logTestEnd(context, events, done) {
+    console.log('✅ Artillery Load Test Completed');
+    console.log(`⏰ End Time: ${new Date().toISOString()}`);
+    console.log(`📊 Total Requests: ${context.vars.artillery?.counters?.['http.requests'] || 'N/A'}`);
+    return done();
+  }
+
+# Custom payloads for different test scenarios
+payload:
+  - path: "./test-data.json"
+    fields:
+      - "text"
+      - "expected_sentiment"
+
+# Plugin configurations
+plugins:
+  publish-metrics:
+    - type: "influxdb"
+      config:
+        host: "influxdb.yourcompany.com"
+        database: "artillery"
+        username: "artillery"
+        password: "{{ $processEnvironment.INFLUXDB_PASSWORD }}"
+    - type: "prometheus"
+      config:
+        host: "prometheus-pushgateway.yourcompany.com"
+        job: "artillery-load-test"
+        instance: "ml-pipeline"

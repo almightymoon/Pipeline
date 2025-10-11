@@ -1,0 +1,210 @@
+# Default values for ml-pipeline
+replicaCount: 3
+
+image:
+  repository: harbor.yourcompany.com/ml-pipeline
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  vault.hashicorp.com/agent-inject: "true"
+  vault.hashicorp.com/role: "ml-pipeline"
+  vault.hashicorp.com/agent-inject-secret-config: "secret/application/ml-pipeline"
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: ml-pipeline.yourcompany.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ml-pipeline-tls
+      hosts:
+        - ml-pipeline.yourcompany.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Vault Integration
+vault:
+  enabled: true
+  address: "https://vault.yourcompany.com"
+  role: "ml-pipeline"
+  secretPath: "secret/kubernetes/staging"
+  agent:
+    image:
+      repository: "hashicorp/vault"
+      tag: "1.15.2"
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      path: /metrics
+  grafana:
+    enabled: true
+    dashboardProviders:
+      ml-pipeline:
+        folder: "ML Pipeline"
+        options:
+          path: /var/lib/grafana/dashboards/ml-pipeline
+    dashboards:
+      ml-pipeline:
+        ml-pipeline-dashboard:
+          gnetId: 1860
+          revision: 1
+          datasource: Prometheus
+
+# Security Context
+security:
+  podSecurityPolicy:
+    enabled: true
+  networkPolicy:
+    enabled: true
+    ingress:
+      - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        ports:
+        - protocol: TCP
+          port: 8080
+
+# Environment Configuration
+environment:
+  name: "staging"  # staging, production
+  configMap:
+    enabled: true
+    data:
+      LOG_LEVEL: "info"
+      ENVIRONMENT: "staging"
+      VAULT_ADDR: "https://vault.yourcompany.com"
+  secret:
+    enabled: true
+    vaultPath: "secret/application/ml-pipeline"
+
+# Persistence
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 8Gi
+
+# Init Containers
+initContainers:
+  - name: vault-init
+    image: vault:1.15.2
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "Initializing vault secrets..."
+        vault auth -method=kubernetes role=ml-pipeline
+        vault kv get -field=config secret/application/ml-pipeline > /vault/secrets/config.json
+    volumeMounts:
+      - name: vault-secrets
+        mountPath: /vault/secrets
+    env:
+      - name: VAULT_ADDR
+        value: "https://vault.yourcompany.com"
+
+volumes:
+  - name: vault-secrets
+    emptyDir: {}
+
+# Tekton Integration
+tekton:
+  enabled: true
+  tasks:
+    - name: ml-training
+      image: python:3.11
+      script: |
+        pip install -r requirements.txt
+        python train.py
+    - name: ml-inference
+      image: python:3.11
+      script: |
+        pip install -r requirements.txt
+        python serve.py
+
+# GPU Support
+gpu:
+  enabled: false
+  nvidia.com/gpu: 1
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+# ArgoCD Integration
+argocd:
+  enabled: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  source:
+    repoURL: https://github.com/almightymoon/Pipeline
+    targetRevision: HEAD
+    path: charts/ml-pipeline
