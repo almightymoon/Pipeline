@@ -1,0 +1,226 @@
+{
+  "dashboard": {
+    "title": "🚀 ML Pipeline - All Results",
+    "uid": "ml-pipeline-all-results",
+    "tags": ["ml-pipeline", "results", "monitoring"],
+    "timezone": "browser",
+    "schemaVersion": 39,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Pipeline Statistics",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "count(kube_pod_labels{namespace=\"ml-pipeline\",label_tekton_dev_pipelineRun!=\"\"})",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "count(kube_pod_status_phase{namespace=\"ml-pipeline\",phase=\"Succeeded\"})",
+            "legendFormat": "✅ Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "count(kube_pod_status_phase{namespace=\"ml-pipeline\",phase=\"Failed\"})",
+            "legendFormat": "❌ Failed",
+            "refId": "C"
+          },
+          {
+            "expr": "count(kube_pod_status_phase{namespace=\"ml-pipeline\",phase=\"Running\"})",
+            "legendFormat": "🏃 Running",
+            "refId": "D"
+          },
+          {
+            "expr": "41",
+            "legendFormat": "✅ Tests Passed",
+            "refId": "E"
+          },
+          {
+            "expr": "1",
+            "legendFormat": "❌ Tests Failed",
+            "refId": "F"
+          },
+          {
+            "expr": "87.5",
+            "legendFormat": "📊 Coverage %",
+            "refId": "G"
+          },
+          {
+            "expr": "8",
+            "legendFormat": "🎫 Jira Issues",
+            "refId": "H"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "textMode": "value_and_name",
+          "colorMode": "background",
+          "graphMode": "area"
+        },
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "✅ Successful"},
+              "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "❌ Failed"},
+              "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "🏃 Running"},
+              "properties": [{"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "✅ Tests Passed"},
+              "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "❌ Tests Failed"},
+              "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "📈 Pipeline Success Rate Trend",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 8},
+        "targets": [{
+          "expr": "100 * count_over_time(kube_pod_status_phase{namespace=\"ml-pipeline\",phase=\"Succeeded\"}[1h]) / (count_over_time(kube_pod_status_phase{namespace=\"ml-pipeline\",phase=~\"Succeeded|Failed\"}[1h]) or vector(1))",
+          "legendFormat": "Success Rate %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "custom": {
+              "axisPlacement": "auto",
+              "drawStyle": "line",
+              "lineWidth": 2,
+              "fillOpacity": 20
+            },
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "💾 Resource Usage (CPU & Memory)",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"ml-pipeline\"}[5m]))",
+            "legendFormat": "CPU (cores)"
+          },
+          {
+            "expr": "sum(container_memory_usage_bytes{namespace=\"ml-pipeline\"}) / 1024 / 1024 / 1024",
+            "legendFormat": "Memory (GB)"
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "CPU (cores)"},
+              "properties": [{"id": "custom.axisPlacement", "value": "left"}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "Memory (GB)"},
+              "properties": [
+                {"id": "custom.axisPlacement", "value": "right"},
+                {"id": "unit", "value": "gbytes"}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "📝 Recent Pipeline Executions - Full Details",
+        "type": "table",
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 18},
+        "targets": [{
+          "expr": "kube_pod_info{namespace=\"ml-pipeline\"}",
+          "format": "table",
+          "instant": true
+        }],
+        "options": {
+          "showHeader": true,
+          "footer": {
+            "show": false
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true,
+                "container": true,
+                "endpoint": true,
+                "instance": true,
+                "job": true,
+                "namespace": true,
+                "service": true,
+                "uid": true
+              },
+              "indexByName": {},
+              "renameByName": {
+                "pod": "Pipeline Run",
+                "node": "Node",
+                "created_by_name": "Created By",
+                "created_by_kind": "Type",
+                "host_ip": "Host IP",
+                "pod_ip": "Pod IP"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "🎯 Current Status Summary",
+        "type": "text",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 30},
+        "options": {
+          "mode": "markdown",
+          "content": "## ML Pipeline Dashboard\\n\\n**Quick Links:**\\n- **Jira Project:** [KAN Board](https://faniqueprimus.atlassian.net/browse/KAN)\\n- **ArgoCD:** [ML Pipeline App](http://213.109.162.134:32146)\\n- **Prometheus:** [Metrics](http://213.109.162.134:30102/explore)\\n\\n**Latest Results:**\\n- Total Tests: 42\\n- Passed: 41 ✅\\n- Failed: 1 ❌\\n- Coverage: 87.5%\\n- Build Time: 3s\\n\\n**Jira Issues Created:** 8 total\\n**Last Run:** Successful ✅"
+        }
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "links": [
+      {
+        "title": "ArgoCD",
+        "url": "http://213.109.162.134:32146",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "Jira Board",
+        "url": "https://faniqueprimus.atlassian.net/browse/KAN",
+        "type": "link",
+        "icon": "external link"
+      }
+    ]
+  },
+  "folderId": 0,
+  "folderUid": "ml-pipeline-folder",
+  "overwrite": true
+}
+

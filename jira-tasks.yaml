@@ -1,0 +1,167 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: jira-pipeline-started
+  namespace: ml-pipeline
+spec:
+  params:
+    - name: pipeline-name
+      type: string
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+  results:
+    - name: issue-key
+      description: Created Jira issue key
+  steps:
+    - name: notify-start
+      image: python:3.9-slim
+      script: |
+        #!/usr/bin/env python3
+        import os, json
+        from urllib import request
+        from base64 import b64encode
+        
+        jira_url = os.environ["JIRA_URL"].rstrip("/")
+        auth = b64encode(f"{os.environ['JIRA_USERNAME']}:{os.environ['JIRA_API_TOKEN']}".encode()).decode()
+        
+        pipeline_name = """$(params.pipeline-name)"""
+        git_url = """$(params.git-url)"""
+        git_rev = """$(params.git-revision)"""
+        
+        desc = f"Pipeline execution started. Pipeline: {pipeline_name}, Repository: {git_url}, Branch: {git_rev}. Monitor at Grafana: http://213.109.162.134:30102"
+        
+        data = {
+            "fields": {
+                "project": {"key": os.environ["JIRA_PROJECT"]},
+                "summary": f"Pipeline Started: {pipeline_name}",
+                "description": desc,
+                "issuetype": {"name": "Task"},
+                "priority": {"name": "Low"},
+                "labels": ["pipeline", "automated", "started"]
+            }
+        }
+        
+        req = request.Request(
+            f"{jira_url}/rest/api/2/issue",
+            data=json.dumps(data).encode(),
+            headers={"Authorization": f"Basic {auth}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        
+        try:
+            with request.urlopen(req) as resp:
+                issue = json.loads(resp.read())
+                issue_key = issue['key']
+                print(f"✅ Created Jira issue: {issue_key}")
+                print(f"URL: {jira_url}/browse/{issue_key}")
+                with open("/tekton/results/issue-key", "w") as f:
+                    f.write(issue_key)
+        except Exception as e:
+            print(f"Warning: Could not create Jira issue - {e}")
+            with open("/tekton/results/issue-key", "w") as f:
+                f.write("N/A")
+      env:
+        - name: JIRA_URL
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-url
+        - name: JIRA_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-username
+        - name: JIRA_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-api-token
+        - name: JIRA_PROJECT
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-project-key
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: jira-report-bugs
+  namespace: ml-pipeline
+spec:
+  params:
+    - name: pipeline-name
+      type: string
+    - name: test-results
+      type: string
+    - name: failed-tests
+      type: string
+  steps:
+    - name: report-bugs
+      image: python:3.9-slim
+      script: |
+        #!/usr/bin/env python3
+        import os, json
+        from urllib import request
+        from base64 import b64encode
+        
+        jira_url = os.environ["JIRA_URL"].rstrip("/")
+        auth = b64encode(f"{os.environ['JIRA_USERNAME']}:{os.environ['JIRA_API_TOKEN']}".encode()).decode()
+        
+        pipeline_name = """$(params.pipeline-name)"""
+        failed_tests = """$(params.failed-tests)"""
+        test_results = """$(params.test-results)"""
+        
+        if failed_tests and failed_tests != "0":
+            desc = f"Test failures detected in pipeline. Pipeline: {pipeline_name}. Test Results: {test_results}. Failed: {failed_tests}. Review logs and fix issues. Grafana: http://213.109.162.134:30102"
+            
+            data = {
+                "fields": {
+                    "project": {"key": os.environ["JIRA_PROJECT"]},
+                    "summary": f"Bug: Test Failures in {pipeline_name}",
+                    "description": desc,
+                    "issuetype": {"name": "Bug"},
+                    "priority": {"name": "High"},
+                    "labels": ["bug", "test-failure", "automated"]
+                }
+            }
+            
+            req = request.Request(
+                f"{jira_url}/rest/api/2/issue",
+                data=json.dumps(data).encode(),
+                headers={"Authorization": f"Basic {auth}", "Content-Type": "application/json"},
+                method="POST"
+            )
+            
+            try:
+                with request.urlopen(req) as resp:
+                    issue = json.loads(resp.read())
+                    print(f"🐛 Bug reported: {issue['key']}")
+                    print(f"URL: {jira_url}/browse/{issue['key']}")
+            except Exception as e:
+                print(f"Warning: {e}")
+        else:
+            print("✅ No bugs to report - all tests passed!")
+      env:
+        - name: JIRA_URL
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-url
+        - name: JIRA_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-username
+        - name: JIRA_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-api-token
+        - name: JIRA_PROJECT
+          valueFrom:
+            secretKeyRef:
+              name: jira-credentials
+              key: jira-project-key
+
