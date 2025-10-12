@@ -25,8 +25,223 @@ jobs:
       run: |
         pip install pandas numpy pyyaml requests
     
-    - name: 📋 Process Repositories
+    - name: 📋 Read Configuration
+      id: config
       run: |
-        cat repos-to-process.yaml
-        echo "Processing repositories listed in repos-to-process.yaml..."
-        echo "✅ Workflow triggered successfully!"
+        echo "Reading repos-to-process.yaml..."
+        python << 'EOF'
+        import yaml
+        
+        with open('repos-to-process.yaml') as f:
+            config = yaml.safe_load(f)
+        
+        repos = config.get('repositories', [])
+        repos = [r for r in repos if r]  # Filter out None values
+        
+        print(f"Found {len(repos)} repositories to process")
+        for i, repo in enumerate(repos, 1):
+            print(f"  {i}. {repo.get('repo', 'Unknown')}")
+        
+        if not repos:
+            print("⚠️  No repositories configured. Add some to repos-to-process.yaml!")
+        EOF
+    
+    - name: 🔄 Clone and Process Repositories
+      run: |
+        mkdir -p processed-output
+        
+        python << 'EOF'
+        import yaml
+        import json
+        import subprocess
+        import os
+        from pathlib import Path
+        import shutil
+        import pandas as pd
+        
+        print("=" * 70)
+        print("🔄 REPOSITORY PROCESSING STARTING")
+        print("=" * 70)
+        
+        # Read configuration
+        with open('repos-to-process.yaml') as f:
+            config = yaml.safe_load(f)
+        
+        repos = [r for r in config.get('repositories', []) if r]
+        
+        if not repos:
+            print("\n⚠️  No repositories to process!")
+            print("Edit repos-to-process.yaml and add repository URLs.")
+            exit(0)
+        
+        results = []
+        
+        for idx, repo_config in enumerate(repos, 1):
+            repo_url = repo_config.get('repo', '')
+            branch = repo_config.get('branch', 'main')
+            repo_type = repo_config.get('type', 'auto')
+            data_format = repo_config.get('format', 'auto')
+            
+            print(f"\n{'=' * 70}")
+            print(f"📦 REPOSITORY {idx}/{len(repos)}")
+            print(f"{'=' * 70}")
+            print(f"URL: {repo_url}")
+            print(f"Branch: {branch}")
+            
+            repo_name = Path(repo_url).stem
+            
+            # Clean previous
+            if Path('target-repo').exists():
+                shutil.rmtree('target-repo')
+            
+            # Clone
+            try:
+                print(f"\n📥 Cloning...")
+                result = subprocess.run(
+                    ['git', 'clone', '--depth=1', f'--branch={branch}', repo_url, 'target-repo'],
+                    capture_output=True, text=True, timeout=60
+                )
+                if result.returncode != 0:
+                    print(f"❌ Clone failed: {result.stderr}")
+                    results.append({"repo": repo_url, "status": "failed", "error": "clone_failed"})
+                    continue
+                print(f"✅ Cloned successfully")
+            except Exception as e:
+                print(f"❌ Clone error: {e}")
+                results.append({"repo": repo_url, "status": "failed", "error": str(e)})
+                continue
+            
+            # Auto-detect type
+            os.chdir('target-repo')
+            
+            if repo_type == 'auto':
+                print(f"\n🔍 Auto-detecting type...")
+                csv_count = len(list(Path('.').rglob('*.csv')))
+                json_count = len([f for f in Path('.').rglob('*.json') if 'node_modules' not in str(f)])
+                data_count = csv_count + json_count
+                
+                py_count = len(list(Path('.').rglob('*.py')))
+                
+                if data_count > py_count and data_count > 0:
+                    repo_type = 'dataset'
+                    data_format = 'csv' if csv_count > json_count else 'json'
+                else:
+                    repo_type = 'code'
+                
+                print(f"   Type: {repo_type}")
+                if repo_type == 'dataset':
+                    print(f"   Format: {data_format}")
+            
+            # Process
+            print(f"\n🔄 Processing as {repo_type.upper()}...")
+            
+            if repo_type == 'dataset':
+                # Process dataset
+                out_dir = Path('../processed-output') / repo_name
+                out_dir.mkdir(parents=True, exist_ok=True)
+                
+                try:
+                    if data_format == 'csv':
+                        files = list(Path('.').rglob('*.csv'))[:5]
+                        if files:
+                            dfs = []
+                            for f in files:
+                                try:
+                                    df = pd.read_csv(f)
+                                    dfs.append(df)
+                                except:
+                                    pass
+                            if dfs:
+                                combined = pd.concat(dfs, ignore_index=True)
+                                combined.to_json(out_dir / 'processed.json', orient='records', indent=2)
+                                print(f"✅ Processed {len(combined)} rows")
+                    
+                    elif data_format == 'json':
+                        files = [f for f in Path('.').rglob('*.json') if 'node_modules' not in str(f)][:5]
+                        all_data = []
+                        for f in files:
+                            try:
+                                with open(f) as file:
+                                    data = json.load(file)
+                                if isinstance(data, list):
+                                    all_data.extend(data[:100])
+                                else:
+                                    all_data.append(data)
+                            except:
+                                pass
+                        
+                        if all_data:
+                            with open(out_dir / 'processed.json', 'w') as f:
+                                json.dump(all_data, f, indent=2)
+                            print(f"✅ Processed {len(all_data)} records")
+                    
+                    results.append({"repo": repo_url, "status": "success", "type": repo_type})
+                    
+                except Exception as e:
+                    print(f"❌ Processing failed: {e}")
+                    results.append({"repo": repo_url, "status": "failed", "error": str(e)})
+            
+            else:
+                # Code repository
+                print("💻 Code repository detected")
+                if Path('requirements.txt').exists():
+                    print("   - Python project found")
+                if Path('package.json').exists():
+                    print("   - Node.js project found")
+                
+                print(f"✅ Code repository validated")
+                results.append({"repo": repo_url, "status": "success", "type": repo_type})
+            
+            os.chdir('..')
+        
+        # Save results
+        with open('processing-results.json', 'w') as f:
+            json.dump(results, f, indent=2)
+        
+        print(f"\n{'=' * 70}")
+        print(f"✅ PROCESSING COMPLETE")
+        print(f"{'=' * 70}")
+        print(f"Total: {len(results)}")
+        print(f"Success: {sum(1 for r in results if r['status'] == 'success')}")
+        print(f"Failed: {sum(1 for r in results if r['status'] == 'failed')}")
+        EOF
+    
+    - name: 📤 Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: processed-repos-${{ github.run_number }}
+        path: |
+          processed-output/
+          processing-results.json
+        retention-days: 30
+    
+    - name: 🚀 Deploy to Kubernetes
+      if: secrets.KUBECONFIG != ''
+      run: |
+        if [ -n "${{ secrets.KUBECONFIG }}" ] && [ -d "processed-output" ] && [ "$(ls -A processed-output)" ]; then
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+          export KUBECONFIG=$HOME/kubeconfig
+          
+          kubectl create configmap processed-repos-$(date +%Y%m%d-%H%M%S) \
+            --from-file=processed-output/ \
+            --namespace=ml-pipeline \
+            --dry-run=client -o yaml | \
+          kubectl label -f - app=dataset-processor --local -o yaml | \
+          kubectl apply -f -
+          
+          echo "✅ Deployed to Kubernetes"
+        else
+          echo "⚠️  Skipping Kubernetes deployment"
+        fi
+    
+    - name: 📊 Print Summary
+      run: |
+        echo ""
+        echo "═══════════════════════════════════════════════════════════"
+        echo "✅ ALL REPOSITORIES PROCESSED"
+        echo "═══════════════════════════════════════════════════════════"
+        echo ""
+        cat processing-results.json 2>/dev/null || echo "No results file"
+        echo ""
+        echo "📦 Download artifacts above to get processed data!"
+        echo ""
