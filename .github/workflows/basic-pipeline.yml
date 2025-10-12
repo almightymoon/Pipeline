@@ -184,6 +184,9 @@ jobs:
     if: always()
     
     steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      
     - name: Send Metrics to Prometheus
       run: |
         echo "Sending metrics to Prometheus..."
