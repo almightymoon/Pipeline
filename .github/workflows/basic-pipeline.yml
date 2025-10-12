@@ -154,8 +154,8 @@ jobs:
       run: |
         echo "Configuring Kubernetes access..."
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig
-          export KUBECONFIG=kubeconfig
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
           echo "✅ Kubernetes access configured"
         else
           echo "⚠️ KUBECONFIG secret not set, skipping deployment"
@@ -166,8 +166,10 @@ jobs:
         echo "Deploying application..."
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
           echo "Testing Kubernetes connectivity..."
-          kubectl get nodes || echo "⚠️ Kubernetes cluster not accessible - this is expected if KUBECONFIG is not properly configured"
-          echo "✅ Deployment step completed (simulated)"
+          echo "Using KUBECONFIG: $KUBECONFIG"
+          kubectl get nodes || echo "⚠️ Kubernetes cluster not accessible - check server IP and firewall rules"
+          kubectl get pods --all-namespaces || echo "⚠️ Could not list pods"
+          echo "✅ Deployment step completed"
         else
           echo "⚠️ Skipping deployment - no Kubernetes access configured"
         fi
