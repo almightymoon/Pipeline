@@ -10,7 +10,7 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/Arshad221b/Sign-Language-Recognition.git
+  - url: https://github.com/Arshad221b/Sign-Language-Recognition
     name: test-project
     branch: main
     scan_type: full
