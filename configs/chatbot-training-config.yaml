@@ -1,0 +1,104 @@
+# Chatbot Model Training Configuration
+
+training:
+  # Model selection
+  models:
+    normal_chat:
+      base_model: "gpt2"  # or "distilgpt2", "gpt2-medium", "facebook/opt-350m"
+      model_type: "causal-lm"
+      use_case: "General conversation"
+      
+    adult_chat:
+      base_model: "gpt2-medium"  # Larger model for more nuanced responses
+      model_type: "causal-lm"
+      use_case: "Adult/NSFW conversation"
+      content_filter: false  # No filtering for adult model
+  
+  # Training parameters
+  parameters:
+    epochs: 3
+    batch_size: 8
+    learning_rate: 5e-5
+    max_length: 512
+    gradient_accumulation_steps: 4
+    warmup_steps: 100
+    save_steps: 500
+    eval_steps: 500
+    logging_steps: 100
+    
+  # Hardware
+  hardware:
+    gpu_count: 1
+    gpu_type: "nvidia-tesla-t4"  # or your available GPU
+    memory: "16Gi"
+    cpu: "4"
+    
+  # Data configuration
+  data:
+    train_file: "normal-train.jsonl"  # or "adult-train.jsonl"
+    val_file: "normal-val.jsonl"
+    test_file: "normal-test.jsonl"
+    max_samples: null  # null for all data, or specify number
+    
+# Deployment configuration
+deployment:
+  normal_chat_bot:
+    replicas: 2
+    max_replicas: 10
+    target_gpu_utilization: 70
+    model_path: "/models/normal-chat-bot"
+    endpoint: "/v1/chat/normal"
+    
+  adult_chat_bot:
+    replicas: 2
+    max_replicas: 10
+    target_gpu_utilization: 70
+    model_path: "/models/adult-chat-bot"
+    endpoint: "/v1/chat/adult"
+    nsfw_warning: true
+
+# Monitoring
+monitoring:
+  track_metrics:
+    - response_quality
+    - response_time
+    - user_satisfaction
+    - nsfw_detection_accuracy
+    - conversation_length
+    
+  alerts:
+    - name: "Low Response Quality"
+      condition: "response_quality < 0.7"
+      severity: "warning"
+      
+    - name: "High Latency"
+      condition: "response_time > 2s"
+      severity: "critical"
+      
+    - name: "NSFW Leak"
+      condition: "nsfw_in_normal_chat > 0"
+      severity: "critical"
+
+# Safety & Compliance
+safety:
+  pii_removal: true
+  content_moderation:
+    normal_bot:
+      filter_nsfw: true
+      filter_hate_speech: true
+      filter_violence: true
+    adult_bot:
+      filter_nsfw: false  # Allow adult content
+      filter_hate_speech: true
+      filter_violence: true
+      filter_illegal: true
+      
+  age_verification:
+    required_for_adult_bot: true
+    min_age: 18
+    
+  data_retention:
+    raw_conversations: "30 days"
+    processed_training_data: "90 days"
+    trained_models: "1 year"
+

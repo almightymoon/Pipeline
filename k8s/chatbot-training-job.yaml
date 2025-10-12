@@ -1,0 +1,200 @@
+# Chatbot Model Training Job for OnlyFans
+# This job trains chatbot models on your conversation data
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chatbot-training-normal
+  namespace: ml-pipeline
+  labels:
+    app: chatbot-training
+    model-type: normal
+spec:
+  template:
+    metadata:
+      labels:
+        app: chatbot-training
+        model-type: normal
+    spec:
+      containers:
+      - name: trainer
+        image: huggingface/transformers-pytorch-gpu:latest
+        command: ["python", "-u", "/scripts/train.py"]
+        args:
+          - --model_name_or_path=gpt2
+          - --train_file=/data/normal-chat.jsonl
+          - --validation_file=/data/normal-val.jsonl
+          - --do_train
+          - --do_eval
+          - --output_dir=/models/normal-chatbot
+          - --per_device_train_batch_size=8
+          - --per_device_eval_batch_size=8
+          - --num_train_epochs=3
+          - --learning_rate=5e-5
+          - --warmup_steps=100
+          - --logging_steps=50
+          - --save_steps=500
+          - --evaluation_strategy=steps
+          - --eval_steps=500
+          - --save_total_limit=3
+          - --fp16  # Use mixed precision for faster training
+        env:
+        - name: TRANSFORMERS_CACHE
+          value: "/cache"
+        - name: HF_HOME
+          value: "/cache"
+        - name: MODEL_TYPE
+          value: "normal"
+        volumeMounts:
+        - name: training-data
+          mountPath: /data
+          readOnly: true
+        - name: model-output
+          mountPath: /models
+        - name: cache
+          mountPath: /cache
+        - name: training-script
+          mountPath: /scripts
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+      
+      volumes:
+      - name: training-data
+        configMap:
+          name: chatbot-training-data-latest  # Update with actual configmap name
+      
+      - name: model-output
+        persistentVolumeClaim:
+          claimName: chatbot-models
+      
+      - name: cache
+        persistentVolumeClaim:
+          claimName: huggingface-cache
+      
+      - name: training-script
+        configMap:
+          name: training-scripts
+      
+      restartPolicy: Never
+  
+  backoffLimit: 3
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: chatbot-training-adult
+  namespace: ml-pipeline
+  labels:
+    app: chatbot-training
+    model-type: adult
+spec:
+  template:
+    metadata:
+      labels:
+        app: chatbot-training
+        model-type: adult
+    spec:
+      containers:
+      - name: trainer
+        image: huggingface/transformers-pytorch-gpu:latest
+        command: ["python", "-u", "/scripts/train.py"]
+        args:
+          - --model_name_or_path=gpt2-medium  # Larger model for adult content
+          - --train_file=/data/adult-chat.jsonl
+          - --validation_file=/data/adult-val.jsonl
+          - --do_train
+          - --do_eval
+          - --output_dir=/models/adult-chatbot
+          - --per_device_train_batch_size=4  # Smaller batch for larger model
+          - --per_device_eval_batch_size=4
+          - --num_train_epochs=3
+          - --learning_rate=3e-5
+          - --warmup_steps=200
+          - --logging_steps=50
+          - --save_steps=500
+          - --evaluation_strategy=steps
+          - --eval_steps=500
+          - --save_total_limit=3
+          - --fp16
+        env:
+        - name: TRANSFORMERS_CACHE
+          value: "/cache"
+        - name: MODEL_TYPE
+          value: "adult"
+        - name: NSFW_MODE
+          value: "true"
+        volumeMounts:
+        - name: training-data
+          mountPath: /data
+          readOnly: true
+        - name: model-output
+          mountPath: /models
+        - name: cache
+          mountPath: /cache
+        - name: training-script
+          mountPath: /scripts
+        resources:
+          requests:
+            memory: "16Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+      
+      volumes:
+      - name: training-data
+        configMap:
+          name: chatbot-training-data-latest
+      
+      - name: model-output
+        persistentVolumeClaim:
+          claimName: chatbot-models
+      
+      - name: cache
+        persistentVolumeClaim:
+          claimName: huggingface-cache
+      
+      - name: training-script
+        configMap:
+          name: training-scripts
+      
+      restartPolicy: Never
+  
+  backoffLimit: 3
+
+---
+# PersistentVolumeClaim for storing trained models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chatbot-models
+  namespace: ml-pipeline
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# PersistentVolumeClaim for Hugging Face cache
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: huggingface-cache
+  namespace: ml-pipeline
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+

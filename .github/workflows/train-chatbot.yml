@@ -1,0 +1,291 @@
+name: 🤖 Train Chatbot Models
+
+on:
+  push:
+    paths:
+      - 'repos-to-process.yaml'
+      - 'data/**'
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      model_type:
+        description: 'Which model to train'
+        required: true
+        default: 'normal'
+        type: choice
+        options:
+          - normal
+          - adult
+          - both
+
+env:
+  REGISTRY: harbor.yourcompany.com
+  MODEL_BASE: gpt2
+
+jobs:
+  # ==========================================
+  # 1. FETCH AND PROCESS CHAT DATA
+  # ==========================================
+  process-chat-data:
+    name: 📊 Process Chat Data
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Pipeline
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 📦 Install Dependencies
+      run: |
+        pip install pandas numpy pyyaml transformers torch
+    
+    - name: 📋 Read Chat Data Repositories
+      run: |
+        echo "Reading repos-to-process.yaml for chat data..."
+        python << 'EOF'
+        import yaml
+        
+        with open('repos-to-process.yaml') as f:
+            config = yaml.safe_load(f)
+        
+        repos = [r for r in config.get('repositories', []) if r]
+        chat_repos = [r for r in repos if r.get('type') == 'dataset']
+        
+        print(f"Found {len(chat_repos)} chat data repositories")
+        for repo in chat_repos:
+            print(f"  - {repo.get('repo')}")
+            print(f"    Category: {repo.get('category', 'general')}")
+        EOF
+    
+    - name: 📥 Fetch Chat Data
+      run: |
+        echo "Fetching chat data from configured repositories..."
+        mkdir -p raw-chat-data
+        
+        python << 'EOF'
+        import yaml
+        import subprocess
+        from pathlib import Path
+        
+        with open('repos-to-process.yaml') as f:
+            config = yaml.safe_load(f)
+        
+        repos = [r for r in config.get('repositories', []) if r and r.get('type') == 'dataset']
+        
+        for idx, repo in enumerate(repos):
+            repo_url = repo.get('repo')
+            branch = repo.get('branch', 'main')
+            category = repo.get('category', 'general')
+            
+            print(f"\n📥 Fetching {category} chat data...")
+            print(f"   Repo: {repo_url}")
+            
+            output_dir = f"raw-chat-data/{category}"
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            
+            try:
+                subprocess.run([
+                    'git', 'clone', '--depth=1', f'--branch={branch}', 
+                    repo_url, output_dir
+                ], check=True, capture_output=True)
+                print(f"   ✅ Fetched successfully")
+            except Exception as e:
+                print(f"   ❌ Failed: {e}")
+        EOF
+    
+    - name: 🔄 Process Conversations
+      run: |
+        echo "Processing chat conversations into training format..."
+        mkdir -p processed-chat-data
+        
+        python << 'EOF'
+        import json
+        import re
+        from pathlib import Path
+        
+        def clean_text(text):
+            # Remove PII
+            text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', text)
+            text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE]', text)
+            return ' '.join(text.split())
+        
+        # Process all JSON files
+        normal_pairs = []
+        adult_pairs = []
+        
+        for json_file in Path('raw-chat-data').rglob('*.json'):
+            print(f"Processing: {json_file}")
+            
+            try:
+                with open(json_file) as f:
+                    data = json.load(f)
+                
+                # Handle different formats
+                conversations = data if isinstance(data, list) else data.get('conversations', [])
+                
+                for conv in conversations[:100]:  # Limit per file
+                    if not isinstance(conv, dict):
+                        continue
+                        
+                    conv_type = conv.get('type', 'normal')
+                    messages = conv.get('messages', [])
+                    
+                    # Create training pairs
+                    for i in range(len(messages) - 1):
+                        if (messages[i].get('role') == 'user' and 
+                            messages[i+1].get('role') in ['assistant', 'bot']):
+                            
+                            pair = {
+                                'prompt': clean_text(messages[i]['content']),
+                                'completion': clean_text(messages[i+1]['content']),
+                                'type': conv_type
+                            }
+                            
+                            if conv_type == 'adult':
+                                adult_pairs.append(pair)
+                            else:
+                                normal_pairs.append(pair)
+                
+                print(f"  ✅ Processed {len(conversations)} conversations")
+                
+            except Exception as e:
+                print(f"  ⚠️  Skipped: {e}")
+        
+        # Save processed data
+        output_dir = Path('processed-chat-data')
+        output_dir.mkdir(exist_ok=True)
+        
+        if normal_pairs:
+            # Save as JSONL for training
+            with open(output_dir / 'normal-chat.jsonl', 'w') as f:
+                for pair in normal_pairs:
+                    f.write(json.dumps(pair) + '\n')
+            print(f"\n✅ Normal chat: {len(normal_pairs)} pairs")
+        
+        if adult_pairs:
+            with open(output_dir / 'adult-chat.jsonl', 'w') as f:
+                for pair in adult_pairs:
+                    f.write(json.dumps(pair) + '\n')
+            print(f"✅ Adult chat: {len(adult_pairs)} pairs")
+        
+        # Statistics
+        stats = {
+            'normal_pairs': len(normal_pairs),
+            'adult_pairs': len(adult_pairs),
+            'total_pairs': len(normal_pairs) + len(adult_pairs)
+        }
+        
+        with open(output_dir / 'stats.json', 'w') as f:
+            json.dump(stats, f, indent=2)
+        
+        print(f"\n📊 Total training pairs: {stats['total_pairs']}")
+        EOF
+    
+    - name: 📤 Upload Processed Chat Data
+      uses: actions/upload-artifact@v4
+      with:
+        name: processed-chat-training-data
+        path: processed-chat-data/
+        retention-days: 90
+
+  # ==========================================
+  # 2. DEPLOY TO KUBERNETES FOR TRAINING
+  # ==========================================
+  deploy-training-data:
+    name: 🚀 Deploy Training Data to K8s
+    runs-on: ubuntu-latest
+    needs: process-chat-data
+    
+    steps:
+    - name: 📥 Download Processed Data
+      uses: actions/download-artifact@v4
+      with:
+        name: processed-chat-training-data
+        path: processed-chat-data/
+    
+    - name: ☸️ Setup Kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: 🔐 Configure Kubernetes
+      run: |
+        if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+          echo "✅ Kubernetes configured"
+        fi
+    
+    - name: 📊 Deploy Training Data
+      run: |
+        if [ -n "$KUBECONFIG" ]; then
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          
+          # Create configmap for training data
+          kubectl create configmap chatbot-training-data-${TIMESTAMP} \
+            --from-file=processed-chat-data/ \
+            --namespace=ml-pipeline \
+            --dry-run=client -o yaml | \
+          kubectl label -f - \
+            app=chatbot-training \
+            data-type=chat-conversations \
+            timestamp=${TIMESTAMP} \
+            --local -o yaml | \
+          kubectl apply -f -
+          
+          echo "✅ Training data deployed: chatbot-training-data-${TIMESTAMP}"
+          echo "TRAINING_DATA_CM=chatbot-training-data-${TIMESTAMP}" >> $GITHUB_ENV
+        else
+          echo "⚠️  Skipping Kubernetes deployment"
+        fi
+    
+    - name: 🧠 Trigger Model Training
+      if: success() && github.event.inputs.model_type != ''
+      run: |
+        MODEL_TYPE="${{ github.event.inputs.model_type }}"
+        
+        echo "🧠 Training ${MODEL_TYPE} chatbot model..."
+        echo ""
+        echo "Training will start on Kubernetes cluster"
+        echo "Model type: ${MODEL_TYPE}"
+        echo "Data: chatbot-training-data-${TIMESTAMP}"
+        echo ""
+        echo "Monitor training:"
+        echo "  kubectl logs -f -l app=chatbot-training -n ml-pipeline"
+        echo ""
+        echo "View in Grafana:"
+        echo "  http://213.109.162.134:30102"
+
+  # ==========================================
+  # 3. MONITORING
+  # ==========================================
+  report-status:
+    name: 📊 Report Training Status
+    runs-on: ubuntu-latest
+    needs: [process-chat-data, deploy-training-data]
+    if: always()
+    
+    steps:
+    - name: 📊 Training Summary
+      run: |
+        echo "═══════════════════════════════════════════════════"
+        echo "🤖 CHATBOT TRAINING PIPELINE COMPLETE"
+        echo "═══════════════════════════════════════════════════"
+        echo ""
+        echo "Status:"
+        echo "  Data Processing: ${{ needs.process-chat-data.result }}"
+        echo "  K8s Deployment: ${{ needs.deploy-training-data.result }}"
+        echo ""
+        echo "📦 Artifacts:"
+        echo "  - processed-chat-training-data"
+        echo ""
+        echo "☸️  Kubernetes:"
+        echo "  kubectl get configmaps -n ml-pipeline -l app=chatbot-training"
+        echo ""
+        echo "🎯 Next: Start model training on your cluster!"
+        echo ""
+
