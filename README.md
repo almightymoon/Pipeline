@@ -9,6 +9,7 @@ A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitH
 - **Multi-Stage Pipeline**: Validation → Build → Security → Test → Deploy → Monitor
 - **Kubernetes Deployment**: Direct deployment to K3s cluster
 - **Docker Container Building**: Automated containerization
+- **Dataset Processing**: Process datasets from any repository! 📊
 
 ### 🔒 Security & Quality
 - **Security Scanning**: Trivy vulnerability scanning
@@ -70,6 +71,8 @@ A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitH
 - **Slack Workspace**: For notifications
 
 ## 🚀 Quick Start
+
+> **💡 Want to process a dataset?** See [QUICK_START.md](QUICK_START.md) or [Dataset Processing Guide](docs/DATASET_PROCESSING_GUIDE.md)
 
 ### 1. Clone the Repository
 
@@ -141,13 +144,19 @@ The pipeline will automatically run! 🎉
 ```
 pipeline/
 ├── .github/workflows/
-│   └── basic-pipeline.yml          # Main CI/CD workflow
+│   ├── basic-pipeline.yml          # Main CI/CD workflow
+│   └── dataset-pipeline.yml        # Dataset processing workflow ⭐NEW
 ├── docs/                            # Documentation
 │   ├── COMPLETE_PIPELINE_GUIDE.md  # Comprehensive guide
+│   ├── DATASET_PROCESSING_GUIDE.md # Dataset processing ⭐NEW
+│   ├── USING_PIPELINE_WITH_OTHER_REPOS.md # Use with other repos ⭐NEW
 │   ├── GITHUB_SECRETS_VALUES.md    # Secret configuration
 │   ├── JIRA_SETUP_GUIDE.md         # Jira integration
 │   ├── DASHBOARDS_GUIDE.md         # Grafana dashboards
 │   └── CREDENTIALS_GUIDE.md        # Credentials management
+├── scripts/                         # Utility scripts ⭐NEW
+│   ├── validate_dataset.py         # Dataset validation
+│   └── process_dataset.py          # Dataset processing
 ├── configs/                         # Configuration files
 │   ├── deepspeed.json              # DeepSpeed config
 │   ├── model-config.yaml           # Model settings
@@ -177,6 +186,7 @@ pipeline/
 ├── setup-with-credentials.sh      # Full setup script
 ├── Dockerfile                      # Container definition
 ├── requirements.txt                # Python dependencies
+├── QUICK_START.md                  # Quick reference ⭐NEW
 └── README.md                       # This file
 ```
 
