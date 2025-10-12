@@ -193,51 +193,29 @@ jobs:
           echo "⚠️ Prometheus URL not configured"
         fi
     
-    - name: Create Jira Issue
-      if: ${{ secrets.JIRA_API_TOKEN != '' && secrets.JIRA_EMAIL != '' }}
+    - name: Create Jira Issue  
       run: |
-        echo "Creating Jira issue for pipeline completion..."
-        
-        # Create Jira issue via API
-        RESPONSE=$(curl -s -X POST \
-          -H "Content-Type: application/json" \
-          -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-          "${{ secrets.JIRA_URL }}/rest/api/3/issue" \
-          -d '{
-            "fields": {
-              "project": {
-                "key": "${{ secrets.JIRA_PROJECT_KEY }}"
-              },
-              "summary": "Pipeline Run #${{ github.run_number }} - ${{ job.status }}",
-              "description": {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                  {
-                    "type": "paragraph",
-                    "content": [
-                      {
-                        "type": "text",
-                        "text": "Pipeline: ${{ github.workflow }}\nRun: ${{ github.run_number }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\nStatus: ${{ job.status }}\n\nView: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-                      }
-                    ]
-                  }
-                ]
-              },
-              "issuetype": {
-                "name": "Task"
-              }
-            }
-          }')
-        
-        ISSUE_KEY=$(echo "$RESPONSE" | jq -r '.key // empty')
-        
-        if [ -n "$ISSUE_KEY" ]; then
-          echo "Jira issue created: $ISSUE_KEY"
-          echo "View at: ${{ secrets.JIRA_URL }}/browse/$ISSUE_KEY"
+        if [ -n "${{ secrets.JIRA_API_TOKEN }}" ] && [ -n "${{ secrets.JIRA_EMAIL }}" ]; then
+          echo "Creating Jira issue for pipeline completion..."
+          
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
+            "${{ secrets.JIRA_URL }}/rest/api/3/issue" \
+            -d "{\"fields\":{\"project\":{\"key\":\"${{ secrets.JIRA_PROJECT_KEY }}\"},\"summary\":\"Pipeline Run #${{ github.run_number }}\",\"description\":{\"type\":\"doc\",\"version\":1,\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Pipeline completed. Run: ${{ github.run_number }}\"}]}]},\"issuetype\":{\"name\":\"Task\"}}}" \
+            -o jira-response.json
+          
+          ISSUE_KEY=$(cat jira-response.json | jq -r '.key // empty')
+          
+          if [ -n "$ISSUE_KEY" ]; then
+            echo "Jira issue created: $ISSUE_KEY"
+            echo "View at: ${{ secrets.JIRA_URL }}/browse/$ISSUE_KEY"
+          else
+            echo "Could not create Jira issue"
+            cat jira-response.json
+          fi
         else
-          echo "Failed to create Jira issue"
-          echo "Response: $RESPONSE"
+          echo "Jira not configured - skipping"
         fi
     
     - name: Send Notification
