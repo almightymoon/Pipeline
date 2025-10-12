@@ -194,7 +194,7 @@ jobs:
         fi
     
     - name: Create Jira Issue
-      if: secrets.JIRA_API_TOKEN != '' && secrets.JIRA_EMAIL != ''
+      if: ${{ secrets.JIRA_API_TOKEN != '' && secrets.JIRA_EMAIL != '' }}
       run: |
         echo "Creating Jira issue for pipeline completion..."
         
