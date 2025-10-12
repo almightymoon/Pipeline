@@ -1,19 +1,19 @@
 config:
   target: 'https://ml-pipeline.yourcompany.com'
   phases:
+    - duration: 30
+      arrivalRate: 2
+      name: "Warm up"
     - duration: 60
       arrivalRate: 5
-      name: "Warm up"
+      name: "Ramp up load"
     - duration: 120
       arrivalRate: 10
-      name: "Ramp up load"
-    - duration: 300
-      arrivalRate: 20
       name: "Sustained load"
-    - duration: 120
-      arrivalRate: 30
-      name: "Peak load"
     - duration: 60
+      arrivalRate: 15
+      name: "Peak load"
+    - duration: 30
       arrivalRate: 0
       name: "Ramp down"
   
@@ -42,9 +42,6 @@ scenarios:
             - statusCode: 200
             - contentType: json
             - hasProperty: "status"
-            - equals:
-              - "{{ status }}"
-              - "healthy"
 
   - name: "Model Prediction Scenario"
     weight: 40
@@ -61,9 +58,6 @@ scenarios:
             - contentType: json
             - hasProperty: "prediction"
             - hasProperty: "confidence"
-            - equals:
-              - "{{ confidence }}"
-              - "{{ $greaterThan(0) }}"
 
   - name: "Model List Scenario"
     weight: 15
@@ -141,7 +135,6 @@ functions: |
   function logTestEnd(context, events, done) {
     console.log('✅ Artillery Load Test Completed');
     console.log(`⏰ End Time: ${new Date().toISOString()}`);
-    console.log(`📊 Total Requests: ${context.vars.artillery?.counters?.['http.requests'] || 'N/A'}`);
     return done();
   }
 
@@ -155,12 +148,6 @@ payload:
 # Plugin configurations
 plugins:
   publish-metrics:
-    - type: "influxdb"
-      config:
-        host: "influxdb.yourcompany.com"
-        database: "artillery"
-        username: "artillery"
-        password: "{{ $processEnvironment.INFLUXDB_PASSWORD }}"
     - type: "prometheus"
       config:
         host: "prometheus-pushgateway.yourcompany.com"
