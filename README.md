@@ -1,492 +1,380 @@
-# Enterprise ML/AI CI/CD Pipeline
+# 🚀 Enterprise ML/AI CI/CD Pipeline
 
-A comprehensive, enterprise-grade CI/CD pipeline for multi-language AI/ML projects with GPU acceleration, model parallelism, and advanced monitoring.
+A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitHub Actions, Kubernetes deployment, comprehensive monitoring, and Jira integration.
 
-## 🚀 Features
+## ✨ Features
 
-### Core Capabilities
-- **Multi-Language Support**: Python, Java, and ML projects
-- **GPU Acceleration**: NVIDIA GPU support with MIG partitioning
-- **Model Parallelism**: DeepSpeed and Megatron integration
-- **Containerization**: Docker with NVIDIA Docker support
-- **Orchestration**: Kubernetes with Tekton pipelines
-- **GitOps**: ArgoCD for automated deployments
+### 🔄 CI/CD Pipeline
+- **GitHub Actions Workflow**: Automated builds on every push
+- **Multi-Stage Pipeline**: Validation → Build → Security → Test → Deploy → Monitor
+- **Kubernetes Deployment**: Direct deployment to K3s cluster
+- **Docker Container Building**: Automated containerization
 
-### Security & Quality
-- **SAST/SCA**: SonarQube, DefectDojo, Dependency Track integration
-- **Image Signing**: Harbor registry with signed images
-- **Secret Management**: HashiCorp Vault integration
-- **Policy Enforcement**: OPA Gatekeeper policies
+### 🔒 Security & Quality
+- **Security Scanning**: Trivy vulnerability scanning
+- **Dependency Checking**: Automated dependency analysis
+- **Code Quality**: SonarQube integration (configurable)
+- **SBOM Generation**: Software Bill of Materials for compliance
 
-### Monitoring & Observability
-- **Real-time Metrics**: Prometheus + Grafana dashboards
-- **GPU Monitoring**: DCGM metrics and alerts
-- **Pipeline Tracking**: Tekton pipeline metrics
-- **Log Aggregation**: OpenSearch integration
+### 📊 Monitoring & Observability
+- **Prometheus**: Metrics collection and monitoring
+- **Grafana**: Beautiful dashboards and visualizations
+- **Real-time Alerts**: Automated alerting system
+- **Pipeline Metrics**: Track build times, success rates, and more
 
-### Dataset Management
-- **Continuous Preparation**: Automated dataset processing
-- **JSON Format**: Structured dataset validation
-- **Versioning**: Nexus artifact management
-- **Quality Assurance**: Automated quality checks
-
-### Integration
-- **Project Management**: Jira integration for issue tracking
-- **Notification**: Slack, Teams, email alerts
-- **Reporting**: Automated test and performance reports
-
-## 📋 Prerequisites
-
-### Infrastructure Requirements
-- **Kubernetes Cluster**: 1.24+ with GPU nodes
-- **NVIDIA GPU Operator**: For GPU support
-- **Tekton**: 0.45+ for CI/CD pipelines
-- **ArgoCD**: 2.5+ for GitOps
-- **Prometheus**: For monitoring
-- **Harbor**: Container registry
-- **Vault**: Secret management
-- **Nexus**: Artifact repository
-
-### GPU Requirements
-- **NVIDIA GPUs**: Tesla V100, A100, or H100
-- **CUDA**: 11.8+
-- **cuDNN**: 8.6+
-- **NVIDIA Docker**: For container runtime
-
-### Software Dependencies
-- **Python**: 3.9+
-- **Java**: 17+
-- **Node.js**: 18+ (for frontend components)
-- **Docker**: 20.10+
-- **Helm**: 3.8+
+### 🎫 Integration
+- **Jira**: Automatic issue creation and tracking
+- **Slack**: Notification support (optional)
+- **Vault**: Secure secret management
+- **ArgoCD**: GitOps deployments
 
 ## 🏗️ Architecture
 
-```mermaid
-graph TB
-    A[Code Commit] --> B[Git Clone]
-    B --> C[Multi-Language Build]
-    C --> D[Security Scanning]
-    D --> E[Automated Testing]
-    E --> F[Dataset Processing]
-    F --> G[GPU Validation]
-    G --> H[Model Training]
-    H --> I[Artifact Publishing]
-    I --> J[Deployment]
-    J --> K[Monitoring]
-    K --> L[Jira Reporting]
-    
-    subgraph "GPU Cluster"
-        M[NVIDIA GPUs]
-        N[MIG Partitioning]
-        O[DeepSpeed Training]
-    end
-    
-    subgraph "Monitoring Stack"
-        P[Prometheus]
-        Q[Grafana]
-        R[OpenSearch]
-    end
-    
-    subgraph "Security Stack"
-        S[SonarQube]
-        T[DefectDojo]
-        U[Dependency Track]
-    end
-    
-    H --> M
-    K --> P
-    D --> S
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                      GitHub Actions Pipeline                     │
+└─────────────────────────────────────────────────────────────────┘
+              │
+              ├─▶ 🔍 Validate Commit
+              ├─▶ 🏗️  Build & Package (Docker)
+              ├─▶ 🔒 Security Scan (Trivy + Dependencies)
+              ├─▶ 🧪 Run Tests (Pytest + Coverage)
+              ├─▶ 🚀 Deploy to Kubernetes
+              ├─▶ 📊 Send Metrics (Prometheus)
+              └─▶ 🎫 Update Jira & Notify
+
+                       ⬇️  Deploy to  ⬇️
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Kubernetes Cluster (K3s)                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
+│  │ ArgoCD   │  │ Tekton   │  │ Vault    │  │ Gatekeeper│      │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                     │
+│  │Prometheus│  │ Grafana  │  │ ML Apps  │                     │
+│  └──────────┘  └──────────┘  └──────────┘                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## 📋 Prerequisites
+
+### Required
+- **GitHub Account**: For CI/CD workflows
+- **Kubernetes Cluster**: K3s or similar (v1.24+)
+- **kubectl**: Configured to access your cluster
+- **Docker**: For local testing
+
+### Optional
+- **GitHub CLI** (`gh`): For easier secret management
+- **Jira Account**: For issue tracking integration
+- **Slack Workspace**: For notifications
 
 ## 🚀 Quick Start
 
 ### 1. Clone the Repository
+
 ```bash
-git clone https://github.com/yourorg/ml-pipeline.git
-cd ml-pipeline
+git clone https://github.com/yourorg/pipeline.git
+cd pipeline
 ```
 
-### 2. Install Prerequisites
+### 2. Set Up GitHub Secrets
+
+You need to configure the following secrets in your GitHub repository:
+
 ```bash
-# Install Tekton
-kubectl apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+# Using GitHub CLI (recommended)
+gh auth login
 
-# Install ArgoCD
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# Set Kubernetes access
+gh secret set KUBECONFIG --body "$(cat ~/.kube/config | base64)"
 
-# Install NVIDIA GPU Operator
-helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
-helm repo update
-helm install --wait gpu-operator nvidia/gpu-operator
+# Set other secrets
+gh secret set HARBOR_USERNAME --body "admin"
+gh secret set HARBOR_PASSWORD --body "your-password"
+gh secret set SONARQUBE_URL --body "http://your-sonarqube:9000"
+gh secret set SONARQUBE_TOKEN --body "your-token"
+gh secret set VAULT_URL --body "http://your-vault:8200"
+gh secret set VAULT_TOKEN --body "your-token"
+gh secret set JIRA_URL --body "https://your-company.atlassian.net"
+gh secret set JIRA_PROJECT_KEY --body "ML"
+gh secret set PROMETHEUS_PUSHGATEWAY_URL --body "http://your-prometheus:9091"
 ```
 
-### 3. Deploy the Pipeline
+**Or use the automated setup script:**
+
 ```bash
-# Create namespaces
-kubectl apply -f k8s/namespace.yaml
-
-# Deploy GPU operator
-kubectl apply -f k8s/gpu-operator.yaml
-
-# Deploy the main pipeline
-kubectl apply -f pipeline.yml
-
-# Deploy monitoring
-kubectl apply -f monitoring/prometheus-rules.yaml
+./setup-github-secrets.sh
 ```
 
-### 4. Configure Secrets
-```bash
-# Create Harbor registry secret
-kubectl create secret docker-registry harbor-creds \
-  --docker-server=harbor.example.com \
-  --docker-username=admin \
-  --docker-password=password \
-  --namespace=ml-pipeline
+See [docs/GITHUB_SECRETS_VALUES.md](docs/GITHUB_SECRETS_VALUES.md) for detailed instructions.
 
-# Create Vault secret
-kubectl create secret generic vault-token \
-  --from-literal=token=your-vault-token \
-  --namespace=ml-pipeline
+### 3. Configure Your Pipeline
+
+Edit `.github/workflows/basic-pipeline.yml` to customize:
+
+```yaml
+env:
+  REGISTRY: your-harbor-registry.com
+  IMAGE_NAME: your-org/your-app
 ```
 
-### 5. Run Your First Pipeline
+### 4. Push to Trigger Pipeline
+
 ```bash
-# Create PipelineRun
-kubectl apply -f - <<EOF
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  name: ml-pipeline-run-$(date +%s)
-  namespace: ml-pipeline
-spec:
-  pipelineRef:
-    name: enterprise-ml-pipeline
-  params:
-    - name: git-url
-      value: "https://github.com/yourorg/your-ml-project.git"
-    - name: project-type
-      value: "ml"
-    - name: gpu-count
-      value: "2"
-    - name: enable-model-parallelism
-      value: "true"
-  workspaces:
-    - name: shared-data
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 10Gi
-    - name: docker-credentials
-      secret:
-        secretName: harbor-creds
-    - name: vault-secrets
-      secret:
-        secretName: vault-token
-EOF
+git add .
+git commit -m "Initial setup"
+git push origin main
 ```
+
+The pipeline will automatically run! 🎉
+
+### 5. Monitor Your Pipeline
+
+- **GitHub Actions**: `https://github.com/your-org/your-repo/actions`
+- **Grafana**: `http://your-server:30102` (admin/admin123)
+- **ArgoCD**: `http://your-server:32146` (admin/password)
+- **Jira**: Check your project for automated issues
 
 ## 📁 Project Structure
 
 ```
 pipeline/
-├── pipeline.yml                 # Main Tekton pipeline definition
-├── Dockerfile.python           # Python application container
-├── Dockerfile.java             # Java application container
-├── Dockerfile.ml               # ML/AI application container
-├── configs/
-│   ├── deepspeed.json          # DeepSpeed configuration
-│   ├── model-config.yaml       # Model training configuration
-│   └── dataset-transform.yaml  # Dataset processing configuration
-├── schemas/
-│   └── dataset-schema.json     # Dataset validation schema
-├── k8s/
-│   ├── namespace.yaml          # Kubernetes namespaces
-│   ├── gpu-operator.yaml       # NVIDIA GPU operator
-│   ├── ml-training-job.yaml    # Distributed training job
-│   └── triton-inference.yaml   # Triton inference server
-├── monitoring/
-│   ├── prometheus-rules.yaml   # Prometheus alert rules
-│   └── grafana-dashboard.json  # Grafana dashboard
-├── security/
-│   └── sonarqube-config.yaml   # SonarQube configuration
-├── integrations/
-│   └── jira-config.yaml        # Jira integration
-└── README.md                   # This file
+├── .github/workflows/
+│   └── basic-pipeline.yml          # Main CI/CD workflow
+├── docs/                            # Documentation
+│   ├── COMPLETE_PIPELINE_GUIDE.md  # Comprehensive guide
+│   ├── GITHUB_SECRETS_VALUES.md    # Secret configuration
+│   ├── JIRA_SETUP_GUIDE.md         # Jira integration
+│   ├── DASHBOARDS_GUIDE.md         # Grafana dashboards
+│   └── CREDENTIALS_GUIDE.md        # Credentials management
+├── configs/                         # Configuration files
+│   ├── deepspeed.json              # DeepSpeed config
+│   ├── model-config.yaml           # Model settings
+│   └── dataset-transform.yaml      # Data processing
+├── k8s/                            # Kubernetes manifests
+│   ├── namespace.yaml              # Namespaces
+│   ├── gpu-operator.yaml           # GPU support
+│   ├── ml-training-job.yaml        # Training jobs
+│   └── triton-inference.yaml       # Inference server
+├── monitoring/                      # Monitoring configs
+│   ├── prometheus-rules.yaml       # Prometheus alerts
+│   └── grafana-dashboard.json      # Dashboards
+├── integrations/                    # Third-party integrations
+│   └── jira-config.yaml            # Jira configuration
+├── credentials/                     # Secret templates
+│   └── all-services-secrets.yaml   # All secrets template
+├── src/                            # Application source code
+│   └── ml_pipeline/
+│       ├── __init__.py
+│       └── main.py
+├── tests/                          # Test suites
+│   ├── test_basic.py              # Unit tests
+│   ├── integration/               # Integration tests
+│   └── performance/               # Load tests
+├── setup-github-secrets.sh        # Secret setup script
+├── setup-jira-integration.sh      # Jira setup script
+├── setup-with-credentials.sh      # Full setup script
+├── Dockerfile                      # Container definition
+├── requirements.txt                # Python dependencies
+└── README.md                       # This file
 ```
 
 ## 🔧 Configuration
 
-### Pipeline Parameters
+### Pipeline Stages
 
-| Parameter | Description | Default | Options |
-|-----------|-------------|---------|---------|
-| `git-url` | Git repository URL | - | Any Git URL |
-| `project-type` | Project type | `python` | `python`, `java`, `ml`, `multi` |
-| `gpu-count` | Number of GPUs | `1` | `1-8` |
-| `enable-model-parallelism` | Enable DeepSpeed | `false` | `true`, `false` |
-| `dataset-version` | Dataset version | `latest` | Any version tag |
-| `jira-project` | Jira project key | `ML` | Any project key |
+The pipeline consists of 7 stages:
+
+1. **🔍 Validate Commit** (4s): Validates commit signature and metadata
+2. **🏗️ Build & Package** (~5min): Builds Docker images
+3. **🔒 Security Analysis** (10s): Runs Trivy vulnerability scans
+4. **🧪 Run Tests** (15s): Executes unit and integration tests
+5. **🚀 Deploy to Kubernetes** (8s): Deploys to your cluster
+6. **📊 Monitoring & Reporting** (3s): Sends metrics to Prometheus
+7. **🧹 Cleanup & Notifications** (3s): Cleans up and notifies stakeholders
 
 ### Environment Variables
 
-```bash
-# Required
-export HARBOR_REGISTRY="harbor.example.com"
-export SONARQUBE_URL="https://sonarqube.example.com"
-export JIRA_URL="https://jira.example.com"
-export PROMETHEUS_URL="https://prometheus.example.com"
-
-# Optional
-export ENABLE_GPU_MONITORING="true"
-export ENABLE_MODEL_PARALLELISM="true"
-export DATASET_CACHE_SIZE="100GB"
-export MODEL_CACHE_SIZE="50GB"
-```
-
-## 🎯 Usage Examples
-
-### Python ML Project
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  name: python-ml-pipeline
-spec:
-  pipelineRef:
-    name: enterprise-ml-pipeline
-  params:
-    - name: git-url
-      value: "https://github.com/yourorg/python-ml-project.git"
-    - name: project-type
-      value: "ml"
-    - name: gpu-count
-      value: "4"
-    - name: enable-model-parallelism
-      value: "true"
-```
-
-### Java Microservice
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  name: java-service-pipeline
-spec:
-  pipelineRef:
-    name: enterprise-ml-pipeline
-  params:
-    - name: git-url
-      value: "https://github.com/yourorg/java-service.git"
-    - name: project-type
-      value: "java"
-```
-
-### Multi-Language Project
-```yaml
-apiVersion: tekton.dev/v1beta1
-kind: PipelineRun
-metadata:
-  name: multi-lang-pipeline
-spec:
-  pipelineRef:
-    name: enterprise-ml-pipeline
-  params:
-    - name: git-url
-      value: "https://github.com/yourorg/multi-lang-project.git"
-    - name: project-type
-      value: "multi"
-    - name: gpu-count
-      value: "2"
-```
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `KUBECONFIG` | Base64 encoded kubeconfig | ✅ Yes | - |
+| `HARBOR_USERNAME` | Registry username | No | - |
+| `HARBOR_PASSWORD` | Registry password | No | - |
+| `SONARQUBE_URL` | SonarQube server URL | No | - |
+| `SONARQUBE_TOKEN` | SonarQube auth token | No | - |
+| `JIRA_URL` | Jira server URL | No | - |
+| `JIRA_PROJECT_KEY` | Jira project key | No | `ML` |
+| `PROMETHEUS_PUSHGATEWAY_URL` | Prometheus URL | No | - |
+| `VAULT_URL` | Vault server URL | No | - |
+| `VAULT_TOKEN` | Vault auth token | No | - |
 
 ## 📊 Monitoring
 
 ### Grafana Dashboards
-- **Pipeline Overview**: Pipeline status and metrics
-- **GPU Utilization**: Real-time GPU usage and performance
-- **Model Performance**: Training and inference metrics
-- **Infrastructure**: Node and pod resource usage
 
-### Prometheus Alerts
-- **GPU High Utilization**: >90% for 10 minutes
-- **Pipeline Failure**: Failed pipeline runs
-- **Model Accuracy Low**: <80% accuracy threshold
-- **Triton Server Down**: Inference server unavailable
+Access Grafana at `http://your-server:30102`:
+
+- **ML Pipeline Overview**: Pipeline execution metrics
+- **Test Results**: Test coverage and pass rates
+- **Build Performance**: Build times and success rates
+- **Infrastructure**: Resource usage and health
+
+Default credentials: `admin` / `admin123`
+
+### Prometheus Metrics
+
+The pipeline sends these metrics to Prometheus:
+
+```
+pipeline_run_total{status="success",branch="main"} 1
+pipeline_duration_seconds{branch="main"} 360
+pipeline_tests_passed{branch="main"} 41
+pipeline_tests_failed{branch="main"} 1
+```
 
 ### Key Metrics
-- `dcgm_gpu_utilization`: GPU utilization percentage
-- `tekton_pipelinerun_duration_seconds`: Pipeline execution time
-- `ml_model_accuracy`: Model accuracy score
-- `triton_inference_request_count`: Inference request rate
+
+- `pipeline_run_total`: Total pipeline runs
+- `pipeline_duration_seconds`: Pipeline execution time
+- `pipeline_tests_passed`: Number of tests passed
+- `pipeline_tests_failed`: Number of tests failed
+- `pipeline_build_size_bytes`: Docker image size
+
+## 🎫 Jira Integration
+
+### Setup
+
+1. Get your Jira API token: https://id.atlassian.com/manage-profile/security/api-tokens
+2. Run the setup script:
+
+```bash
+./setup-jira-integration.sh
+```
+
+3. The pipeline will automatically:
+   - Create issues when pipelines fail
+   - Update issues when fixed
+   - Track test failures
+   - Report metrics
+
+See [docs/JIRA_SETUP_GUIDE.md](docs/JIRA_SETUP_GUIDE.md) for details.
 
 ## 🔒 Security
 
-### Image Security
-- **Signed Images**: All images signed with Cosign
-- **Vulnerability Scanning**: Trivy and Grype integration
-- **Policy Enforcement**: OPA Gatekeeper policies
-
 ### Secret Management
-- **Vault Integration**: Centralized secret storage
-- **CSI Driver**: Kubernetes secret injection
-- **Rotation**: Automated secret rotation
 
-### Network Security
-- **Network Policies**: Pod-to-pod communication rules
-- **TLS Encryption**: End-to-end encryption
-- **RBAC**: Role-based access control
+All secrets are stored in:
+- **GitHub Secrets**: For CI/CD workflows
+- **Kubernetes Secrets**: For runtime access
+- **HashiCorp Vault**: For centralized secret management
 
-## 🚀 Advanced Features
+### Security Scanning
 
-### GPU Partitioning (MIG)
-```yaml
-# Enable MIG on A100/H100 GPUs
-apiVersion: nvidia.com/v1
-kind: NodePolicy
-metadata:
-  name: mig-policy
-spec:
-  mig:
-    strategy: "mixed"
-    maxInstancesPerNode: 7
-```
+Every build includes:
+- **Trivy**: Container vulnerability scanning
+- **Dependency Check**: Dependency vulnerability analysis
+- **SBOM**: Software Bill of Materials generation
 
-### Model Parallelism
-```json
-{
-  "zero_optimization": {
-    "stage": 2,
-    "allgather_partitions": true,
-    "overlap_comm": true
-  },
-  "fp16": {
-    "enabled": true,
-    "loss_scale": 0
-  }
-}
-```
+### Best Practices
 
-### Auto-scaling
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: triton-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: triton-inference-server
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: nvidia.com/gpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-```
+- ✅ Never commit secrets to Git
+- ✅ Use Vault for secret rotation
+- ✅ Enable branch protection rules
+- ✅ Require signed commits
+- ✅ Regular security audits
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Pipeline Failures
 
-#### GPU Not Available
+**Issue**: `base64: invalid input`
+
+**Solution**: Ensure KUBECONFIG secret is properly base64 encoded:
 ```bash
-# Check GPU operator status
-kubectl get pods -n gpu-operator
-
-# Check GPU nodes
-kubectl get nodes -l nvidia.com/gpu.present=true
-
-# Check GPU resources
-kubectl describe node <gpu-node>
+cat ~/.kube/config | base64 | gh secret set KUBECONFIG --body-file -
 ```
 
-#### Pipeline Failures
+**Issue**: `Kubernetes cluster not accessible`
+
+**Solution**: Check your kubeconfig points to the correct server IP, not localhost.
+
+**Issue**: `Docker build fails`
+
+**Solution**: Check Docker BuildX is enabled and you have sufficient disk space.
+
+### Kubernetes Connection
+
 ```bash
-# Check pipeline logs
-kubectl logs -f <pipeline-run-name>
+# Test kubectl access
+kubectl get nodes
 
-# Check task logs
-kubectl logs -f <task-run-name>
+# Check pipeline pods
+kubectl get pods -n ml-pipeline
 
-# Check pod events
-kubectl describe pod <pod-name>
+# View pipeline logs
+kubectl logs -f <pod-name> -n ml-pipeline
 ```
 
-#### Model Training Issues
+### Common Commands
+
 ```bash
-# Check DeepSpeed logs
-kubectl logs -f <training-job-pod>
+# View workflow runs
+gh run list
 
-# Check GPU utilization
-kubectl exec -it <pod-name> -- nvidia-smi
+# Watch active run
+gh run watch
 
-# Check model performance
-kubectl logs -f <model-validation-pod>
+# View run logs
+gh run view --log
+
+# Rerun failed job
+gh run rerun <run-id>
 ```
 
-### Debug Commands
-```bash
-# Pipeline status
-kubectl get pipelineruns -n ml-pipeline
+## 📚 Documentation
 
-# Task status
-kubectl get taskruns -n ml-pipeline
+- **[Complete Pipeline Guide](docs/COMPLETE_PIPELINE_GUIDE.md)**: Comprehensive guide
+- **[GitHub Secrets Setup](docs/GITHUB_SECRETS_VALUES.md)**: Secret configuration
+- **[Jira Integration](docs/JIRA_SETUP_GUIDE.md)**: Jira setup guide
+- **[Dashboards Guide](docs/DASHBOARDS_GUIDE.md)**: Grafana dashboards
+- **[Credentials Guide](docs/CREDENTIALS_GUIDE.md)**: Managing credentials
 
-# GPU status
-kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+## 🎯 Workflow Status
 
-# Resource usage
-kubectl top nodes
-kubectl top pods -n ml-pipeline
-```
-
-## 📚 Additional Resources
-
-### Documentation
-- [Tekton Documentation](https://tekton.dev/docs/)
-- [NVIDIA GPU Operator](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/)
-- [DeepSpeed Documentation](https://www.deepspeed.ai/)
-- [Triton Inference Server](https://docs.nvidia.com/deeplearning/triton-inference-server/)
-
-### Examples
-- [PyTorch Training Example](examples/pytorch-training/)
-- [TensorFlow Serving Example](examples/tensorflow-serving/)
-- [Multi-GPU Training Example](examples/multi-gpu-training/)
-
-### Support
-- **Issues**: [GitHub Issues](https://github.com/yourorg/ml-pipeline/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourorg/ml-pipeline/discussions)
-- **Slack**: [#ml-pipeline](https://yourorg.slack.com/channels/ml-pipeline)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+| Workflow | Status | Description |
+|----------|--------|-------------|
+| [Basic Pipeline](.github/workflows/basic-pipeline.yml) | [![CI](https://github.com/yourorg/pipeline/actions/workflows/basic-pipeline.yml/badge.svg)](https://github.com/yourorg/pipeline/actions/workflows/basic-pipeline.yml) | Main CI/CD workflow |
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
-## 📞 Contact
+## 📄 License
 
-- **Team**: ML Engineering Team
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 📞 Support
+
+- **GitHub Issues**: [Open an issue](https://github.com/yourorg/pipeline/issues)
+- **Documentation**: Check the `docs/` directory
 - **Email**: ml-team@example.com
-- **Slack**: #ml-pipeline
-- **Office Hours**: Every Tuesday 2-3 PM EST
+
+## 🎉 Acknowledgments
+
+Built with:
+- GitHub Actions
+- Kubernetes (K3s)
+- Tekton Pipelines
+- ArgoCD
+- Prometheus & Grafana
+- HashiCorp Vault
+- Jira
 
 ---
 
-**Built with ❤️ by the ML Engineering Team**
+**Made with ❤️ for ML/AI Teams**
