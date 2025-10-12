@@ -1,0 +1,102 @@
+╔══════════════════════════════════════════════════════════════╗
+║   📊 HOW TO PROCESS YOUR DATASET - STEP BY STEP   ║
+╚══════════════════════════════════════════════════════════════╝
+
+STEP 1: Open the configuration file
+────────────────────────────────────
+  nano repos-to-process.yaml
+  
+  (or use any text editor)
+
+
+STEP 2: Add your dataset repository
+────────────────────────────────────
+  Delete the example and add your own:
+  
+  repositories:
+    - repo: https://github.com/YOUR-USERNAME/YOUR-DATASET.git
+      format: json
+
+
+STEP 3: Save and push
+──────────────────────
+  git add repos-to-process.yaml
+  git commit -m "Process my dataset"
+  git push
+
+
+STEP 4: Check GitHub Actions
+─────────────────────────────
+  Open in browser:
+  https://github.com/almightymoon/Pipeline/actions
+  
+  You'll see "🔄 Auto Process Repositories" running!
+
+
+STEP 5: Download results (after 2-3 min)
+─────────────────────────────────────────
+  Click on the completed run
+  Scroll to "Artifacts"
+  Download "processed-repos-[number]"
+  
+  You'll get:
+  ✅ processed.json
+  ✅ processed.csv
+  ✅ processed.parquet
+  ✅ processing-results.json
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                  SUPPORTED FORMATS                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  ✅ CSV files    → Cleaned and combined
+  ✅ JSON files   → Validated and transformed
+  ✅ Parquet files → Processed efficiently
+  
+  Auto-detects format if you don't specify!
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                  AUTO-DETECTION                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+  The pipeline is SMART! It automatically:
+  
+  📊 Detects if it's a DATASET:
+     - Lots of .csv, .json, .parquet files
+     - Runs data validation & processing
+  
+  💻 Detects if it's CODE:
+     - Python, JavaScript, Java files
+     - Runs tests and validation
+
+
+╔══════════════════════════════════════════════════════════════╗
+║             YOUR JIRA CREDENTIALS (FROM EARLIER)              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  URL: https://faniqueprimus.atlassian.net
+  Project: KAN
+  Username: ml-pipeline@example.com (needs updating)
+  API Token: (generate at id.atlassian.com/manage/api-tokens)
+
+
+╔══════════════════════════════════════════════════════════════╗
+║                    QUICK REFERENCE                            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Edit file:     nano repos-to-process.yaml
+  View workflows: gh workflow list
+  Trigger manual: gh workflow run dataset-pipeline.yml
+  Watch run:      gh run watch
+  Download:       gh run download
+  
+  Server: ssh ubuntu@213.109.162.134 (qwert1234)
+  Grafana: http://213.109.162.134:30102 (admin/admin123)
+
+
+═══════════════════════════════════════════════════════════════
+
+🚀 Ready to process your dataset? Edit repos-to-process.yaml now!
+
