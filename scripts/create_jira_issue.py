@@ -25,6 +25,10 @@ def create_jira_issue():
         print(f"  JIRA_PROJECT_KEY: {'set' if jira_project_key else 'NOT SET'}")
         return 1
     
+    # Add https:// if scheme is missing
+    if not jira_url.startswith(('http://', 'https://')):
+        jira_url = 'https://' + jira_url
+    
     # Ensure URL ends with /rest/api/2/issue
     if not jira_url.endswith('/rest/api/2/issue'):
         if jira_url.endswith('/'):
