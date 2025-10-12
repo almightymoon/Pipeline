@@ -1,4 +1,4 @@
-name: 🚀 Working ML Pipeline
+name: Working ML Pipeline
 
 on:
   push:
@@ -14,18 +14,18 @@ jobs:
   # 1. VALIDATE COMMIT STAGE
   # ==========================================
   validate-commit:
-    name: 🔍 Validate Commit
+    name: Validate Commit
     runs-on: ubuntu-latest
     outputs:
       commit-valid: ${{ steps.validate.outputs.valid }}
     
     steps:
-    - name: 📥 Checkout Code
+    - name: Checkout Code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
     
-    - name: 🔐 Validate Commit
+    - name: Validate Commit
       id: validate
       run: |
         echo "Validating commit..."
@@ -39,19 +39,19 @@ jobs:
   # 2. BUILD STAGE (FIXED)
   # ==========================================
   build:
-    name: 🏗️ Build & Package
+    name: Build & Package
     runs-on: ubuntu-latest
     needs: validate-commit
     if: needs.validate-commit.outputs.commit-valid == 'true'
     
     steps:
-    - name: 📥 Checkout Code
+    - name: Checkout Code
       uses: actions/checkout@v4
     
-    - name: 🐳 Set up Docker Buildx
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: 🏗️ Build Docker Image (Local Only)
+    - name: Build Docker Image (Local Only)
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -63,7 +63,7 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
-    - name: 📦 Generate SBOM
+    - name: Generate SBOM
       run: |
         echo "Generating SBOM..."
         echo '{"name": "${{ github.repository }}", "version": "${{ github.sha }}", "created": "${{ github.event.head_commit.timestamp }}"}' > sbom.json
@@ -74,23 +74,23 @@ jobs:
   # 3. SECURITY SCAN STAGE
   # ==========================================
   security-scan:
-    name: 🔒 Security Analysis
+    name: Security Analysis
     runs-on: ubuntu-latest
     needs: [validate-commit, build]
     if: needs.validate-commit.outputs.commit-valid == 'true'
     
     steps:
-    - name: 📥 Checkout Code
+    - name: Checkout Code
       uses: actions/checkout@v4
     
-    - name: 🛡️ Run Trivy Vulnerability Scanner
+    - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
         scan-ref: '.'
         format: 'table'
     
-    - name: 🧪 Run Dependency Check
+    - name: Run Dependency Check
       run: |
         echo "Running dependency check..."
         echo "✅ Security scan completed"
@@ -99,31 +99,31 @@ jobs:
   # 4. TEST STAGE
   # ==========================================
   test:
-    name: 🧪 Run Tests
+    name: Run Tests
     runs-on: ubuntu-latest
     needs: [validate-commit, build]
     if: needs.validate-commit.outputs.commit-valid == 'true'
     
     steps:
-    - name: 📥 Checkout Code
+    - name: Checkout Code
       uses: actions/checkout@v4
     
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: 📦 Install Dependencies
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pytest pytest-cov
     
-    - name: 🧪 Run Unit Tests
+    - name: Run Unit Tests
       run: |
         echo "Running unit tests..."
         echo "✅ All tests passed"
     
-    - name: 📊 Generate Test Report
+    - name: Generate Test Report
       run: |
         echo "Generating test report..."
         echo "Tests: 42"
@@ -136,21 +136,21 @@ jobs:
   # 5. DEPLOY STAGE (SIMPLIFIED)
   # ==========================================
   deploy:
-    name: 🚀 Deploy to Kubernetes
+    name: Deploy to Kubernetes
     runs-on: ubuntu-latest
     needs: [build, security-scan, test]
     if: always() && needs.build.result == 'success' && needs.security-scan.result == 'success' && needs.test.result == 'success'
     
     steps:
-    - name: 📥 Checkout Code
+    - name: Checkout Code
       uses: actions/checkout@v4
     
-    - name: ☸️ Setup Kubectl
+    - name: Setup Kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'latest'
     
-    - name: 🔐 Configure Kubernetes Access
+    - name: Configure Kubernetes Access
       run: |
         echo "Configuring Kubernetes access..."
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
@@ -161,7 +161,7 @@ jobs:
           echo "⚠️ KUBECONFIG secret not set, skipping deployment"
         fi
     
-    - name: 🚀 Deploy Application
+    - name: Deploy Application
       run: |
         echo "Deploying application..."
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
@@ -178,13 +178,13 @@ jobs:
   # 6. MONITORING & REPORTING
   # ==========================================
   monitoring:
-    name: 📊 Setup Monitoring & Reporting
+    name: Setup Monitoring & Reporting
     runs-on: ubuntu-latest
     needs: [deploy, test]
     if: always()
     
     steps:
-    - name: 📊 Send Metrics to Prometheus
+    - name: Send Metrics to Prometheus
       run: |
         echo "Sending metrics to Prometheus..."
         if [ -n "${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}" ]; then
@@ -193,7 +193,7 @@ jobs:
           echo "⚠️ Prometheus URL not configured"
         fi
     
-    - name: 🎫 Create Jira Issue
+    - name: Create Jira Issue
       run: |
         echo "Creating Jira issue..."
         if [ -n "${{ secrets.JIRA_URL }}" ] && [ -n "${{ secrets.JIRA_PROJECT_KEY }}" ]; then
@@ -202,7 +202,7 @@ jobs:
           echo "⚠️ Jira not configured"
         fi
     
-    - name: 📧 Send Notification
+    - name: Send Notification
       run: |
         echo "Pipeline Status: ${{ job.status }}"
         echo "✅ Monitoring and reporting completed"
@@ -211,18 +211,18 @@ jobs:
   # 7. CLEANUP & NOTIFICATIONS
   # ==========================================
   cleanup:
-    name: 🧹 Cleanup & Notifications
+    name: Cleanup & Notifications
     runs-on: ubuntu-latest
     needs: [monitoring]
     if: always()
     
     steps:
-    - name: 🧹 Cleanup
+    - name: Cleanup
       run: |
         echo "Cleaning up..."
         echo "✅ Cleanup completed"
     
-    - name: 📧 Send Final Notification
+    - name: Send Final Notification
       run: |
         echo "🎉 Pipeline completed!"
         echo "Status: ${{ job.status }}"

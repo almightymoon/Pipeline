@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
     
     print("="*70)
-    print("🤖 Loading Chatbot Model")
+    print("Loading Chatbot Model")
     print("="*70)
     print(f"Model: {args.model}")
     
@@ -59,25 +59,25 @@ def main():
     
     if torch.cuda.is_available():
         model = model.cuda()
-        print("GPU: ✅ Using CUDA")
+        print("GPU: Using CUDA")
     else:
-        print("GPU: ⚠️  Using CPU")
+        print("GPU: Using CPU")
     
     model.eval()
     
-    print("\n✅ Model loaded successfully!")
+    print("\nModel loaded successfully!")
     print("="*70)
     
     if args.interactive:
         # Interactive chat
-        print("\n💬 Interactive Chat Mode")
+        print("\nInteractive Chat Mode")
         print("Type 'quit' to exit\n")
         
         while True:
             user_input = input("You: ").strip()
             
             if user_input.lower() in ['quit', 'exit', 'q']:
-                print("\n👋 Goodbye!")
+                print("\nGoodbye!")
                 break
             
             if not user_input:
@@ -95,7 +95,7 @@ def main():
             "Tell me something interesting"
         ]
         
-        print("\n🧪 Testing with sample prompts:\n")
+        print("\nTesting with sample prompts:\n")
         
         for prompt in test_prompts:
             print(f"User: {prompt}")

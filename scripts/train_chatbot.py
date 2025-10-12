@@ -79,24 +79,24 @@ def train_chatbot(
     """
     
     print("="*70)
-    print("🤖 CHATBOT TRAINING STARTING")
+    print("CHATBOT TRAINING STARTING")
     print("="*70)
     print(f"Model: {model_name}")
     print(f"Training file: {train_file}")
     print(f"Output: {output_dir}")
     print(f"Epochs: {num_epochs}")
     print(f"Batch size: {batch_size}")
-    print(f"GPU: {'Yes ✅' if use_gpu and torch.cuda.is_available() else 'No (CPU)'}")
+    print(f"GPU: {'Yes' if use_gpu and torch.cuda.is_available() else 'No (CPU)'}")
     
     # Load tokenizer and model
-    print("\n📦 Loading model and tokenizer...")
+    print("\nLoading model and tokenizer...")
     tokenizer = GPT2Tokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     
     model = GPT2LMHeadModel.from_pretrained(model_name)
     
     # Load data
-    print("\n📊 Loading training data...")
+    print("\nLoading training data...")
     train_dataset = load_conversation_data(train_file, tokenizer)
     
     eval_dataset = None
@@ -137,19 +137,19 @@ def train_chatbot(
     )
     
     # Train!
-    print("\n🧠 Starting training...")
+    print("\nStarting training...")
     print("="*70)
     
     trainer.train()
     
     # Save model
-    print("\n💾 Saving trained model...")
+    print("\nSaving trained model...")
     trainer.save_model(f"{output_dir}/final")
     tokenizer.save_pretrained(f"{output_dir}/final")
     
     # Evaluation
     if eval_dataset:
-        print("\n📊 Evaluating model...")
+        print("\nEvaluating model...")
         eval_results = trainer.evaluate()
         print(f"Validation Loss: {eval_results['eval_loss']:.4f}")
         
@@ -157,7 +157,7 @@ def train_chatbot(
             json.dump(eval_results, f, indent=2)
     
     print("\n"+"="*70)
-    print("✅ TRAINING COMPLETE!")
+    print("TRAINING COMPLETE!")
     print("="*70)
     print(f"Model saved to: {output_dir}/final")
     print("\nTest your model:")

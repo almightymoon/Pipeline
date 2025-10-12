@@ -1,4 +1,4 @@
-name: 📊 Dataset Processing Pipeline
+name: Dataset Processing Pipeline
 
 on:
   workflow_dispatch:
@@ -25,18 +25,18 @@ jobs:
   # 1. FETCH DATASET
   # ==========================================
   fetch-dataset:
-    name: 📥 Fetch Dataset
+    name: Fetch Dataset
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Clone Dataset Repository
+    - name: Clone Dataset Repository
       run: |
         echo "Fetching dataset from: ${{ github.event.inputs.dataset_repo }}"
         git clone ${{ github.event.inputs.dataset_repo }} dataset
         cd dataset
         git checkout ${{ github.event.inputs.dataset_branch }}
         
-    - name: 📊 Dataset Info
+    - name: Dataset Info
       run: |
         cd dataset
         echo "Dataset structure:"
@@ -46,7 +46,7 @@ jobs:
         echo "Dataset size:"
         du -sh .
         
-    - name: 📤 Upload Dataset
+    - name: Upload Dataset
       uses: actions/upload-artifact@v4
       with:
         name: raw-dataset
@@ -57,30 +57,30 @@ jobs:
   # 2. VALIDATE DATASET
   # ==========================================
   validate-dataset:
-    name: 🔍 Validate Dataset
+    name: Validate Dataset
     runs-on: ubuntu-latest
     needs: fetch-dataset
     
     steps:
-    - name: 📥 Checkout Pipeline Code
+    - name: Checkout Pipeline Code
       uses: actions/checkout@v4
     
-    - name: 📥 Download Dataset
+    - name: Download Dataset
       uses: actions/download-artifact@v4
       with:
         name: raw-dataset
         path: dataset/
     
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: 📦 Install Validation Tools
+    - name: Install Validation Tools
       run: |
         pip install pandas numpy jsonschema pandera great-expectations
         
-    - name: 🔍 Validate Schema
+    - name: Validate Schema
       run: |
         python << 'EOF'
         import os
@@ -91,7 +91,7 @@ jobs:
         dataset_dir = Path('dataset')
         format_type = "${{ github.event.inputs.dataset_format }}"
         
-        print(f"🔍 Validating {format_type} dataset...")
+        print(f"Validating {format_type} dataset...")
         
         if format_type == 'csv':
             files = list(dataset_dir.rglob('*.csv'))
@@ -116,7 +116,7 @@ jobs:
         print(f"Total files found: {len(files)}")
         EOF
     
-    - name: 📊 Generate Quality Report
+    - name: Generate Quality Report
       run: |
         python << 'EOF'
         import pandas as pd
@@ -149,11 +149,11 @@ jobs:
         with open('dataset-quality-report.json', 'w') as f:
             json.dump(report, f, indent=2)
         
-        print("📊 Quality Report:")
+        print("Quality Report:")
         print(json.dumps(report, indent=2))
         EOF
     
-    - name: 📤 Upload Quality Report
+    - name: Upload Quality Report
       uses: actions/upload-artifact@v4
       with:
         name: quality-report
@@ -163,30 +163,30 @@ jobs:
   # 3. PROCESS DATASET
   # ==========================================
   process-dataset:
-    name: 🔄 Process Dataset
+    name: Process Dataset
     runs-on: ubuntu-latest
     needs: validate-dataset
     
     steps:
-    - name: 📥 Checkout Pipeline Code
+    - name: Checkout Pipeline Code
       uses: actions/checkout@v4
     
-    - name: 📥 Download Dataset
+    - name: Download Dataset
       uses: actions/download-artifact@v4
       with:
         name: raw-dataset
         path: dataset/
     
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: 📦 Install Processing Tools
+    - name: Install Processing Tools
       run: |
         pip install pandas numpy scikit-learn pyarrow
     
-    - name: 🔄 Transform Dataset
+    - name: Transform Dataset
       run: |
         mkdir -p processed-dataset
         python << 'EOF'
@@ -198,7 +198,7 @@ jobs:
         output_dir = Path('processed-dataset')
         format_type = "${{ github.event.inputs.dataset_format }}"
         
-        print(f"🔄 Processing {format_type} dataset...")
+        print(f"Processing {format_type} dataset...")
         
         if format_type == 'csv':
             files = list(dataset_dir.rglob('*.csv'))
@@ -242,7 +242,7 @@ jobs:
         print("✅ Dataset processing completed!")
         EOF
     
-    - name: 📤 Upload Processed Dataset
+    - name: Upload Processed Dataset
       uses: actions/upload-artifact@v4
       with:
         name: processed-dataset
@@ -253,24 +253,24 @@ jobs:
   # 4. DEPLOY TO KUBERNETES
   # ==========================================
   deploy-dataset:
-    name: 🚀 Deploy Dataset to Kubernetes
+    name: Deploy Dataset to Kubernetes
     runs-on: ubuntu-latest
     needs: process-dataset
     if: success()
     
     steps:
-    - name: 📥 Download Processed Dataset
+    - name: Download Processed Dataset
       uses: actions/download-artifact@v4
       with:
         name: processed-dataset
         path: processed-dataset/
     
-    - name: ☸️ Setup Kubectl
+    - name: Setup Kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'latest'
     
-    - name: 🔐 Configure Kubernetes Access
+    - name: Configure Kubernetes Access
       run: |
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
@@ -281,7 +281,7 @@ jobs:
           exit 0
         fi
     
-    - name: 📊 Create Dataset ConfigMap
+    - name: Create Dataset ConfigMap
       run: |
         echo "Creating dataset configmap in Kubernetes..."
         
@@ -304,29 +304,29 @@ jobs:
     
     - name: 📋 List Deployed Datasets
       run: |
-        echo "📊 Deployed datasets:"
+        echo "Deployed datasets:"
         kubectl get configmaps -n ml-pipeline -l app=dataset-processor
 
   # ==========================================
   # 5. GENERATE REPORT
   # ==========================================
   generate-report:
-    name: 📄 Generate Processing Report
+    name: Generate Processing Report
     runs-on: ubuntu-latest
     needs: [validate-dataset, process-dataset, deploy-dataset]
     if: always()
     
     steps:
-    - name: 📥 Download Quality Report
+    - name: Download Quality Report
       uses: actions/download-artifact@v4
       with:
         name: quality-report
         path: reports/
     
-    - name: 📊 Generate Summary Report
+    - name: Generate Summary Report
       run: |
         cat << 'EOF' > processing-summary.md
-        # 📊 Dataset Processing Report
+        # Dataset Processing Report
         
         ## Repository Information
         - **Repository**: ${{ github.event.inputs.dataset_repo }}
@@ -354,7 +354,7 @@ jobs:
         
         cat processing-summary.md
     
-    - name: 📤 Upload Report
+    - name: Upload Report
       uses: actions/upload-artifact@v4
       with:
         name: processing-report

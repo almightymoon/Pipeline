@@ -1,4 +1,4 @@
-name: 🤖 Train Chatbot Models
+name: Train Chatbot Models
 
 on:
   push:
@@ -27,23 +27,23 @@ jobs:
   # 1. FETCH AND PROCESS CHAT DATA
   # ==========================================
   process-chat-data:
-    name: 📊 Process Chat Data
+    name: Process Chat Data
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout Pipeline
+    - name: Checkout Pipeline
       uses: actions/checkout@v4
     
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: 📦 Install Dependencies
+    - name: Install Dependencies
       run: |
         pip install pandas numpy pyyaml transformers torch
     
-    - name: 📋 Read Chat Data Repositories
+    - name: Read Chat Data Repositories
       run: |
         echo "Reading repos-to-process.yaml for chat data..."
         python << 'EOF'
@@ -61,7 +61,7 @@ jobs:
             print(f"    Category: {repo.get('category', 'general')}")
         EOF
     
-    - name: 📥 Fetch Chat Data
+    - name: Fetch Chat Data
       run: |
         echo "Fetching chat data from configured repositories..."
         mkdir -p raw-chat-data
@@ -81,7 +81,7 @@ jobs:
             branch = repo.get('branch', 'main')
             category = repo.get('category', 'general')
             
-            print(f"\n📥 Fetching {category} chat data...")
+            print(f"\nFetching {category} chat data...")
             print(f"   Repo: {repo_url}")
             
             output_dir = f"raw-chat-data/{category}"
@@ -97,7 +97,7 @@ jobs:
                 print(f"   ❌ Failed: {e}")
         EOF
     
-    - name: 🔄 Process Conversations
+    - name: Process Conversations
       run: |
         echo "Processing chat conversations into training format..."
         mkdir -p processed-chat-data
@@ -182,10 +182,10 @@ jobs:
         with open(output_dir / 'stats.json', 'w') as f:
             json.dump(stats, f, indent=2)
         
-        print(f"\n📊 Total training pairs: {stats['total_pairs']}")
+        print(f"\nTotal training pairs: {stats['total_pairs']}")
         EOF
     
-    - name: 📤 Upload Processed Chat Data
+    - name: Upload Processed Chat Data
       uses: actions/upload-artifact@v4
       with:
         name: processed-chat-training-data
@@ -196,23 +196,23 @@ jobs:
   # 2. DEPLOY TO KUBERNETES FOR TRAINING
   # ==========================================
   deploy-training-data:
-    name: 🚀 Deploy Training Data to K8s
+    name: Deploy Training Data to K8s
     runs-on: ubuntu-latest
     needs: process-chat-data
     
     steps:
-    - name: 📥 Download Processed Data
+    - name: Download Processed Data
       uses: actions/download-artifact@v4
       with:
         name: processed-chat-training-data
         path: processed-chat-data/
     
-    - name: ☸️ Setup Kubectl
+    - name: Setup Kubectl
       uses: azure/setup-kubectl@v3
       with:
         version: 'latest'
     
-    - name: 🔐 Configure Kubernetes
+    - name: Configure Kubernetes
       run: |
         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
@@ -220,7 +220,7 @@ jobs:
           echo "✅ Kubernetes configured"
         fi
     
-    - name: 📊 Deploy Training Data
+    - name: Deploy Training Data
       run: |
         if [ -n "$KUBECONFIG" ]; then
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -243,12 +243,12 @@ jobs:
           echo "⚠️  Skipping Kubernetes deployment"
         fi
     
-    - name: 🧠 Trigger Model Training
+    - name: Trigger Model Training
       if: success() && github.event.inputs.model_type != ''
       run: |
         MODEL_TYPE="${{ github.event.inputs.model_type }}"
         
-        echo "🧠 Training ${MODEL_TYPE} chatbot model..."
+        echo "Training ${MODEL_TYPE} chatbot model..."
         echo ""
         echo "Training will start on Kubernetes cluster"
         echo "Model type: ${MODEL_TYPE}"
@@ -264,26 +264,26 @@ jobs:
   # 3. MONITORING
   # ==========================================
   report-status:
-    name: 📊 Report Training Status
+    name: Report Training Status
     runs-on: ubuntu-latest
     needs: [process-chat-data, deploy-training-data]
     if: always()
     
     steps:
-    - name: 📊 Training Summary
+    - name: Training Summary
       run: |
         echo "═══════════════════════════════════════════════════"
-        echo "🤖 CHATBOT TRAINING PIPELINE COMPLETE"
+        echo "CHATBOT TRAINING PIPELINE COMPLETE"
         echo "═══════════════════════════════════════════════════"
         echo ""
         echo "Status:"
         echo "  Data Processing: ${{ needs.process-chat-data.result }}"
         echo "  K8s Deployment: ${{ needs.deploy-training-data.result }}"
         echo ""
-        echo "📦 Artifacts:"
+        echo "Artifacts:"
         echo "  - processed-chat-training-data"
         echo ""
-        echo "☸️  Kubernetes:"
+        echo " Kubernetes:"
         echo "  kubectl get configmaps -n ml-pipeline -l app=chatbot-training"
         echo ""
         echo "🎯 Next: Start model training on your cluster!"

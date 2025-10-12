@@ -63,7 +63,7 @@ def process_conversations(
         Statistics about processed data
     """
     print(f"\n{'='*70}")
-    print(f"📊 Processing Chat Conversations")
+    print(f"Processing Chat Conversations")
     print(f"{'='*70}")
     print(f"Input: {input_file}")
     print(f"Type filter: {chat_type}")
@@ -126,13 +126,13 @@ def process_conversations(
     if normal_pairs:
         with open(output_dir / 'normal-chat-training.json', 'w') as f:
             json.dump(normal_pairs, f, indent=2)
-        print(f"\n✅ Saved {len(normal_pairs)} normal chat pairs")
+        print(f"\nSaved {len(normal_pairs)} normal chat pairs")
     
     # Save adult chat pairs
     if adult_pairs:
         with open(output_dir / 'adult-chat-training.json', 'w') as f:
             json.dump(adult_pairs, f, indent=2)
-        print(f"✅ Saved {len(adult_pairs)} adult chat pairs")
+        print(f"Saved {len(adult_pairs)} adult chat pairs")
     
     # Create splits (train/val/test)
     for chat_data, name in [(normal_pairs, 'normal'), (adult_pairs, 'adult')]:
@@ -160,7 +160,7 @@ def process_conversations(
             for pair in test_data:
                 f.write(json.dumps(pair) + '\n')
         
-        print(f"\n📊 {name.title()} Split:")
+        print(f"\n{name.title()} Split:")
         print(f"   Train: {len(train_data)}")
         print(f"   Val: {len(val_data)}")
         print(f"   Test: {len(test_data)}")
@@ -189,7 +189,7 @@ def main():
     )
     
     print(f"\n{'='*70}")
-    print(f"✅ Processing Complete!")
+    print(f"Processing Complete!")
     print(f"{'='*70}")
     print(f"Total training pairs: {stats['total_pairs']}")
     print(f"Normal: {stats['normal_pairs']}")

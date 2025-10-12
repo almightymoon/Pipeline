@@ -29,10 +29,10 @@ def validate_csv_dataset(file_path: Path) -> Dict[str, Any]:
         
         # Check for issues
         if validation["null_count"] > 0:
-            print(f"⚠️  Warning: {validation['null_count']} null values found in {file_path.name}")
+            print(f"Warning: {validation['null_count']} null values found in {file_path.name}")
         
         if validation["duplicate_count"] > 0:
-            print(f"⚠️  Warning: {validation['duplicate_count']} duplicate rows found in {file_path.name}")
+            print(f"Warning: {validation['duplicate_count']} duplicate rows found in {file_path.name}")
         
         return validation
         
@@ -88,7 +88,7 @@ def main():
     json_files = list(dataset_dir.rglob('*.json'))
     parquet_files = list(dataset_dir.rglob('*.parquet'))
     
-    print(f"\n📊 Found:")
+    print(f"\nFound:")
     print(f"  - {len(csv_files)} CSV files")
     print(f"  - {len(json_files)} JSON files")
     print(f"  - {len(parquet_files)} Parquet files")
@@ -112,19 +112,19 @@ def main():
     
     # Summary
     print(f"\n{'=' * 60}")
-    print(f"✅ Validation Summary:")
+    print(f"Validation Summary:")
     print(f"{'=' * 60}")
     print(f"Total files validated: {len(results)}")
     print(f"Valid files: {len([r for r in results if r.get('valid', False)])}")
     print(f"Invalid files: {len(errors)}")
     
     if errors:
-        print(f"\n❌ Errors found:")
+        print(f"\nErrors found:")
         for error in errors:
             print(f"  - {error['file']}: {error.get('error', 'Unknown error')}")
         sys.exit(1)
     else:
-        print(f"\n🎉 All datasets are valid!")
+        print(f"\nAll datasets are valid!")
     
     # Save results
     with open('validation-results.json', 'w') as f:

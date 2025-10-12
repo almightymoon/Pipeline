@@ -1,4 +1,4 @@
-name: 🔄 Auto Process Repositories
+name: Auto Process Repositories
 
 on:
   push:
@@ -9,23 +9,23 @@ on:
 
 jobs:
   process-repos:
-    name: 🔄 Process Repositories from File
+    name: Process Repositories from File
     runs-on: ubuntu-latest
     
     steps:
     - name: 📥 Checkout Code
       uses: actions/checkout@v4
     
-    - name: 🐍 Setup Python
+    - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: 📦 Install Dependencies
+    - name: Install Dependencies
       run: |
         pip install pandas numpy pyyaml requests
     
-    - name: 📋 Read Configuration
+    - name: Read Configuration
       id: config
       run: |
         echo "Reading repos-to-process.yaml..."
@@ -46,7 +46,7 @@ jobs:
             print("⚠️  No repositories configured. Add some to repos-to-process.yaml!")
         EOF
     
-    - name: 🔄 Clone and Process Repositories
+    - name: Clone and Process Repositories
       run: |
         mkdir -p processed-output
         
@@ -60,7 +60,7 @@ jobs:
         import pandas as pd
         
         print("=" * 70)
-        print("🔄 REPOSITORY PROCESSING STARTING")
+        print("REPOSITORY PROCESSING STARTING")
         print("=" * 70)
         
         # Read configuration
@@ -83,7 +83,7 @@ jobs:
             data_format = repo_config.get('format', 'auto')
             
             print(f"\n{'=' * 70}")
-            print(f"📦 REPOSITORY {idx}/{len(repos)}")
+            print(f"REPOSITORY {idx}/{len(repos)}")
             print(f"{'=' * 70}")
             print(f"URL: {repo_url}")
             print(f"Branch: {branch}")
@@ -133,7 +133,7 @@ jobs:
                     print(f"   Format: {data_format}")
             
             # Process
-            print(f"\n🔄 Processing as {repo_type.upper()}...")
+            print(f"\nProcessing as {repo_type.upper()}...")
             
             if repo_type == 'dataset':
                 # Process dataset
@@ -206,7 +206,7 @@ jobs:
         print(f"Failed: {sum(1 for r in results if r['status'] == 'failed')}")
         EOF
     
-    - name: 📤 Upload Results
+    - name: Upload Results
       uses: actions/upload-artifact@v4
       with:
         name: processed-repos-${{ github.run_number }}
@@ -215,7 +215,7 @@ jobs:
           processing-results.json
         retention-days: 30
     
-    - name: 🚀 Deploy to Kubernetes
+    - name: Deploy to Kubernetes
       if: secrets.KUBECONFIG != ''
       run: |
         if [ -n "${{ secrets.KUBECONFIG }}" ] && [ -d "processed-output" ] && [ "$(ls -A processed-output)" ]; then
@@ -243,5 +243,5 @@ jobs:
         echo ""
         cat processing-results.json 2>/dev/null || echo "No results file"
         echo ""
-        echo "📦 Download artifacts above to get processed data!"
+        echo "Download artifacts above to get processed data!"
         echo ""

@@ -18,7 +18,7 @@ def process_csv_dataset(input_dir: Path, output_dir: Path, config: Dict) -> None
     csv_files = list(input_dir.rglob('*.csv'))
     
     if not csv_files:
-        print("⚠️  No CSV files found")
+        print("No CSV files found")
         return
     
     print(f"📊 Processing {len(csv_files)} CSV files...")
@@ -74,7 +74,7 @@ def process_json_dataset(input_dir: Path, output_dir: Path, config: Dict) -> Non
     json_files = list(input_dir.rglob('*.json'))
     
     if not json_files:
-        print("⚠️  No JSON files found")
+        print("No JSON files found")
         return
     
     print(f"📊 Processing {len(json_files)} JSON files...")
@@ -108,7 +108,7 @@ def process_json_dataset(input_dir: Path, output_dir: Path, config: Dict) -> Non
             df.to_csv(output_dir / 'processed.csv', index=False)
             df.to_parquet(output_dir / 'processed.parquet', index=False)
         except Exception as e:
-            print(f"⚠️  Could not convert to CSV/Parquet: {e}")
+            print(f"Could not convert to CSV/Parquet: {e}")
         
         print(f"✅ Saved processed dataset: {len(all_data)} records")
 
