@@ -10,10 +10,10 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  # - url: https://github.com/example/test-repo
-  #   name: test-project
-  #   branch: main
-  #   scan_type: full
+  - url: https://github.com/Arshad221b/Sign-Language-Recognition.git
+    name: test-project
+    branch: main
+    scan_type: full
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
