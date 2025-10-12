@@ -6,6 +6,65 @@ import os
 import sys
 import requests
 import json
+import subprocess
+from datetime import datetime
+
+def create_enhanced_description(base_description):
+    """Create enhanced description with scan details"""
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+    
+    # Get additional environment variables
+    repo_url = os.environ.get('REPO_URL', 'Unknown')
+    repo_name = os.environ.get('REPO_NAME', 'Unknown')
+    repo_branch = os.environ.get('REPO_BRANCH', 'main')
+    scan_type = os.environ.get('SCAN_TYPE', 'full')
+    github_run_id = os.environ.get('GITHUB_RUN_ID', 'Unknown')
+    github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
+    
+    # Try to get scan results if available
+    vulnerabilities_found = "Scanning in progress..."
+    security_issues = "Analysis pending..."
+    
+    enhanced_description = f"""
+{base_description}
+
+----
+
+🔍 **SCAN DETAILS**
+----
+
+**Repository Information:**
+• Repository: {repo_name}
+• URL: {repo_url}
+• Branch: {repo_branch}
+• Scan Type: {scan_type}
+• Scan Time: {current_time}
+
+**Pipeline Information:**
+• Run ID: {github_run_id}
+• Run Number: {github_run_number}
+• Workflow: External Repository Security Scan
+
+**Links:**
+• 🔗 [View Repository]({repo_url})
+• 📊 [Grafana Dashboard](http://213.109.162.134:30102/d/ml-all-results/ml-pipeline-all-results)
+• ⚙️ [GitHub Actions Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+
+**Security Scan Results:**
+• Status: {vulnerabilities_found}
+• Issues Found: {security_issues}
+• Scan Completed: ✅
+
+**Next Steps:**
+1. Review security findings in GitHub Actions logs
+2. Check Grafana dashboard for detailed metrics
+3. Address any critical vulnerabilities found
+4. Update repository if issues are discovered
+
+----
+*This issue was automatically created by the External Repository Scanner Pipeline*
+"""
+    return enhanced_description
 
 def create_jira_issue():
     # Get environment variables
@@ -15,6 +74,9 @@ def create_jira_issue():
     jira_project_key = os.environ.get('JIRA_PROJECT_KEY', '').strip()
     summary = os.environ.get('JIRA_SUMMARY', 'Pipeline Run')
     description = os.environ.get('JIRA_DESCRIPTION', 'Pipeline completed')
+    
+    # Create enhanced description
+    enhanced_description = create_enhanced_description(description)
     
     # Validate required fields
     if not all([jira_url, jira_email, jira_api_token, jira_project_key]):
@@ -45,7 +107,7 @@ def create_jira_issue():
                 "key": jira_project_key
             },
             "summary": summary,
-            "description": description,
+            "description": enhanced_description,
             "issuetype": {
                 "name": "Task"
             }

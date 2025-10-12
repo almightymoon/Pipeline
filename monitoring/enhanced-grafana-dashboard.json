@@ -1,0 +1,391 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Enhanced ML Pipeline - External Repository Scanner",
+    "tags": ["pipeline", "security", "external-repos"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "5s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Overview",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "pipeline_runs_total",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "pipeline_runs_successful",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "pipeline_runs_failed",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "External Repository Scan Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "external_repo_scans_total",
+            "legendFormat": "Repos Scanned",
+            "refId": "A"
+          },
+          {
+            "expr": "external_repo_scans_vulnerabilities_found",
+            "legendFormat": "Vulnerabilities",
+            "refId": "B"
+          },
+          {
+            "expr": "external_repo_scans_secrets_found",
+            "legendFormat": "Secrets Found",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 5}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Currently Scanning Repository",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "external_repo_current_scan",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table",
+              "filterable": true
+            },
+            "mappings": []
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "Value": "Repository Details"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Security Vulnerabilities Timeline",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(security_vulnerabilities_total[5m])",
+            "legendFormat": "Vulnerabilities/min",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(security_critical_vulnerabilities_total[5m])",
+            "legendFormat": "Critical/min",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(security_high_vulnerabilities_total[5m])",
+            "legendFormat": "High/min",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "insertNulls": false,
+              "showPoints": "auto",
+              "pointSize": 5,
+              "stacking": {"mode": "none", "group": "A"},
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {"type": "linear"},
+              "hideFrom": {"legend": false, "tooltip": false, "vis": false},
+              "thresholdsStyle": {"mode": "off"}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Repository Types Scanned",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum by (repo_type) (external_repo_scans_by_type)",
+            "legendFormat": "{{repo_type}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+            },
+            "mappings": []
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Detailed Scan Results",
+        "type": "logs",
+        "gridPos": {"h": 12, "w": 24, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "{job=\"pipeline\"} |= \"External Repo Scan\" |= \"Repository:\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "showCommonLabels": false,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Jira Integration Status",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 36},
+        "targets": [
+          {
+            "expr": "jira_issues_created_total",
+            "legendFormat": "Issues Created",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Scan Performance",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 36},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(external_repo_scan_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 300}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Success Rate",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 36},
+        "targets": [
+          {
+            "expr": "rate(pipeline_runs_successful[1h]) / rate(pipeline_runs_total[1h]) * 100",
+            "legendFormat": "Success Rate %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 1,
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "basic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "green", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Recent Repository Scans",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 42},
+        "targets": [
+          {
+            "expr": "topk(10, external_repo_scan_last_activity)",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table",
+              "filterable": true,
+              "sort": "desc"
+            },
+            "mappings": []
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "repo_name": "Repository",
+                "scan_status": "Status",
+                "vulnerabilities_count": "Vulnerabilities",
+                "secrets_found": "Secrets",
+                "last_scan": "Last Scanned"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "repository_filter",
+          "type": "query",
+          "query": "label_values(external_repo_scans_total, repo_name)",
+          "refresh": 1,
+          "includeAll": true,
+          "allValue": ".*",
+          "multi": true,
+          "datasource": "Prometheus"
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Pipeline Events",
+          "datasource": "Prometheus",
+          "expr": "changes(pipeline_runs_total[1m])",
+          "iconColor": "blue",
+          "enable": true,
+          "showIn": 0
+        },
+        {
+          "name": "Critical Vulnerabilities",
+          "datasource": "Prometheus",
+          "expr": "changes(security_critical_vulnerabilities_total[1m])",
+          "iconColor": "red",
+          "enable": true,
+          "showIn": 0
+        }
+      ]
+    }
+  }
+}

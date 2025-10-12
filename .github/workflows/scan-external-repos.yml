@@ -192,6 +192,54 @@ jobs:
         echo "Quality checks completed"
         echo "========================================="
     
+    - name: Collect Scan Metrics
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        echo "========================================="
+        echo "Collecting scan metrics..."
+        echo "========================================="
+        
+        # Count files and lines
+        cd external-repo
+        TOTAL_FILES=$(find . -type f -not -path '*/\.git/*' | wc -l)
+        TOTAL_LINES=$(find . -name '*.py' -o -name '*.js' -o -name '*.java' -o -name '*.go' -o -name '*.ts' -o -name '*.tsx' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}' || echo "0")
+        REPO_SIZE=$(du -sh . | cut -f1)
+        
+        # Check for common file types
+        PYTHON_FILES=$(find . -name '*.py' | wc -l)
+        JAVASCRIPT_FILES=$(find . -name '*.js' -o -name '*.ts' -o -name '*.tsx' | wc -l)
+        JAVA_FILES=$(find . -name '*.java' | wc -l)
+        
+        # Estimate vulnerabilities (simplified)
+        VULNERABILITIES=0
+        if [ -f "requirements.txt" ]; then
+          VULNERABILITIES=$((VULNERABILITIES + $(grep -c "==\|>=" requirements.txt 2>/dev/null || echo "0")))
+        fi
+        if [ -f "package.json" ]; then
+          VULNERABILITIES=$((VULNERABILITIES + 1))
+        fi
+        
+        # Save metrics
+        echo "pipeline_external_repo_scan{repo_name=\"${{ steps.read_config.outputs.repo_name }}\",repo_url=\"${{ steps.read_config.outputs.repo_url }}\",scan_type=\"${{ steps.read_config.outputs.scan_type }}\"} 1" >> metrics.txt
+        echo "pipeline_repo_files_total{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $TOTAL_FILES" >> metrics.txt
+        echo "pipeline_repo_lines_total{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $TOTAL_LINES" >> metrics.txt
+        echo "pipeline_repo_python_files{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $PYTHON_FILES" >> metrics.txt
+        echo "pipeline_repo_javascript_files{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $JAVASCRIPT_FILES" >> metrics.txt
+        echo "pipeline_repo_java_files{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $JAVA_FILES" >> metrics.txt
+        echo "pipeline_repo_vulnerabilities{repo_name=\"${{ steps.read_config.outputs.repo_name }}\"} $VULNERABILITIES" >> metrics.txt
+        
+        echo "Metrics collected:"
+        echo "  Total Files: $TOTAL_FILES"
+        echo "  Total Lines: $TOTAL_LINES"
+        echo "  Repository Size: $REPO_SIZE"
+        echo "  Python Files: $PYTHON_FILES"
+        echo "  JavaScript Files: $JAVASCRIPT_FILES"
+        echo "  Java Files: $JAVA_FILES"
+        echo "  Estimated Vulnerabilities: $VULNERABILITIES"
+        echo ""
+        echo "Metrics saved to metrics.txt"
+        echo "========================================="
+
     - name: Generate Final Report
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
@@ -209,6 +257,16 @@ jobs:
         echo "Scan Time: $(date)"
         echo ""
         echo "Status: ✅ SCAN COMPLETED"
+        echo ""
+        echo "📊 METRICS COLLECTED:"
+        if [ -f "metrics.txt" ]; then
+          cat metrics.txt
+        fi
+        echo ""
+        echo "🔗 LINKS:"
+        echo "  • Repository: ${{ steps.read_config.outputs.repo_url }}"
+        echo "  • Grafana Dashboard: http://213.109.162.134:30102/d/ml-all-results/ml-pipeline-all-results"
+        echo "  • GitHub Actions: https://github.com/almightymoon/Pipeline/actions/runs/${{ github.run_id }}"
         echo ""
         echo "Review the logs above for detailed findings:"
         echo "  - Security vulnerabilities (Trivy scan)"
@@ -231,3 +289,9 @@ jobs:
         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         JIRA_SUMMARY: "External Repo Scan: ${{ steps.read_config.outputs.repo_name }}"
         JIRA_DESCRIPTION: "Security scan completed for external repository: ${{ steps.read_config.outputs.repo_url }}\n\nBranch: ${{ steps.read_config.outputs.repo_branch }}\nScan Type: ${{ steps.read_config.outputs.scan_type }}\n\nView full results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        REPO_URL: ${{ steps.read_config.outputs.repo_url }}
+        REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
+        REPO_BRANCH: ${{ steps.read_config.outputs.repo_branch }}
+        SCAN_TYPE: ${{ steps.read_config.outputs.scan_type }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
