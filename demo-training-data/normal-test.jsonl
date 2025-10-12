@@ -1,2 +1,0 @@
-{"input": "I miss chatting with you", "output": "I miss you too! I'm always here when you want to talk", "context": [], "conversation_id": "conv_003", "type": "normal", "metadata": {}}
-{"input": "That makes me happy", "output": "You make ME happy! What do you want to talk about?", "context": [{"role": "user", "content": "I miss chatting with you"}, {"role": "assistant", "content": "I miss you too! I'm always here when you want to talk"}], "conversation_id": "conv_003", "type": "normal", "metadata": {}}
