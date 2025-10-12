@@ -57,10 +57,21 @@ jobs:
       max-parallel: 3
     
     steps:
+    - name: Parse Repository URL
+      id: parse_url
+      run: |
+        URL="${{ matrix.repo.url }}"
+        # Remove .git suffix if present
+        URL="${URL%.git}"
+        # Extract owner/repo from URL
+        REPO_PATH=$(echo "$URL" | sed 's|https://github.com/||' | sed 's|git@github.com:||' | sed 's|\.git$||')
+        echo "repo_path=$REPO_PATH" >> $GITHUB_OUTPUT
+        echo "Parsed repository: $REPO_PATH"
+    
     - name: Checkout Target Repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ matrix.repo.url }}
+        repository: ${{ steps.parse_url.outputs.repo_path }}
         ref: ${{ matrix.repo.branch || 'main' }}
         path: target-repo
     
