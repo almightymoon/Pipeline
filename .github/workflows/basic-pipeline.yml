@@ -196,56 +196,18 @@ jobs:
     - name: Create Jira Issue  
       run: |
         if [ -n "${{ secrets.JIRA_API_TOKEN }}" ] && [ -n "${{ secrets.JIRA_EMAIL }}" ]; then
-          echo "Creating Jira issue for pipeline completion..."
-          
-          cat > jira-payload.json << 'PAYLOAD'
-{
-  "fields": {
-    "project": {
-      "key": "${{ secrets.JIRA_PROJECT_KEY }}"
-    },
-    "summary": "Pipeline Run #${{ github.run_number }} - Completed",
-    "description": {
-      "type": "doc",
-      "version": 1,
-      "content": [
-        {
-          "type": "paragraph",
-          "content": [
-            {
-              "type": "text",
-              "text": "Pipeline: ${{ github.workflow }}\nRun: ${{ github.run_number }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\n\nView: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
-          ]
-        }
-      ]
-    },
-    "issuetype": {
-      "name": "Task"
-    }
-  }
-}
-PAYLOAD
-          
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -u "${{ secrets.JIRA_EMAIL }}:${{ secrets.JIRA_API_TOKEN }}" \
-            "${{ secrets.JIRA_URL }}/rest/api/3/issue" \
-            --data @jira-payload.json \
-            -o jira-response.json
-          
-          ISSUE_KEY=$(cat jira-response.json | jq -r '.key // empty')
-          
-          if [ -n "$ISSUE_KEY" ]; then
-            echo "Jira issue created: $ISSUE_KEY"
-            echo "View at: ${{ secrets.JIRA_URL }}/browse/$ISSUE_KEY"
-          else
-            echo "Could not create Jira issue. Response:"
-            cat jira-response.json
-          fi
+          pip install requests
+          python scripts/create_jira_issue.py
         else
           echo "Jira not configured - skipping"
         fi
+      env:
+        JIRA_URL: ${{ secrets.JIRA_URL }}
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        JIRA_SUMMARY: "Pipeline Run #${{ github.run_number }}"
+        JIRA_DESCRIPTION: "Pipeline ${{ github.workflow }} completed. Run ${{ github.run_number }} on branch ${{ github.ref_name }}. View at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     
     - name: Send Notification
       run: |
