@@ -1,0 +1,22 @@
+# Repository Scanner Configuration
+# Add repository URLs here to automatically scan them through the pipeline
+# The pipeline will clone, build, test, and security scan each repository
+
+repositories:
+  # Example entries:
+  # - url: https://github.com/username/repo-name
+  #   name: friendly-name
+  #   branch: main  # optional, defaults to main
+  #   scan_type: full  # options: full, security-only, quick
+  
+  # Add your repositories below:
+  # - url: https://github.com/example/test-repo
+  #   name: test-project
+  #   branch: main
+  #   scan_type: full
+
+# Scan types:
+# - full: Complete pipeline (build, test, security scan, deploy simulation)
+# - security-only: Only security and vulnerability scanning
+# - quick: Fast scan (basic checks and security only)
+
