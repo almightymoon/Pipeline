@@ -23,4 +23,9 @@ repositories:
   
   # Add your repositories below:
   
+  # Example: Test with the pipeline repo itself (will detect as 'code')
+  - repo: https://github.com/almightymoon/Pipeline.git
+    branch: main
+    type: code
+  
 
