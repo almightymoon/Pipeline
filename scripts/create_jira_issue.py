@@ -2,88 +2,78 @@
 """
 Create Jira issue via API
 """
-
+import os
 import sys
-import json
 import requests
-from requests.auth import HTTPBasicAuth
+import json
 
-def create_jira_issue(jira_url, email, api_token, project_key, summary, description):
-    """Create a Jira issue"""
+def create_jira_issue():
+    # Get environment variables
+    jira_url = os.environ.get('JIRA_URL', '').strip()
+    jira_email = os.environ.get('JIRA_EMAIL', '').strip()
+    jira_api_token = os.environ.get('JIRA_API_TOKEN', '').strip()
+    jira_project_key = os.environ.get('JIRA_PROJECT_KEY', '').strip()
+    summary = os.environ.get('JIRA_SUMMARY', 'Pipeline Run')
+    description = os.environ.get('JIRA_DESCRIPTION', 'Pipeline completed')
     
-    url = f"{jira_url}/rest/api/3/issue"
+    # Validate required fields
+    if not all([jira_url, jira_email, jira_api_token, jira_project_key]):
+        print("Missing required Jira configuration:")
+        print(f"  JIRA_URL: {'set' if jira_url else 'NOT SET'}")
+        print(f"  JIRA_EMAIL: {'set' if jira_email else 'NOT SET'}")
+        print(f"  JIRA_API_TOKEN: {'set' if jira_api_token else 'NOT SET'}")
+        print(f"  JIRA_PROJECT_KEY: {'set' if jira_project_key else 'NOT SET'}")
+        return 1
     
-    auth = HTTPBasicAuth(email, api_token)
+    # Ensure URL ends with /rest/api/2/issue
+    if not jira_url.endswith('/rest/api/2/issue'):
+        if jira_url.endswith('/'):
+            jira_url = jira_url + 'rest/api/2/issue'
+        else:
+            jira_url = jira_url + '/rest/api/2/issue'
     
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-    }
+    print(f"Creating Jira issue in project {jira_project_key}")
     
+    # Prepare the payload
     payload = {
         "fields": {
             "project": {
-                "key": project_key
+                "key": jira_project_key
             },
             "summary": summary,
-            "description": {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": description
-                            }
-                        ]
-                    }
-                ]
-            },
+            "description": description,
             "issuetype": {
                 "name": "Task"
             }
         }
     }
     
+    # Make the API call
     try:
-        response = requests.post(url, json=payload, headers=headers, auth=auth)
+        response = requests.post(
+            jira_url,
+            auth=(jira_email, jira_api_token),
+            headers={
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            json=payload,
+            timeout=30
+        )
         
         if response.status_code in [200, 201]:
-            data = response.json()
-            issue_key = data.get('key')
-            print(f"Jira issue created: {issue_key}")
-            print(f"View at: {jira_url}/browse/{issue_key}")
-            return issue_key
+            issue_data = response.json()
+            issue_key = issue_data.get('key', 'Unknown')
+            print(f"Successfully created Jira issue: {issue_key}")
+            return 0
         else:
-            print(f"Failed to create Jira issue. Status: {response.status_code}")
+            print(f"Failed to create Jira issue. Status code: {response.status_code}")
             print(f"Response: {response.text}")
-            return None
+            return 1
             
     except Exception as e:
-        print(f"Error creating Jira issue: {e}")
-        return None
-
+        print(f"Error creating Jira issue: {str(e)}")
+        return 1
 
 if __name__ == '__main__':
-    import os
-    
-    jira_url = os.getenv('JIRA_URL')
-    email = os.getenv('JIRA_EMAIL')
-    api_token = os.getenv('JIRA_API_TOKEN')
-    project_key = os.getenv('JIRA_PROJECT_KEY')
-    summary = os.getenv('JIRA_SUMMARY', 'Pipeline Run')
-    description = os.getenv('JIRA_DESCRIPTION', 'Pipeline completed')
-    
-    if not all([jira_url, email, api_token, project_key]):
-        print("Missing required environment variables")
-        sys.exit(1)
-    
-    issue_key = create_jira_issue(jira_url, email, api_token, project_key, summary, description)
-    
-    if issue_key:
-        sys.exit(0)
-    else:
-        sys.exit(1)
-
+    sys.exit(create_jira_issue())
