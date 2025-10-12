@@ -7,26 +7,26 @@ on:
     branches:
       - main
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'  # Daily at midnight
 
 jobs:
-  read-repos:
-    name: Read Repository List
+  scan-repository:
+    name: Scan External Repository
     runs-on: ubuntu-latest
-    outputs:
-      repos: ${{ steps.parse.outputs.repos }}
     
     steps:
     - name: Checkout Pipeline Code
       uses: actions/checkout@v4
+      with:
+        path: pipeline
     
-    - name: Parse Repository List
-      id: parse
+    - name: Read Repository Configuration
+      id: read_config
       run: |
+        cd pipeline
+        
         if [ ! -f "repos-to-scan.yaml" ]; then
           echo "No repos-to-scan.yaml found"
-          echo "repos=[]" >> $GITHUB_OUTPUT
+          echo "has_repos=false" >> $GITHUB_OUTPUT
           exit 0
         fi
         
@@ -34,232 +34,200 @@ jobs:
         sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
         sudo chmod +x /usr/local/bin/yq
         
-        # Convert YAML to JSON array
-        REPOS=$(yq eval '.repositories' repos-to-scan.yaml -o=json)
+        # Get first repository (for now, we'll process one at a time)
+        REPO_URL=$(yq eval '.repositories[0].url' repos-to-scan.yaml)
+        REPO_NAME=$(yq eval '.repositories[0].name' repos-to-scan.yaml)
+        REPO_BRANCH=$(yq eval '.repositories[0].branch' repos-to-scan.yaml)
+        SCAN_TYPE=$(yq eval '.repositories[0].scan_type' repos-to-scan.yaml)
         
-        if [ "$REPOS" = "null" ] || [ -z "$REPOS" ] || [ "$REPOS" = "[]" ]; then
-          echo "No repositories configured in repos-to-scan.yaml"
-          echo "repos=[]" >> $GITHUB_OUTPUT
-        else
-          echo "Found repositories to scan"
-          echo "repos=$REPOS" >> $GITHUB_OUTPUT
+        if [ "$REPO_URL" = "null" ] || [ -z "$REPO_URL" ]; then
+          echo "No repositories configured"
+          echo "has_repos=false" >> $GITHUB_OUTPUT
+          exit 0
         fi
-
-  scan-repository:
-    name: Scan ${{ matrix.repo.name }}
-    runs-on: ubuntu-latest
-    needs: read-repos
-    if: needs.read-repos.outputs.repos != '[]'
-    strategy:
-      matrix:
-        repo: ${{ fromJson(needs.read-repos.outputs.repos) }}
-      fail-fast: false
-      max-parallel: 3
-    
-    steps:
-    - name: Parse Repository URL
-      id: parse_url
-      run: |
-        URL="${{ matrix.repo.url }}"
-        # Remove .git suffix if present
-        URL="${URL%.git}"
+        
+        # Clean up URL - remove .git suffix
+        REPO_URL=$(echo "$REPO_URL" | sed 's/\.git$//')
+        
         # Extract owner/repo from URL
-        REPO_PATH=$(echo "$URL" | sed 's|https://github.com/||' | sed 's|git@github.com:||' | sed 's|\.git$||')
+        REPO_PATH=$(echo "$REPO_URL" | sed 's|https://github.com/||' | sed 's|git@github.com:||')
+        
+        echo "has_repos=true" >> $GITHUB_OUTPUT
+        echo "repo_url=$REPO_URL" >> $GITHUB_OUTPUT
         echo "repo_path=$REPO_PATH" >> $GITHUB_OUTPUT
-        echo "Parsed repository: $REPO_PATH"
+        echo "repo_name=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "repo_branch=$REPO_BRANCH" >> $GITHUB_OUTPUT
+        echo "scan_type=$SCAN_TYPE" >> $GITHUB_OUTPUT
+        
+        echo "========================================="
+        echo "Repository Configuration:"
+        echo "  Name: $REPO_NAME"
+        echo "  URL: $REPO_URL"
+        echo "  Path: $REPO_PATH"
+        echo "  Branch: $REPO_BRANCH"
+        echo "  Scan Type: $SCAN_TYPE"
+        echo "========================================="
     
-    - name: Checkout Target Repository
+    - name: Checkout External Repository
+      if: steps.read_config.outputs.has_repos == 'true'
       uses: actions/checkout@v4
       with:
-        repository: ${{ steps.parse_url.outputs.repo_path }}
-        ref: ${{ matrix.repo.branch || 'main' }}
-        path: target-repo
+        repository: ${{ steps.read_config.outputs.repo_path }}
+        ref: ${{ steps.read_config.outputs.repo_branch }}
+        path: external-repo
     
     - name: Repository Information
+      if: steps.read_config.outputs.has_repos == 'true'
       run: |
         echo "========================================="
-        echo "Scanning Repository: ${{ matrix.repo.name }}"
-        echo "URL: ${{ matrix.repo.url }}"
-        echo "Branch: ${{ matrix.repo.branch || 'main' }}"
-        echo "Scan Type: ${{ matrix.repo.scan_type || 'full' }}"
+        echo "Scanning Repository: ${{ steps.read_config.outputs.repo_name }}"
+        echo "URL: ${{ steps.read_config.outputs.repo_url }}"
+        echo "Branch: ${{ steps.read_config.outputs.repo_branch }}"
         echo "========================================="
-        cd target-repo
+        cd external-repo
         echo "Repository size: $(du -sh . | cut -f1)"
-        echo "Files: $(find . -type f | wc -l)"
-        echo "Lines of code: $(find . -name '*.py' -o -name '*.js' -o -name '*.java' -o -name '*.go' | xargs wc -l 2>/dev/null | tail -1 || echo '0')"
+        echo "Files: $(find . -type f -not -path '*/\.git/*' | wc -l)"
+        echo "Lines of code:"
+        find . -name '*.py' -o -name '*.js' -o -name '*.java' -o -name '*.go' | xargs wc -l 2>/dev/null | tail -1 || echo "0 total"
     
     - name: Security Scan with Trivy
+      if: steps.read_config.outputs.has_repos == 'true'
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
-        scan-ref: './target-repo'
+        scan-ref: './external-repo'
         format: 'table'
         exit-code: '0'
         severity: 'HIGH,CRITICAL'
     
-    - name: Check for Secrets
+    - name: Check for Secrets and API Keys
+      if: steps.read_config.outputs.has_repos == 'true'
       run: |
-        cd target-repo
-        echo "Scanning for exposed secrets..."
+        cd external-repo
+        echo "========================================="
+        echo "Scanning for Exposed Secrets..."
+        echo "========================================="
         
         # Check for common secret patterns
-        echo "Checking for API keys..."
-        grep -r -i "api[_-]key\|apikey" --include="*.env*" --include="*.config*" --include="*.json" . || echo "No API keys found in config files"
+        echo ""
+        echo "Checking for API keys in config files..."
+        grep -r -i "api[_-]key\|apikey" --include="*.env*" --include="*.config*" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | head -20 || echo "  No API keys found"
         
-        echo "Checking for passwords..."
-        grep -r -i "password\s*=\|pwd\s*=" --include="*.env*" --include="*.config*" . || echo "No hardcoded passwords found"
+        echo ""
+        echo "Checking for hardcoded passwords..."
+        grep -r -i "password\s*=\|pwd\s*=" --include="*.env*" --include="*.config*" --include="*.py" --include="*.js" . 2>/dev/null | head -20 || echo "  No hardcoded passwords found"
         
+        echo ""
+        echo "Checking for tokens..."
+        grep -r -i "token\s*=\|access_token\|secret_key" --include="*.env*" --include="*.config*" . 2>/dev/null | head -20 || echo "  No tokens found"
+        
+        echo ""
+        echo "========================================="
         echo "Secret scan completed"
+        echo "========================================="
     
     - name: Dependency Analysis
-      if: matrix.repo.scan_type == 'full' || matrix.repo.scan_type == null
+      if: steps.read_config.outputs.has_repos == 'true'
       run: |
-        cd target-repo
-        echo "Analyzing dependencies..."
+        cd external-repo
+        echo "========================================="
+        echo "Analyzing Dependencies..."
+        echo "========================================="
         
         # Python
         if [ -f "requirements.txt" ]; then
-          echo "Found Python requirements.txt"
-          pip install --dry-run -r requirements.txt 2>&1 | grep -i "error\|warning" || echo "Python dependencies look good"
+          echo ""
+          echo "Python requirements.txt found:"
+          cat requirements.txt | head -30
+          echo ""
+          echo "Checking for known vulnerable packages..."
+          pip install safety 2>/dev/null || true
+          safety check --file requirements.txt --bare 2>/dev/null || echo "Safety check completed"
         fi
         
         # Node.js
         if [ -f "package.json" ]; then
-          echo "Found Node.js package.json"
-          npm install --dry-run 2>&1 | grep -i "error\|warning" || echo "Node dependencies look good"
+          echo ""
+          echo "Node.js package.json found:"
+          cat package.json | head -50
         fi
         
         # Go
         if [ -f "go.mod" ]; then
-          echo "Found Go modules"
-          go mod verify 2>&1 || echo "Go modules verified"
+          echo ""
+          echo "Go modules found:"
+          cat go.mod | head -30
         fi
+        
+        echo ""
+        echo "========================================="
+        echo "Dependency analysis completed"
+        echo "========================================="
     
-    - name: Code Quality Check
-      if: matrix.repo.scan_type == 'full' || matrix.repo.scan_type == null
+    - name: Code Quality Checks
+      if: steps.read_config.outputs.has_repos == 'true'
       run: |
-        cd target-repo
-        echo "Running basic code quality checks..."
+        cd external-repo
+        echo "========================================="
+        echo "Code Quality Analysis..."
+        echo "========================================="
         
         # Check for TODO/FIXME comments
-        echo "Checking for TODO/FIXME comments:"
-        grep -r -n "TODO\|FIXME" --include="*.py" --include="*.js" --include="*.java" --include="*.go" . | head -20 || echo "No TODO/FIXME found"
+        echo ""
+        echo "TODO/FIXME comments found:"
+        grep -r -n "TODO\|FIXME" --include="*.py" --include="*.js" --include="*.java" --include="*.go" . 2>/dev/null | head -20 || echo "  None found"
         
         # Check file sizes
-        echo "Checking for large files (>1MB):"
-        find . -type f -size +1M -not -path "*/\.*" | head -10 || echo "No large files found"
-    
-    - name: Build Test (if applicable)
-      if: matrix.repo.scan_type == 'full' || matrix.repo.scan_type == null
-      run: |
-        cd target-repo
-        echo "Attempting to detect and run build..."
+        echo ""
+        echo "Large files (>1MB):"
+        find . -type f -size +1M -not -path "*/\.*" 2>/dev/null | head -10 || echo "  No large files found"
         
-        # Docker
-        if [ -f "Dockerfile" ]; then
-          echo "Found Dockerfile - testing build"
-          docker build --no-cache -t test-build:latest . || echo "Docker build failed (non-blocking)"
-        fi
+        # Check for common bad practices
+        echo ""
+        echo "Checking for debug code..."
+        grep -r -n "console\.log\|print(\|var_dump\|dd(" --include="*.py" --include="*.js" --include="*.php" . 2>/dev/null | head -10 || echo "  No debug statements found"
         
-        # Python
-        if [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
-          echo "Found Python package - testing installation"
-          pip install -e . || echo "Python package install failed (non-blocking)"
-        fi
+        echo ""
+        echo "========================================="
+        echo "Quality checks completed"
+        echo "========================================="
     
-    - name: Generate Scan Report
+    - name: Generate Final Report
+      if: steps.read_config.outputs.has_repos == 'true'
       run: |
-        echo "========================================="
-        echo "SCAN REPORT: ${{ matrix.repo.name }}"
-        echo "========================================="
-        echo "Repository: ${{ matrix.repo.url }}"
-        echo "Branch: ${{ matrix.repo.branch || 'main' }}"
-        echo "Scan Type: ${{ matrix.repo.scan_type || 'full' }}"
+        echo ""
+        echo "╔═══════════════════════════════════════════════════╗"
+        echo "║                                                   ║"
+        echo "║          EXTERNAL REPOSITORY SCAN REPORT          ║"
+        echo "║                                                   ║"
+        echo "╚═══════════════════════════════════════════════════╝"
+        echo ""
+        echo "Repository: ${{ steps.read_config.outputs.repo_name }}"
+        echo "URL: ${{ steps.read_config.outputs.repo_url }}"
+        echo "Branch: ${{ steps.read_config.outputs.repo_branch }}"
+        echo "Scan Type: ${{ steps.read_config.outputs.scan_type }}"
         echo "Scan Time: $(date)"
-        echo "Status: COMPLETED"
+        echo ""
+        echo "Status: ✅ SCAN COMPLETED"
+        echo ""
+        echo "Review the logs above for detailed findings:"
+        echo "  - Security vulnerabilities (Trivy scan)"
+        echo "  - Exposed secrets and API keys"
+        echo "  - Dependency analysis"
+        echo "  - Code quality issues"
+        echo ""
         echo "========================================="
     
-    - name: Create Jira Issue (Optional)
-      if: always() && secrets.JIRA_API_TOKEN != ''
+    - name: Create Jira Issue
+      if: steps.read_config.outputs.has_repos == 'true' && secrets.JIRA_API_TOKEN != ''
       run: |
-        # Create Jira issue with scan results
         pip install requests
-        
-        cat > create_scan_issue.py << 'EOF'
-        import os
-        import requests
-        import json
-        
-        jira_url = os.environ.get('JIRA_URL', '').strip()
-        jira_email = os.environ.get('JIRA_EMAIL', '').strip()
-        jira_api_token = os.environ.get('JIRA_API_TOKEN', '').strip()
-        jira_project_key = os.environ.get('JIRA_PROJECT_KEY', '').strip()
-        
-        if not all([jira_url, jira_email, jira_api_token, jira_project_key]):
-            print("Jira not configured, skipping")
-            exit(0)
-        
-        if not jira_url.startswith(('http://', 'https://')):
-            jira_url = 'https://' + jira_url
-        
-        if not jira_url.endswith('/rest/api/2/issue'):
-            if jira_url.endswith('/'):
-                jira_url = jira_url + 'rest/api/2/issue'
-            else:
-                jira_url = jira_url + '/rest/api/2/issue'
-        
-        repo_name = "${{ matrix.repo.name }}"
-        repo_url = "${{ matrix.repo.url }}"
-        
-        payload = {
-            "fields": {
-                "project": {"key": jira_project_key},
-                "summary": f"Repository Scan: {repo_name}",
-                "description": f"Automated security and quality scan completed for {repo_name}\\n\\nRepository: {repo_url}\\nBranch: ${{ matrix.repo.branch || 'main' }}\\nScan Type: ${{ matrix.repo.scan_type || 'full' }}\\n\\nView full results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
-                "issuetype": {"name": "Task"}
-            }
-        }
-        
-        try:
-            response = requests.post(
-                jira_url,
-                auth=(jira_email, jira_api_token),
-                headers={'Content-Type': 'application/json'},
-                json=payload,
-                timeout=30
-            )
-            if response.status_code in [200, 201]:
-                print(f"Created Jira issue: {response.json().get('key')}")
-            else:
-                print(f"Failed to create Jira issue: {response.status_code}")
-        except Exception as e:
-            print(f"Error: {e}")
-        EOF
-        
-        python create_scan_issue.py
+        cd pipeline
+        python scripts/create_jira_issue.py
       env:
         JIRA_URL: ${{ secrets.JIRA_URL }}
         JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-
-  summary:
-    name: Scan Summary
-    runs-on: ubuntu-latest
-    needs: [read-repos, scan-repository]
-    if: always()
-    
-    steps:
-    - name: Summary Report
-      run: |
-        echo "========================================="
-        echo "        REPOSITORY SCAN SUMMARY"
-        echo "========================================="
-        echo ""
-        echo "Scan completed for all configured repositories"
-        echo "Check individual job logs for detailed results"
-        echo ""
-        echo "View results at:"
-        echo "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        echo "========================================="
-
+        JIRA_SUMMARY: "External Repo Scan: ${{ steps.read_config.outputs.repo_name }}"
+        JIRA_DESCRIPTION: "Security scan completed for external repository: ${{ steps.read_config.outputs.repo_url }}\n\nBranch: ${{ steps.read_config.outputs.repo_branch }}\nScan Type: ${{ steps.read_config.outputs.scan_type }}\n\nView full results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
