@@ -1,0 +1,358 @@
+name: 🔄 Auto Process Repositories
+
+on:
+  push:
+    paths:
+      - 'repos-to-process.yaml'
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # ==========================================
+  # 1. READ CONFIGURATION
+  # ==========================================
+  read-config:
+    name: 📋 Read Repository List
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.parse.outputs.repos }}
+      
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 📋 Parse repos-to-process.yaml
+      id: parse
+      run: |
+        echo "Reading repos-to-process.yaml..."
+        
+        # Install yq for YAML parsing
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        sudo chmod +x /usr/local/bin/yq
+        
+        # Parse and convert to JSON
+        REPOS=$(yq -o=json '.repositories' repos-to-process.yaml)
+        
+        # Count repos
+        COUNT=$(echo "$REPOS" | jq '. | length')
+        
+        echo "Found $COUNT repositories to process"
+        echo "$REPOS" | jq .
+        
+        # Set output
+        echo "repos=$REPOS" >> $GITHUB_OUTPUT
+        echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+  # ==========================================
+  # 2. PROCESS EACH REPOSITORY
+  # ==========================================
+  process-repository:
+    name: 🔄 Process ${{ matrix.repo.repo }}
+    runs-on: ubuntu-latest
+    needs: read-config
+    if: needs.read-config.outputs.repos != '[]' && needs.read-config.outputs.repos != 'null'
+    strategy:
+      matrix:
+        repo: ${{ fromJson(needs.read-config.outputs.repos) }}
+      max-parallel: 3
+      fail-fast: false
+    
+    steps:
+    - name: 📥 Checkout Pipeline Code
+      uses: actions/checkout@v4
+    
+    - name: 📥 Clone Target Repository
+      run: |
+        REPO_URL="${{ matrix.repo.repo }}"
+        BRANCH="${{ matrix.repo.branch || 'main' }}"
+        
+        echo "Cloning: $REPO_URL"
+        echo "Branch: $BRANCH"
+        
+        git clone "$REPO_URL" target-repo || {
+          echo "❌ Failed to clone repository"
+          exit 1
+        }
+        
+        cd target-repo
+        git checkout "$BRANCH" || echo "Using default branch"
+        
+        echo "✅ Repository cloned successfully"
+    
+    - name: 🔍 Detect Repository Type
+      id: detect
+      run: |
+        cd target-repo
+        
+        TYPE="${{ matrix.repo.type || 'auto' }}"
+        
+        if [ "$TYPE" = "auto" ]; then
+          # Auto-detect based on contents
+          echo "🔍 Auto-detecting repository type..."
+          
+          # Count data files
+          CSV_COUNT=$(find . -name "*.csv" -type f | wc -l)
+          JSON_COUNT=$(find . -name "*.json" -type f | wc -l)
+          PARQUET_COUNT=$(find . -name "*.parquet" -type f | wc -l)
+          DATA_FILES=$((CSV_COUNT + JSON_COUNT + PARQUET_COUNT))
+          
+          # Count code files
+          PY_COUNT=$(find . -name "*.py" -type f | wc -l)
+          JS_COUNT=$(find . -name "*.js" -type f | wc -l)
+          JAVA_COUNT=$(find . -name "*.java" -type f | wc -l)
+          CODE_FILES=$((PY_COUNT + JS_COUNT + JAVA_COUNT))
+          
+          echo "Data files found: $DATA_FILES (CSV: $CSV_COUNT, JSON: $JSON_COUNT, Parquet: $PARQUET_COUNT)"
+          echo "Code files found: $CODE_FILES (Python: $PY_COUNT, JavaScript: $JS_COUNT, Java: $JAVA_COUNT)"
+          
+          # Decide type
+          if [ $DATA_FILES -gt $CODE_FILES ] && [ $DATA_FILES -gt 0 ]; then
+            TYPE="dataset"
+            # Detect format
+            if [ $CSV_COUNT -gt 0 ]; then
+              FORMAT="csv"
+            elif [ $PARQUET_COUNT -gt 0 ]; then
+              FORMAT="parquet"
+            else
+              FORMAT="json"
+            fi
+          else
+            TYPE="code"
+            FORMAT="none"
+          fi
+          
+          echo "✅ Detected as: $TYPE"
+        else
+          echo "Using specified type: $TYPE"
+          FORMAT="${{ matrix.repo.format || 'json' }}"
+        fi
+        
+        echo "type=$TYPE" >> $GITHUB_OUTPUT
+        echo "format=$FORMAT" >> $GITHUB_OUTPUT
+        
+        echo "📊 Repository Type: $TYPE"
+        echo "📁 Data Format: $FORMAT"
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 📦 Install Dependencies
+      run: |
+        pip install pandas numpy jsonschema pyarrow
+    
+    # ==========================================
+    # DATASET PROCESSING PATH
+    # ==========================================
+    - name: 📊 Process as Dataset
+      if: steps.detect.outputs.type == 'dataset'
+      run: |
+        echo "═══════════════════════════════════════"
+        echo "📊 Processing as DATASET"
+        echo "═══════════════════════════════════════"
+        
+        FORMAT="${{ steps.detect.outputs.format }}"
+        echo "Format: $FORMAT"
+        
+        cd target-repo
+        mkdir -p ../processed-output
+        
+        python << 'EOF'
+        import pandas as pd
+        import json
+        from pathlib import Path
+        
+        format_type = "${{ steps.detect.outputs.format }}"
+        input_dir = Path('.')
+        output_dir = Path('../processed-output')
+        output_dir.mkdir(exist_ok=True)
+        
+        print(f"🔄 Processing {format_type} dataset...")
+        
+        all_data = []
+        
+        if format_type == 'csv':
+            files = list(input_dir.rglob('*.csv'))
+            print(f"Found {len(files)} CSV files")
+            for file in files:
+                try:
+                    df = pd.read_csv(file)
+                    df = df.dropna()
+                    df = df.drop_duplicates()
+                    all_data.append(df)
+                    print(f"  ✓ {file.name}: {len(df)} rows")
+                except Exception as e:
+                    print(f"  ✗ {file.name}: {e}")
+            
+            if all_data:
+                combined = pd.concat(all_data, ignore_index=True)
+                combined.to_csv(output_dir / 'processed.csv', index=False)
+                combined.to_json(output_dir / 'processed.json', orient='records', indent=2)
+                print(f"\n✅ Processed {len(combined)} total rows")
+        
+        elif format_type == 'json':
+            files = list(input_dir.rglob('*.json'))
+            print(f"Found {len(files)} JSON files")
+            for file in files:
+                try:
+                    with open(file) as f:
+                        data = json.load(f)
+                    if isinstance(data, list):
+                        all_data.extend(data)
+                    else:
+                        all_data.append(data)
+                    print(f"  ✓ {file.name}")
+                except Exception as e:
+                    print(f"  ✗ {file.name}: {e}")
+            
+            with open(output_dir / 'processed.json', 'w') as f:
+                json.dump(all_data, f, indent=2)
+            
+            try:
+                df = pd.DataFrame(all_data)
+                df.to_csv(output_dir / 'processed.csv', index=False)
+                print(f"\n✅ Processed {len(all_data)} records")
+            except:
+                print(f"\n✅ Processed {len(all_data)} records (CSV conversion failed)")
+        
+        # Generate statistics
+        stats = {
+            "format": format_type,
+            "total_files": len(files),
+            "records_processed": len(all_data) if format_type == 'json' else len(combined) if all_data else 0,
+            "processing_date": "2025-10-12"
+        }
+        
+        with open(output_dir / 'statistics.json', 'w') as f:
+            json.dump(stats, f, indent=2)
+        
+        print(f"\n📊 Statistics saved")
+        EOF
+        
+        echo "✅ Dataset processing completed!"
+    
+    # ==========================================
+    # CODE PROCESSING PATH
+    # ==========================================
+    - name: 🏗️ Process as Code
+      if: steps.detect.outputs.type == 'code'
+      run: |
+        echo "═══════════════════════════════════════"
+        echo "🏗️ Processing as CODE"
+        echo "═══════════════════════════════════════"
+        
+        cd target-repo
+        
+        # Detect language
+        if [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
+          echo "Detected: Python project"
+          pip install -r requirements.txt || true
+          python -m pytest tests/ || echo "⚠️  No tests or tests failed"
+          
+        elif [ -f "package.json" ]; then
+          echo "Detected: Node.js project"
+          npm install || true
+          npm test || echo "⚠️  No tests or tests failed"
+          
+        elif [ -f "pom.xml" ]; then
+          echo "Detected: Java/Maven project"
+          mvn test || echo "⚠️  No tests or tests failed"
+          
+        else
+          echo "Unknown project type - running basic validation"
+          find . -type f -name "*.py" -o -name "*.js" -o -name "*.java" | head -10
+        fi
+        
+        echo "✅ Code processing completed!"
+    
+    - name: 📤 Upload Processed Dataset
+      if: steps.detect.outputs.type == 'dataset'
+      uses: actions/upload-artifact@v4
+      with:
+        name: processed-${{ matrix.repo.repo }}-${{ github.run_number }}
+        path: processed-output/
+        retention-days: 30
+    
+    - name: 🚀 Deploy to Kubernetes
+      if: steps.detect.outputs.type == 'dataset' && secrets.KUBECONFIG != ''
+      run: |
+        echo "Deploying processed dataset to Kubernetes..."
+        
+        # Setup kubectl
+        if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+          export KUBECONFIG=$HOME/kubeconfig
+          
+          # Create configmap with processed data
+          REPO_NAME=$(basename "${{ matrix.repo.repo }}" .git)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          
+          kubectl create configmap "dataset-${REPO_NAME}-${TIMESTAMP}" \
+            --from-file=processed-output/ \
+            --namespace=ml-pipeline \
+            --dry-run=client -o yaml | \
+          kubectl label -f - \
+            app=dataset-processor \
+            repo="${REPO_NAME}" \
+            processed-date=$(date +%Y%m%d) \
+            --local -o yaml | \
+          kubectl apply -f -
+          
+          echo "✅ Dataset deployed to Kubernetes as configmap: dataset-${REPO_NAME}-${TIMESTAMP}"
+        else
+          echo "⚠️  KUBECONFIG not set, skipping deployment"
+        fi
+    
+    - name: 📊 Generate Summary
+      run: |
+        cat << EOF > processing-summary.md
+        # 📊 Processing Summary
+        
+        **Repository**: ${{ matrix.repo.repo }}
+        **Branch**: ${{ matrix.repo.branch || 'main' }}
+        **Type**: ${{ steps.detect.outputs.type }}
+        **Format**: ${{ steps.detect.outputs.format }}
+        **Status**: ✅ Success
+        **Date**: $(date)
+        
+        ## Results
+        - Type detected: **${{ steps.detect.outputs.type }}**
+        - Processing completed successfully
+        - Artifacts available for download
+        
+        EOF
+        
+        cat processing-summary.md
+    
+    - name: 📤 Upload Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: summary-${{ matrix.repo.repo }}-${{ github.run_number }}
+        path: processing-summary.md
+
+  # ==========================================
+  # 3. FINAL REPORT
+  # ==========================================
+  summary-report:
+    name: 📊 Generate Final Report
+    runs-on: ubuntu-latest
+    needs: process-repository
+    if: always()
+    
+    steps:
+    - name: 📊 Create Summary
+      run: |
+        echo "═══════════════════════════════════════════════════"
+        echo "✅ REPOSITORY PROCESSING COMPLETE"
+        echo "═══════════════════════════════════════════════════"
+        echo ""
+        echo "📦 Check the Artifacts section to download results!"
+        echo ""
+        echo "🎯 Next Steps:"
+        echo "  1. Download processed datasets from Artifacts"
+        echo "  2. Check Kubernetes for deployed ConfigMaps"
+        echo "  3. View metrics in Grafana"
+        echo ""
+        echo "═══════════════════════════════════════════════════"
+

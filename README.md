@@ -72,7 +72,12 @@ A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitH
 
 ## 🚀 Quick Start
 
-> **💡 Want to process a dataset?** See [QUICK_START.md](QUICK_START.md) or [Dataset Processing Guide](docs/DATASET_PROCESSING_GUIDE.md)
+> **💡 Process ANY repository (datasets, code, etc.):**
+> 1. Edit `repos-to-process.yaml` - add your repo URL
+> 2. Push to GitHub
+> 3. Pipeline auto-runs! ✨
+> 
+> See [SIMPLE_USAGE_GUIDE.md](SIMPLE_USAGE_GUIDE.md) for details!
 
 ### 1. Clone the Repository
 
