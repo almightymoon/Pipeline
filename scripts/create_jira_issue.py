@@ -369,7 +369,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Grafana Dashboard](http://213.109.162.134:30102/d/ml-all-results/ml-pipeline-all-results)
+• 📊 [Grafana Dashboard](http://213.109.162.134:30102/d/69bcd2b5-88d9-47e6-84af-c5f2e45f23cc/pipeline-dashboard)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
