@@ -17,7 +17,7 @@ repositories:
 
   - url: https://github.com/OzJasonGit/PFBD
     name: pfbd-project 
-    branch: main  # Changed from master to main
+    branch: main  # Changed from master to main 
     scan_type: full
   # Testing dashboard template variables fix 
 
