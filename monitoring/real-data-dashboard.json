@@ -1,0 +1,477 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Pipeline Dashboard - Real Data",
+    "tags": ["pipeline", "real-data"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\"})",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"success\"})",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"failure\"})",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Failed"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "links",
+                  "value": [
+                    {
+                      "title": "View Failed Run Details",
+                      "url": "https://github.com/almightymoon/Pipeline/actions",
+                      "targetBlank": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "Test Results - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(tests_passed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(tests_failed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "avg(tests_coverage_percentage{repository=\"$repository\"})",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Tests Failed"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Coverage %"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Code Quality Metrics - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(code_quality_todo_comments_total{repository=\"$repository\"})",
+            "legendFormat": "TODO Comments",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(code_quality_debug_statements_total{repository=\"$repository\"})",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(code_quality_large_files_total{repository=\"$repository\"})",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(code_quality_total_improvements{repository=\"$repository\"})",
+            "legendFormat": "Total Issues",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 500
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Security Scan Results - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\"})",
+            "legendFormat": "Vulnerabilities",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(security_secrets_found{repository=\"$repository\"})",
+            "legendFormat": "Secrets Found",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Repository Information",
+        "type": "text",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Repository Details\n\n**Name:** $repository  \n**URL:** $repo_url  \n**Branch:** $repo_branch  \n**Scan Type:** $scan_type  \n\n## Real-Time Data\n- **Last Scan:** $(date)\n- **Data Source:** Prometheus\n- **Refresh:** 30s\n\n## Priority Actions\n- **HIGH:** Address security vulnerabilities\n- **HIGH:** Fix failed tests\n- **MEDIUM:** Improve code quality\n\n---\n**Dashboard:** Real-time pipeline data"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Pipeline Run History",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "rate(pipeline_runs_total{repository=\"$repository\"}[5m])",
+            "legendFormat": "{{status}} - {{repository}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20,
+              "showPoints": "auto"
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": "success"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byRegexp",
+                "options": "failure"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "title": "Recent Pipeline Runs",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 26
+        },
+        "targets": [
+          {
+            "expr": "label_join(pipeline_runs_total{repository=\"$repository\"}, \"run_info\", \",\", \"run_id\", \"status\", \"timestamp\")",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "status"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "type": "value",
+                      "value": "success",
+                      "text": "SUCCESS",
+                      "color": "green"
+                    },
+                    {
+                      "type": "value",
+                      "value": "failure",
+                      "text": "FAILED",
+                      "color": "red"
+                    },
+                    {
+                      "type": "value",
+                      "value": "running",
+                      "text": "RUNNING",
+                      "color": "yellow"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              },
+              "indexByName": {
+                "run_id": 0,
+                "status": 1,
+                "timestamp": 2,
+                "Value": 3
+              },
+              "renameByName": {
+                "run_id": "Run ID",
+                "status": "Status",
+                "timestamp": "Timestamp",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "repository",
+          "type": "query",
+          "label": "Repository",
+          "query": "label_values(pipeline_runs_total, repository)",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false,
+          "current": {
+            "value": "tensorflow-models",
+            "text": "tensorflow-models"
+          }
+        },
+        {
+          "name": "repo_url",
+          "type": "textbox",
+          "label": "Repository URL",
+          "query": "https://github.com/tensorflow/models",
+          "current": {
+            "value": "https://github.com/tensorflow/models",
+            "text": "https://github.com/tensorflow/models"
+          }
+        },
+        {
+          "name": "repo_branch",
+          "type": "textbox",
+          "label": "Branch",
+          "query": "master",
+          "current": {
+            "value": "master",
+            "text": "master"
+          }
+        },
+        {
+          "name": "scan_type",
+          "type": "textbox",
+          "label": "Scan Type",
+          "query": "full",
+          "current": {
+            "value": "full",
+            "text": "full"
+          }
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

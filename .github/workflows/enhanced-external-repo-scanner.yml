@@ -481,32 +481,8 @@ jobs:
         TOTAL_LINES=$(find . -name '*.py' -o -name '*.js' -o -name '*.java' -o -name '*.go' -o -name '*.ts' -o -name '*.tsx' | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}' || echo "0")
         REPO_SIZE=$(du -sh . | cut -f1)
         
-        # Get real GitHub Actions data
-        echo "Collecting real GitHub Actions metrics..."
-        
-        # Count actual pipeline runs from this repository
-        PIPELINE_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/almightymoon/Pipeline/actions/runs" | \
-          jq '.workflow_runs | length' 2>/dev/null || echo "0")
-        
-        # Count successful runs
-        SUCCESSFUL_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/almightymoon/Pipeline/actions/runs" | \
-          jq '.workflow_runs | map(select(.conclusion == "success")) | length' 2>/dev/null || echo "0")
-        
-        # Count failed runs
-        FAILED_RUNS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/almightymoon/Pipeline/actions/runs" | \
-          jq '.workflow_runs | map(select(.conclusion == "failure")) | length' 2>/dev/null || echo "0")
-        
-        # Create real metrics file for Prometheus
+        # Create metrics file for Prometheus
         cat > /tmp/scan-metrics.txt << EOF
-        # HELP pipeline_runs_total Total pipeline runs
-        # TYPE pipeline_runs_total counter
-        pipeline_runs_total{repository="${{ steps.read_config.outputs.repo_name }}",status="total"} $PIPELINE_RUNS
-        pipeline_runs_total{repository="${{ steps.read_config.outputs.repo_name }}",status="success"} $SUCCESSFUL_RUNS
-        pipeline_runs_total{repository="${{ steps.read_config.outputs.repo_name }}",status="failure"} $FAILED_RUNS
-        
         # HELP external_repo_scan_total Total external repository scans
         # TYPE external_repo_scan_total counter
         external_repo_scan_total{repository="${{ steps.read_config.outputs.repo_name }}",status="completed"} 1
@@ -528,10 +504,7 @@ jobs:
         external_repo_scan_duration_seconds_count{repository="${{ steps.read_config.outputs.repo_name }}"} 1
         EOF
         
-        echo "Real Prometheus metrics collected:"
-        echo "- Total Pipeline Runs: $PIPELINE_RUNS"
-        echo "- Successful Runs: $SUCCESSFUL_RUNS" 
-        echo "- Failed Runs: $FAILED_RUNS"
+        echo "Prometheus metrics collected"
         echo "Total Files: $TOTAL_FILES" >> /tmp/scan-metrics.txt
         echo "Total Lines: $TOTAL_LINES" >> /tmp/scan-metrics.txt
         echo "Repository Size: $REPO_SIZE" >> /tmp/scan-metrics.txt

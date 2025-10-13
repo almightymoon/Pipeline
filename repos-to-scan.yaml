@@ -14,7 +14,7 @@ repositories:
     name: tensorflow-models
     branch: master
     scan_type: full
-  # Testing enhanced comprehensive CI/CD pipeline
+  # Testing real data collection for dashboard
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
