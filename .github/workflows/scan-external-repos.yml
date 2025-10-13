@@ -325,6 +325,14 @@ jobs:
           echo "Scan metrics saved for Jira integration"
         fi
 
+    - name: Push Metrics to Prometheus
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        pip install requests
+        python scripts/push_metrics_to_prometheus.py
+      env:
+        PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+    
     - name: Create Jira Issue
       if: steps.read_config.outputs.has_repos == 'true'
       run: |

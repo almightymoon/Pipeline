@@ -1,0 +1,456 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "comprehensive-pipeline",
+    "title": "🚀 Comprehensive Pipeline Analytics",
+    "tags": ["pipeline", "security", "quality", "analytics"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Pipeline Overview",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(pipeline_runs_total{status=\"success\"})",
+            "legendFormat": "✅ Successful",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{status=\"failure\"})",
+            "legendFormat": "❌ Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{status=\"running\"})",
+            "legendFormat": "🔄 Running",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 1}
+              ]
+            },
+            "custom": {
+              "displayMode": "gradient",
+              "orientation": "horizontal"
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "🔍 Security Scan Results",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+        "targets": [
+          {
+            "expr": "sum by (severity) (security_vulnerabilities_found)",
+            "legendFormat": "{{severity}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20,
+              "showPoints": "auto"
+            }
+          },
+          "overrides": [
+            {"matcher": {"id": "byName", "options": "CRITICAL"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]},
+            {"matcher": {"id": "byName", "options": "HIGH"}, "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]},
+            {"matcher": {"id": "byName", "options": "MEDIUM"}, "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]},
+            {"matcher": {"id": "byName", "options": "LOW"}, "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]}
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "📈 Test Results Trend",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+        "targets": [
+          {
+            "expr": "sum(tests_passed_total)",
+            "legendFormat": "✅ Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(tests_failed_total)",
+            "legendFormat": "❌ Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(tests_skipped_total)",
+            "legendFormat": "⏭️ Skipped",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "bars",
+              "lineInterpolation": "linear",
+              "fillOpacity": 80,
+              "showPoints": "never"
+            },
+            "color": {"mode": "palette-classic"}
+          },
+          "overrides": [
+            {"matcher": {"id": "byName", "options": "✅ Passed"}, "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]},
+            {"matcher": {"id": "byName", "options": "❌ Failed"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]}
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "🔍 Code Quality Analysis - DETAILED",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 14},
+        "targets": [
+          {
+            "expr": "code_quality_metrics",
+            "legendFormat": "{{metric}}",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            },
+            "mappings": [
+              {
+                "type": "value",
+                "value": "TODO_FIXME",
+                "text": "📝 TODO/FIXME Comments",
+                "color": "blue"
+              },
+              {
+                "type": "value",
+                "value": "DEBUG_STATEMENTS",
+                "text": "🐛 Debug Statements",
+                "color": "orange"
+              },
+              {
+                "type": "value",
+                "value": "LARGE_FILES",
+                "text": "📁 Large Files",
+                "color": "purple"
+              },
+              {
+                "type": "value",
+                "value": "TOTAL_IMPROVEMENTS",
+                "text": "🎯 Total Improvements",
+                "color": "green"
+              }
+            ]
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [
+                {
+                  "id": "custom.displayMode",
+                  "value": "gradient"
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-background"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {
+                "metric": 0,
+                "Value": 1
+              },
+              "renameByName": {
+                "metric": "Quality Metric",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "📊 Code Quality Breakdown",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "code_quality_breakdown",
+            "legendFormat": "{{type}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "pie",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "values": ["value"]
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "📈 Quality Trend Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(code_quality_todo_comments_total[5m])",
+            "legendFormat": "📝 TODO Comments/min",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(code_quality_debug_statements_total[5m])",
+            "legendFormat": "🐛 Debug Statements/min",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(code_quality_large_files_total[5m])",
+            "legendFormat": "📁 Large Files/min",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "auto"
+            },
+            "color": {"mode": "palette-classic"}
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "🔒 Security Vulnerabilities by Repository",
+        "type": "bargauge",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "sum by (repository) (security_vulnerabilities_by_repo)",
+            "legendFormat": "{{repository}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "displayMode": "gradient",
+          "orientation": "horizontal",
+          "showUnfilled": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "orange", "value": 10},
+                {"color": "red", "value": 20}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "📝 Detailed Code Quality Report",
+        "type": "logs",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 40},
+        "targets": [
+          {
+            "expr": "{job=\"code-quality-scanner\"} | json | line_format \"{{.timestamp}} [{{.level}}] {{.metric}}: {{.value}} ({{.details}})\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": true,
+          "wrapLogMessage": true,
+          "prettifyLogMessage": true,
+          "enableLogDetails": true,
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 9,
+        "title": "🎯 Repository Scan Summary",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 50},
+        "targets": [
+          {
+            "expr": "repository_scan_summary",
+            "legendFormat": "{{repository}}",
+            "refId": "A",
+            "format": "table"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Status"},
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {"type": "value", "value": "SUCCESS", "text": "✅ Success", "color": "green"},
+                    {"type": "value", "value": "FAILED", "text": "❌ Failed", "color": "red"},
+                    {"type": "value", "value": "RUNNING", "text": "🔄 Running", "color": "yellow"}
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "indexByName": {
+                "repository": 0,
+                "files_scanned": 1,
+                "vulnerabilities": 2,
+                "quality_score": 3,
+                "Status": 4
+              },
+              "renameByName": {
+                "repository": "Repository",
+                "files_scanned": "Files Scanned",
+                "vulnerabilities": "Vulnerabilities",
+                "quality_score": "Quality Score",
+                "Status": "Status"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "⚡ Pipeline Performance Metrics",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 58},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile",
+            "refId": "B"
+          },
+          {
+            "expr": "avg(pipeline_duration_seconds)",
+            "legendFormat": "Average",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 10,
+              "showPoints": "auto"
+            },
+            "color": {"mode": "palette-classic"},
+            "unit": "s"
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "repository",
+          "type": "query",
+          "label": "Repository",
+          "query": "label_values(repository_scan_summary, repository)",
+          "refresh": 1,
+          "multi": true,
+          "includeAll": true
+        },
+        {
+          "name": "time_range",
+          "type": "interval",
+          "label": "Time Range",
+          "query": "1m,5m,15m,30m,1h,2h,6h,12h,1d",
+          "refresh": 1,
+          "multi": false,
+          "includeAll": false
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Security Alerts",
+          "datasource": "Prometheus",
+          "expr": "security_vulnerabilities_found > 10",
+          "tagKeys": "repository,severity",
+          "textFormat": "🚨 High vulnerability count in {{repository}}",
+          "iconColor": "red"
+        },
+        {
+          "name": "Quality Issues",
+          "datasource": "Prometheus",
+          "expr": "code_quality_total_improvements > 100",
+          "tagKeys": "repository",
+          "textFormat": "⚠️ High quality improvement count in {{repository}}",
+          "iconColor": "orange"
+        }
+      ]
+    }
+  },
+  "overwrite": true,
+  "folderId": 0,
+  "folderUid": "ml-pipeline-reports"
+}
