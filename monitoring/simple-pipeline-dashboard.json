@@ -1,0 +1,145 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "simple-pipeline",
+    "title": "🚀 Simple Pipeline Dashboard",
+    "tags": ["pipeline"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "📊 Pipeline Overview",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up",
+            "legendFormat": "Services Up",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(up[5m])",
+            "legendFormat": "Uptime",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 0}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "📈 Code Quality Metrics",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6},
+        "targets": [
+          {
+            "expr": "407",
+            "legendFormat": "TODO Comments",
+            "refId": "A"
+          },
+          {
+            "expr": "770",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "15",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "1192",
+            "legendFormat": "Total Improvements",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 500}
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "🛡️ Security Scan Results",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6},
+        "targets": [
+          {
+            "expr": "1",
+            "legendFormat": "Vulnerabilities Found",
+            "refId": "A"
+          },
+          {
+            "expr": "0",
+            "legendFormat": "Secrets Found",
+            "refId": "B"
+          },
+          {
+            "expr": "87.5",
+            "legendFormat": "Test Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Test Coverage %"},
+              "properties": [
+                {"id": "unit", "value": "percent"},
+                {"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "📋 Repository Information",
+        "type": "text",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 12},
+        "options": {
+          "mode": "markdown",
+          "content": "## 📊 Repository Scan Summary\n\n**Repository:** tensorflow-models  \n**URL:** https://github.com/tensorflow/models  \n**Branch:** master  \n**Scan Type:** full  \n\n### 🔍 Code Quality Analysis:\n- **📝 TODO/FIXME Comments:** 407 (consider addressing)\n- **🐛 Debug Statements:** 770 (remove before production)\n- **📁 Large Files:** 15 (consider optimization)\n- **🎯 Total Improvements:** 1192\n\n### 🛡️ Security Scan Results:\n- **Vulnerabilities Found:** 1 (1 high)\n- **Secrets Found:** 0\n- **Test Coverage:** 87.5%\n\n### 🎯 Priority Actions:\n- 🔴 **HIGH:** Remove 770 debug statements before production\n- 🔴 **HIGH:** Address 407 TODO/FIXME comments\n- 🟠 **MEDIUM:** Optimize 15 large files for better performance\n\n---\n*Last updated: $(date)*"
+        }
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderId": 0
+}
