@@ -321,6 +321,12 @@ jobs:
         echo "- Scan Type: ${{ steps.read_config.outputs.scan_type }}" >> /tmp/scan-summary.txt
         echo "- Scan Date: $(date)" >> /tmp/scan-summary.txt
         echo "- Status: Completed" >> /tmp/scan-summary.txt
+        
+        # Save scan metrics for Jira integration
+        if [ -f "metrics.txt" ]; then
+          cp metrics.txt /tmp/scan-metrics.txt
+          echo "Scan metrics saved for Jira integration"
+        fi
 
     - name: Create Jira Issue
       if: steps.read_config.outputs.has_repos == 'true' && secrets.JIRA_API_TOKEN != ''

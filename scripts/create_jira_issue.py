@@ -12,14 +12,18 @@ from datetime import datetime
 def get_scan_status():
     """Get actual scan status from pipeline results"""
     try:
-        # Check if scan completed successfully
-        github_run_id = os.environ.get('GITHUB_RUN_ID', '')
-        if github_run_id:
-            return "✅ Scan completed successfully"
+        # Check if we have scan results files
+        has_trivy = os.path.exists('/tmp/trivy-results.json')
+        has_quality = os.path.exists('/tmp/quality-results.txt')
+        has_secrets = os.path.exists('/tmp/secrets-found.txt')
+        
+        # Determine status based on available data
+        if has_trivy or has_quality or has_secrets:
+            return "✅ Scan completed with data collected"
         else:
-            return "⏳ Scan in progress..."
+            return "⚠️ Scan completed - no data files found"
     except:
-        return "✅ Scan completed"
+        return "❓ Scan status unknown"
 
 def get_security_issues_summary():
     """Get summary of security issues found"""
@@ -36,44 +40,74 @@ def get_security_issues_summary():
             try:
                 with open('/tmp/trivy-results.json', 'r') as f:
                     trivy_data = json.load(f)
+                    
+                    total_vulns = 0
+                    critical_vulns = 0
+                    high_vulns = 0
+                    
                     if 'Results' in trivy_data:
                         for result in trivy_data['Results']:
                             if 'Vulnerabilities' in result:
-                                vuln_count = len(result['Vulnerabilities'])
-                                if vuln_count > 0:
-                                    scan_results.append(f"{vuln_count} vulnerabilities found")
-                                else:
-                                    scan_results.append("No vulnerabilities detected")
-            except:
-                pass
+                                for vuln in result['Vulnerabilities']:
+                                    total_vulns += 1
+                                    severity = vuln.get('Severity', '').upper()
+                                    if severity == 'CRITICAL':
+                                        critical_vulns += 1
+                                    elif severity == 'HIGH':
+                                        high_vulns += 1
+                    
+                    # Generate dynamic summary based on actual findings
+                    if total_vulns > 0:
+                        vuln_summary = f"{total_vulns} vulnerabilities found"
+                        if critical_vulns > 0:
+                            vuln_summary += f" ({critical_vulns} critical"
+                        if high_vulns > 0:
+                            vuln_summary += f", {high_vulns} high"
+                        if critical_vulns > 0 or high_vulns > 0:
+                            vuln_summary += ")"
+                        scan_results.append(vuln_summary)
+                    else:
+                        scan_results.append("No vulnerabilities detected")
+                        
+            except Exception as e:
+                scan_results.append(f"Trivy scan completed (parse error: {str(e)[:50]})")
         
         # Check for secret scan results
         if os.path.exists('/tmp/secrets-found.txt'):
             try:
                 with open('/tmp/secrets-found.txt', 'r') as f:
-                    secrets = f.read().strip()
-                    if secrets:
-                        scan_results.append("Potential secrets detected")
-                    else:
-                        scan_results.append("No secrets found")
-            except:
-                pass
+                    secrets_content = f.read().strip()
+                    
+                # Count different types of secrets found
+                api_key_count = secrets_content.lower().count('api')
+                password_count = secrets_content.lower().count('password')
+                token_count = secrets_content.lower().count('token')
+                
+                if secrets_content and secrets_content != "No secrets found":
+                    secret_summary = "Potential secrets detected"
+                    if api_key_count > 0:
+                        secret_summary += f" ({api_key_count} API keys"
+                    if password_count > 0:
+                        secret_summary += f", {password_count} passwords"
+                    if token_count > 0:
+                        secret_summary += f", {token_count} tokens"
+                    if api_key_count > 0 or password_count > 0 or token_count > 0:
+                        secret_summary += ")"
+                    scan_results.append(secret_summary)
+                else:
+                    scan_results.append("No secrets found")
+                    
+            except Exception as e:
+                scan_results.append(f"Secret scan completed (error: {str(e)[:30]})")
         
         # Check for code quality results
         quality_suggestions = get_quality_suggestions()
         if quality_suggestions:
             scan_results.append(quality_suggestions)
         
-        # If no actual results, provide realistic summary based on scan type
+        # If no actual results, show that no data is available
         if not scan_results:
-            if scan_type == 'security':
-                scan_results = ["No critical vulnerabilities found", "3 minor dependency issues detected"]
-            elif scan_type == 'dependency':
-                scan_results = ["2 outdated packages found", "1 known vulnerability in dependency"]
-            elif scan_type == 'full':
-                scan_results = ["No critical issues found", "5 code quality improvements suggested"]
-            else:
-                scan_results = ["Scan completed successfully", "Check logs for detailed results"]
+            scan_results = ["No scan data available - check pipeline logs for details"]
         
         return " • ".join(scan_results)
             
@@ -121,11 +155,11 @@ def get_quality_suggestions():
             if total_count > 0:
                 return f"{total_count} code quality improvements suggested"
         
-        # If no specific counts, provide generic message
+        # Only return actual data
         if suggestions:
             return " • ".join(suggestions)
         else:
-            return "No code quality issues found"
+            return None  # Return None if no data available
             
     except Exception as e:
         return None
@@ -180,22 +214,68 @@ def get_quality_analysis():
         if analysis_lines:
             return "\n".join(analysis_lines)
         else:
-            return "• Quality analysis completed successfully"
+            return "• No quality analysis data available - check pipeline logs"
             
     except Exception as e:
         return "• Quality analysis error (check logs for details)"
+
+def get_scan_metrics():
+    """Get dynamic scan metrics from the pipeline"""
+    try:
+        metrics = []
+        
+        # Check for metrics file
+        if os.path.exists('/tmp/scan-metrics.txt'):
+            with open('/tmp/scan-metrics.txt', 'r') as f:
+                content = f.read()
+                
+            # Extract metrics
+            import re
+            file_match = re.search(r'Total Files: (\d+)', content)
+            line_match = re.search(r'Total Lines: (\d+)', content)
+            size_match = re.search(r'Repository Size: (.+)', content)
+            
+            if file_match:
+                metrics.append(f"Files scanned: {file_match.group(1)}")
+            if line_match:
+                metrics.append(f"Lines analyzed: {line_match.group(1)}")
+            if size_match:
+                metrics.append(f"Repository size: {size_match.group(1)}")
+        
+        # Check for scan duration
+        github_run_number = os.environ.get('GITHUB_RUN_NUMBER', '')
+        if github_run_number:
+            metrics.append(f"Pipeline run: #{github_run_number}")
+            
+        return " • ".join(metrics) if metrics else "No metrics available"
+        
+    except Exception as e:
+        return f"Metrics error: {str(e)[:30]}"
 
 def create_enhanced_description(base_description):
     """Create enhanced description with scan details"""
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     
-    # Get additional environment variables
-    repo_url = os.environ.get('REPO_URL', 'Unknown')
-    repo_name = os.environ.get('REPO_NAME', 'Unknown')
-    repo_branch = os.environ.get('REPO_BRANCH', 'main')
+    # Get additional environment variables with fallbacks
+    repo_url = os.environ.get('REPO_URL', os.environ.get('GITHUB_REPOSITORY_URL', 'Unknown'))
+    repo_name = os.environ.get('REPO_NAME', os.environ.get('GITHUB_REPOSITORY', 'Unknown'))
+    repo_branch = os.environ.get('REPO_BRANCH', os.environ.get('GITHUB_REF_NAME', 'main'))
     scan_type = os.environ.get('SCAN_TYPE', 'full')
     github_run_id = os.environ.get('GITHUB_RUN_ID', 'Unknown')
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
+    
+    # Try to get actual repository info from scan summary if available
+    if os.path.exists('/tmp/scan-summary.txt'):
+        try:
+            with open('/tmp/scan-summary.txt', 'r') as f:
+                summary_content = f.read()
+                # Extract repository name from summary
+                import re
+                repo_match = re.search(r'Repository: (.+)', summary_content)
+                if repo_match:
+                    repo_name = repo_match.group(1)
+        except:
+            pass
     
     # Try to get actual scan results
     vulnerabilities_found = get_scan_status()
@@ -233,6 +313,9 @@ def create_enhanced_description(base_description):
 
 **Code Quality Analysis:**
 {get_quality_analysis()}
+
+**Scan Metrics:**
+• {get_scan_metrics()}
 
 **Next Steps:**
 1. Review security findings in GitHub Actions logs
