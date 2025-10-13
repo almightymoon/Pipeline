@@ -1,0 +1,388 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Enterprise ML Pipeline - Executive Dashboard",
+    "tags": ["enterprise", "ml-pipeline", "executive", "production"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "🎯 Executive Summary",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "pipeline_runs_total",
+            "legendFormat": "Total Pipeline Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "(pipeline_runs_successful / pipeline_runs_total) * 100",
+            "legendFormat": "Success Rate %",
+            "refId": "B"
+          },
+          {
+            "expr": "external_repo_scans_total",
+            "legendFormat": "Repositories Scanned",
+            "refId": "C"
+          },
+          {
+            "expr": "jira_issues_created_total",
+            "legendFormat": "Issues Tracked",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "blue", "value": null},
+                {"color": "green", "value": 80},
+                {"color": "yellow", "value": 95},
+                {"color": "red", "value": 100}
+              ]
+            },
+            "unit": "short",
+            "custom": {
+              "displayMode": "list",
+              "orientation": "horizontal"
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "📊 Pipeline Performance Trends",
+        "type": "timeseries",
+        "gridPos": {"h": 12, "w": 16, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(pipeline_runs_total[1h])",
+            "legendFormat": "Runs/Hour",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(pipeline_runs_successful[1h])",
+            "legendFormat": "Successful/Hour",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(pipeline_runs_failed[1h])",
+            "legendFormat": "Failed/Hour",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "barAlignment": 0,
+              "lineWidth": 3,
+              "fillOpacity": 20,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "insertNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {"mode": "none", "group": "A"},
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {"type": "linear"},
+              "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "🔐 Security & Quality Metrics",
+        "type": "stat",
+        "gridPos": {"h": 12, "w": 8, "x": 16, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(pipeline_repo_vulnerabilities)",
+            "legendFormat": "Vulnerabilities Found",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_repo_files_total)",
+            "legendFormat": "Files Analyzed",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_repo_lines_total)",
+            "legendFormat": "Lines of Code",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            },
+            "unit": "short",
+            "custom": {
+              "displayMode": "list",
+              "orientation": "vertical"
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "🌐 Repository Analysis",
+        "type": "piechart",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "sum by (repo_type) (external_repo_scans_by_type)",
+            "legendFormat": "{{repo_type}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+            },
+            "mappings": []
+          }
+        },
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "pieType": "donut",
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "table",
+            "placement": "right"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "⚡ System Performance",
+        "type": "stat",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(external_repo_scan_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile Scan Time",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(external_repo_scan_duration_seconds_bucket[5m]))",
+            "legendFormat": "Median Scan Time",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(pipeline_runs_successful[1h]) / rate(pipeline_runs_total[1h]) * 100",
+            "legendFormat": "Success Rate",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 120}
+              ]
+            },
+            "unit": "s",
+            "custom": {
+              "displayMode": "list",
+              "orientation": "vertical"
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "📋 Recent Activity",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 30},
+        "targets": [
+          {
+            "expr": "topk(10, external_repo_scan_last_activity)",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "table",
+              "filterable": true,
+              "sort": "desc"
+            },
+            "mappings": []
+          }
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "repo_name": "Repository",
+                "scan_status": "Status",
+                "vulnerabilities_count": "Vulnerabilities",
+                "secrets_found": "Security Issues",
+                "scan_duration": "Duration (s)",
+                "last_scan": "Last Scanned"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "🎯 Key Performance Indicators",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 40},
+        "targets": [
+          {
+            "expr": "pipeline_runs_total",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "pipeline_runs_successful",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "pipeline_runs_failed",
+            "legendFormat": "Failed",
+            "refId": "C"
+          },
+          {
+            "expr": "external_repo_scans_total",
+            "legendFormat": "Repos Scanned",
+            "refId": "D"
+          },
+          {
+            "expr": "jira_issues_created_total",
+            "legendFormat": "Issues Tracked",
+            "refId": "E"
+          },
+          {
+            "expr": "sum(pipeline_repo_vulnerabilities)",
+            "legendFormat": "Vulnerabilities Found",
+            "refId": "F"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "mappings": [],
+            "thresholds": {
+              "steps": [
+                {"color": "blue", "value": null},
+                {"color": "green", "value": 10},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 100}
+              ]
+            },
+            "unit": "short",
+            "custom": {
+              "displayMode": "basic"
+            }
+          }
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "time_range",
+          "type": "interval",
+          "query": "1h,6h,12h,1d,7d,30d",
+          "current": {
+            "text": "1h",
+            "value": "1h"
+          },
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Pipeline Events",
+          "datasource": "Prometheus",
+          "expr": "changes(pipeline_runs_total[1m])",
+          "iconColor": "blue",
+          "enable": true,
+          "showIn": 0
+        },
+        {
+          "name": "Security Alerts",
+          "datasource": "Prometheus",
+          "expr": "changes(security_critical_vulnerabilities_total[1m])",
+          "iconColor": "red",
+          "enable": true,
+          "showIn": 0
+        }
+      ]
+    },
+    "links": [
+      {
+        "title": "GitHub Repository",
+        "url": "https://github.com/almightymoon/Pipeline",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "Jira Project Board",
+        "url": "https://faniqueprimus.atlassian.net/jira/software/projects/KAN/boards/1",
+        "type": "link",
+        "icon": "external link"
+      },
+      {
+        "title": "GitHub Actions",
+        "url": "https://github.com/almightymoon/Pipeline/actions",
+        "type": "link",
+        "icon": "external link"
+      }
+    ]
+  }
+}
