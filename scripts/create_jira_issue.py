@@ -219,6 +219,65 @@ def get_quality_analysis():
     except Exception as e:
         return "• Quality analysis error (check logs for details)"
 
+def get_priority_actions():
+    """Get priority actions based on quality analysis"""
+    try:
+        if not os.path.exists('/tmp/quality-results.txt'):
+            return "• No priority actions available - check pipeline logs"
+            
+        with open('/tmp/quality-results.txt', 'r') as f:
+            content = f.read()
+            
+        actions = []
+        import re
+        
+        # Get counts
+        todo_count = int(re.search(r'TODO/FIXME comments: (\d+)', content).group(1)) if re.search(r'TODO/FIXME comments: (\d+)', content) else 0
+        debug_count = int(re.search(r'Debug statements: (\d+)', content).group(1)) if re.search(r'Debug statements: (\d+)', content) else 0
+        large_files = int(re.search(r'Large files \(>1MB\): (\d+)', content).group(1)) if re.search(r'Large files \(>1MB\): (\d+)', content) else 0
+        
+        # Priority actions based on counts
+        if todo_count > 0:
+            if todo_count > 200:
+                priority = "🔴 HIGH"
+                action = f"Address {todo_count} TODO/FIXME comments - critical for code maintainability"
+            elif todo_count > 50:
+                priority = "🟠 MEDIUM"
+                action = f"Review and address {todo_count} TODO/FIXME comments"
+            else:
+                priority = "🟡 LOW"
+                action = f"Consider addressing {todo_count} TODO/FIXME comments"
+            actions.append(f"• {priority} | {action}")
+            
+        if debug_count > 0:
+            if debug_count > 300:
+                priority = "🔴 HIGH"
+                action = f"Remove {debug_count} debug statements before production deployment"
+            elif debug_count > 100:
+                priority = "🟠 MEDIUM"
+                action = f"Clean up {debug_count} debug statements"
+            else:
+                priority = "🟡 LOW"
+                action = f"Review {debug_count} debug statements"
+            actions.append(f"• {priority} | {action}")
+            
+        if large_files > 0:
+            if large_files > 10:
+                priority = "🟠 MEDIUM"
+                action = f"Optimize {large_files} large files for better performance"
+            else:
+                priority = "🟡 LOW"
+                action = f"Consider optimizing {large_files} large files"
+            actions.append(f"• {priority} | {action}")
+            
+        if not actions:
+            actions.append("• ✅ No immediate actions required - code quality is good")
+            
+        return "\n".join(actions)
+            
+    except Exception as e:
+        return "• Priority actions error (check logs for details)"
+
 def get_scan_metrics():
     """Get dynamic scan metrics from the pipeline"""
     try:
@@ -318,8 +377,12 @@ def create_enhanced_description(base_description):
 • Issues Found: {security_issues}
 • Scan Completed: ✅
 
-**Code Quality Analysis:**
+**📊 Code Quality Analysis - Detailed Breakdown:**
+
 {get_quality_analysis()}
+
+**🎯 Priority Actions Required:**
+{get_priority_actions()}
 
 **Scan Metrics:**
 • {get_scan_metrics()}
