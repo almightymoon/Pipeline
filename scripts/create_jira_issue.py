@@ -59,6 +59,11 @@ def get_security_issues_summary():
             except:
                 pass
         
+        # Check for code quality results
+        quality_suggestions = get_quality_suggestions()
+        if quality_suggestions:
+            scan_results.append(quality_suggestions)
+        
         # If no actual results, provide realistic summary based on scan type
         if not scan_results:
             if scan_type == 'security':
@@ -74,6 +79,111 @@ def get_security_issues_summary():
             
     except Exception as e:
         return "Analysis completed (check logs for details)"
+
+def get_quality_suggestions():
+    """Get code quality suggestions from scan results"""
+    try:
+        if not os.path.exists('/tmp/quality-results.txt'):
+            return None
+            
+        with open('/tmp/quality-results.txt', 'r') as f:
+            content = f.read()
+            
+        # Parse the quality results
+        suggestions = []
+        
+        # Extract TODO count
+        import re
+        todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
+        if todo_match:
+            todo_count = int(todo_match.group(1))
+            if todo_count > 0:
+                suggestions.append(f"{todo_count} TODO/FIXME comments to address")
+        
+        # Extract debug statements count
+        debug_match = re.search(r'Debug statements: (\d+)', content)
+        if debug_match:
+            debug_count = int(debug_match.group(1))
+            if debug_count > 0:
+                suggestions.append(f"{debug_count} debug statements to remove")
+        
+        # Extract large files count
+        large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
+        if large_match:
+            large_count = int(large_match.group(1))
+            if large_count > 0:
+                suggestions.append(f"{large_count} large files to optimize")
+        
+        # Extract total suggestions
+        total_match = re.search(r'Total suggestions: (\d+)', content)
+        if total_match:
+            total_count = int(total_match.group(1))
+            if total_count > 0:
+                return f"{total_count} code quality improvements suggested"
+        
+        # If no specific counts, provide generic message
+        if suggestions:
+            return " • ".join(suggestions)
+        else:
+            return "No code quality issues found"
+            
+    except Exception as e:
+        return None
+
+def get_quality_analysis():
+    """Get detailed quality analysis for Jira description"""
+    try:
+        if not os.path.exists('/tmp/quality-results.txt'):
+            return "• Quality analysis not available"
+            
+        with open('/tmp/quality-results.txt', 'r') as f:
+            content = f.read()
+            
+        analysis_lines = []
+        
+        # Parse each metric
+        import re
+        
+        # TODO/FIXME comments
+        todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
+        if todo_match:
+            count = int(todo_match.group(1))
+            if count > 0:
+                analysis_lines.append(f"• {count} TODO/FIXME comments found (consider addressing)")
+            else:
+                analysis_lines.append("• No TODO/FIXME comments found ✅")
+        
+        # Debug statements
+        debug_match = re.search(r'Debug statements: (\d+)', content)
+        if debug_match:
+            count = int(debug_match.group(1))
+            if count > 0:
+                analysis_lines.append(f"• {count} debug statements found (remove before production)")
+            else:
+                analysis_lines.append("• No debug statements found ✅")
+        
+        # Large files
+        large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
+        if large_match:
+            count = int(large_match.group(1))
+            if count > 0:
+                analysis_lines.append(f"• {count} large files found (consider optimization)")
+            else:
+                analysis_lines.append("• No large files found ✅")
+        
+        # Total suggestions
+        total_match = re.search(r'Total suggestions: (\d+)', content)
+        if total_match:
+            total = int(total_match.group(1))
+            analysis_lines.append(f"• **Total improvements suggested: {total}**")
+        
+        if analysis_lines:
+            return "\n".join(analysis_lines)
+        else:
+            return "• Quality analysis completed successfully"
+            
+    except Exception as e:
+        return "• Quality analysis error (check logs for details)"
 
 def create_enhanced_description(base_description):
     """Create enhanced description with scan details"""
@@ -121,11 +231,15 @@ def create_enhanced_description(base_description):
 • Issues Found: {security_issues}
 • Scan Completed: ✅
 
+**Code Quality Analysis:**
+{get_quality_analysis()}
+
 **Next Steps:**
 1. Review security findings in GitHub Actions logs
 2. Check Grafana dashboard for detailed metrics
 3. Address any critical vulnerabilities found
-4. Update repository if issues are discovered
+4. Implement code quality improvements
+5. Update repository if issues are discovered
 
 ----
 *This issue was automatically created by the External Repository Scanner Pipeline*

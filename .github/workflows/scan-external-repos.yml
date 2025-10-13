@@ -199,6 +199,28 @@ jobs:
         echo "========================================="
         echo "Quality checks completed"
         echo "========================================="
+        
+        # Save quality check results for Jira integration
+        echo "Code Quality Report" > /tmp/quality-results.txt
+        echo "===================" >> /tmp/quality-results.txt
+        
+        # Count TODO/FIXME comments
+        TODO_COUNT=$(grep -r "TODO\|FIXME" --include="*.py" --include="*.js" --include="*.java" --include="*.go" . 2>/dev/null | wc -l || echo "0")
+        echo "TODO/FIXME comments: $TODO_COUNT" >> /tmp/quality-results.txt
+        
+        # Count debug statements
+        DEBUG_COUNT=$(grep -r "console\.log\|print(\|var_dump\|dd(" --include="*.py" --include="*.js" --include="*.php" . 2>/dev/null | wc -l || echo "0")
+        echo "Debug statements: $DEBUG_COUNT" >> /tmp/quality-results.txt
+        
+        # Count large files
+        LARGE_FILES=$(find . -type f -size +1M -not -path "*/\.*" 2>/dev/null | wc -l || echo "0")
+        echo "Large files (>1MB): $LARGE_FILES" >> /tmp/quality-results.txt
+        
+        # Calculate total suggestions
+        TOTAL_SUGGESTIONS=$((TODO_COUNT + DEBUG_COUNT + LARGE_FILES))
+        echo "Total suggestions: $TOTAL_SUGGESTIONS" >> /tmp/quality-results.txt
+        
+        echo "Quality results saved for Jira integration"
     
     - name: Collect Scan Metrics
       if: steps.read_config.outputs.has_repos == 'true'
