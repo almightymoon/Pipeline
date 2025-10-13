@@ -15,7 +15,7 @@ repositories:
     name: pfbd-project
     branch: master
     scan_type: full
-  # Testing real data collection for dashboard
+  # Testing updated Jira dashboard link
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
