@@ -16,13 +16,10 @@ jobs:
     steps:
     - name: Checkout Pipeline Code
       uses: actions/checkout@v4
-      with:
-        path: pipeline
     
     - name: Read Repository Configuration
       id: read_config
       run: |
-        cd pipeline
         
         if [ ! -f "repos-to-scan.yaml" ]; then
           echo "No repos-to-scan.yaml found"
