@@ -10,11 +10,11 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/Arshad221b/Sign-Language-Recognition
-    name: test-project
-    branch: main
+  - url: https://github.com/tensorflow/models
+    name: tensorflow-models
+    branch: master
     scan_type: full
-  # Triggering scan with fixed pipeline
+  # Testing with public TensorFlow models repository
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)

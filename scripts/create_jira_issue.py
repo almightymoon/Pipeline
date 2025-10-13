@@ -281,20 +281,27 @@ def create_enhanced_description(base_description):
     vulnerabilities_found = get_scan_status()
     security_issues = get_security_issues_summary()
     
+    # Build repository link  
+    if repo_url and repo_url != "Unknown":
+        repo_link = f"[{repo_name}]({repo_url})"
+    else:
+        repo_link = repo_name
+    
     enhanced_description = f"""
 {base_description}
 
 ----
 
-🔍 **SCAN DETAILS**
+🔍 **EXTERNAL REPOSITORY SCAN REPORT**
 ----
 
-**Repository Information:**
-• Repository: {repo_name}
-• URL: {repo_url}
-• Branch: {repo_branch}
-• Scan Type: {scan_type}
-• Scan Time: {current_time}
+**Repository Being Scanned:**
+• **Name:** {repo_name}
+• **URL:** {repo_url}
+• **Link:** {repo_link}
+• **Branch:** {repo_branch}
+• **Scan Type:** {scan_type}
+• **Scan Time:** {current_time}
 
 **Pipeline Information:**
 • Run ID: {github_run_id}
@@ -302,9 +309,9 @@ def create_enhanced_description(base_description):
 • Workflow: External Repository Security Scan
 
 **Links:**
-• 🔗 [View Repository]({repo_url})
+• 🔗 [View Scanned Repository]({repo_url})
 • 📊 [Grafana Dashboard](http://213.109.162.134:30102/d/ml-all-results/ml-pipeline-all-results)
-• ⚙️ [GitHub Actions Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+• ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
 • Status: {vulnerabilities_found}
@@ -318,14 +325,15 @@ def create_enhanced_description(base_description):
 • {get_scan_metrics()}
 
 **Next Steps:**
-1. Review security findings in GitHub Actions logs
+1. Review security findings in pipeline logs (link above)
 2. Check Grafana dashboard for detailed metrics
 3. Address any critical vulnerabilities found
-4. Implement code quality improvements
-5. Update repository if issues are discovered
+4. Implement code quality improvements in **{repo_name}**
+5. Update scanned repository if security issues are discovered
 
 ----
 *This issue was automatically created by the External Repository Scanner Pipeline*
+*Scanned Repository: {repo_name} | URL: {repo_url}*
 """
     return enhanced_description
 
