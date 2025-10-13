@@ -436,28 +436,28 @@
           "multi": false,
           "includeAll": false,
           "current": {
-            "value": "tensorflow-models",
-            "text": "tensorflow-models"
+            "value": "pfbd-project",
+            "text": "pfbd-project"
           }
         },
         {
           "name": "repo_url",
           "type": "textbox",
           "label": "Repository URL",
-          "query": "https://github.com/tensorflow/models",
+          "query": "https://github.com/OzJasonGit/PFBD",
           "current": {
-            "value": "https://github.com/tensorflow/models",
-            "text": "https://github.com/tensorflow/models"
+            "value": "https://github.com/OzJasonGit/PFBD",
+            "text": "https://github.com/OzJasonGit/PFBD"
           }
         },
         {
           "name": "repo_branch",
           "type": "textbox",
           "label": "Branch",
-          "query": "master",
+          "query": "main",
           "current": {
-            "value": "master",
-            "text": "master"
+            "value": "main",
+            "text": "main"
           }
         },
         {
