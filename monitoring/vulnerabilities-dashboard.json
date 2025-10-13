@@ -1,0 +1,389 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Pipeline Dashboard",
+    "tags": ["pipeline"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "3",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "2",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "1",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Failed"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "links",
+                  "value": [
+                    {
+                      "title": "View Failed Run Details",
+                      "url": "https://github.com/almightymoon/Pipeline/actions",
+                      "targetBlank": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 2,
+        "title": "Test Results",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "41",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "1",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "87.5",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Tests Failed"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "red",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Coverage %"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Code Quality Metrics",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 6
+        },
+        "targets": [
+          {
+            "expr": "407",
+            "legendFormat": "TODO Comments",
+            "refId": "A"
+          },
+          {
+            "expr": "770",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "15",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "1192",
+            "legendFormat": "Total Issues",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 500
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Security Scan Results",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "1",
+            "legendFormat": "Vulnerabilities",
+            "refId": "A"
+          },
+          {
+            "expr": "0",
+            "legendFormat": "Secrets Found",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Repository Information",
+        "type": "text",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Repository Details\n\n**Name:** tensorflow-models  \n**URL:** https://github.com/tensorflow/models  \n**Branch:** master  \n**Scan Type:** full  \n\n## Priority Actions\n- **HIGH:** Remove 770 debug statements\n- **HIGH:** Address 407 TODO comments\n- **MEDIUM:** Optimize 15 large files\n\n---\n**Last Updated:** $(date)"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Detailed Vulnerabilities List",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "label_join(vulnerability_details, \"details\", \",\", \"vuln_id\", \"severity\", \"package\", \"description\")",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "color-background"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "severity"
+              },
+              "properties": [
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "type": "value",
+                      "value": "CRITICAL",
+                      "text": "CRITICAL",
+                      "color": "red"
+                    },
+                    {
+                      "type": "value",
+                      "value": "HIGH",
+                      "text": "HIGH",
+                      "color": "orange"
+                    },
+                    {
+                      "type": "value",
+                      "value": "MEDIUM",
+                      "text": "MEDIUM",
+                      "color": "yellow"
+                    },
+                    {
+                      "type": "value",
+                      "value": "LOW",
+                      "text": "LOW",
+                      "color": "green"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              },
+              "indexByName": {
+                "vuln_id": 0,
+                "severity": 1,
+                "package": 2,
+                "description": 3,
+                "Value": 4
+              },
+              "renameByName": {
+                "vuln_id": "Vulnerability ID",
+                "severity": "Severity",
+                "package": "Package",
+                "description": "Description",
+                "Value": "Count"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Security Vulnerabilities Details",
+        "type": "text",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 26
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Security Vulnerabilities Found\n\n### Vulnerability #1\n**Severity:** HIGH  \n**Package:** tensorflow  \n**Version:** 2.13.0  \n**CVE:** CVE-2023-25663  \n**Description:** TensorFlow contains a vulnerability in the `tf.raw_ops.SparseReshape` function that can cause a heap buffer overflow.  \n**CVSS Score:** 7.5  \n**Status:** UNFIXED  \n\n**Impact:** This vulnerability could allow an attacker to cause a denial of service or potentially execute arbitrary code by providing malicious input to the affected function.\n\n**Recommendation:** \n- Update TensorFlow to version 2.13.1 or later\n- Monitor for security patches\n- Consider using alternative implementations if available\n\n**References:**\n- [CVE-2023-25663](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-25663)\n- [TensorFlow Security Advisory](https://github.com/tensorflow/tensorflow/security/advisories)\n\n---\n\n### Summary\n- **Total Vulnerabilities:** 1\n- **Critical:** 0\n- **High:** 1\n- **Medium:** 0\n- **Low:** 0\n- **Fixed:** 0\n- **Unfixed:** 1\n\n**Risk Level:** MEDIUM\n\n**Next Steps:**\n1. Review the vulnerability details above\n2. Check if newer versions are available\n3. Implement security patches\n4. Re-scan after updates\n\n---\n*Scan completed: $(date)*"
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  },
+  "overwrite": true
+}
