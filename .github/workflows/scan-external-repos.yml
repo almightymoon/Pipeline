@@ -204,14 +204,12 @@ jobs:
           export PATH="$PATH:$(pwd)/sonar-scanner-4.8.0.2856-linux/bin"
           
           # Create SonarQube properties
-          cat > sonar-project.properties << EOF
-          sonar.projectKey=${{ steps.read_config.outputs.repo_name }}
-          sonar.projectName=${{ steps.read_config.outputs.repo_name }}
-          sonar.projectVersion=1.0
-          sonar.sources=.
-          sonar.host.url=${{ secrets.SONARQUBE_URL }}
-          sonar.login=${{ secrets.SONARQUBE_TOKEN }}
-          EOF
+          echo "sonar.projectKey=${{ steps.read_config.outputs.repo_name }}" > sonar-project.properties
+          echo "sonar.projectName=${{ steps.read_config.outputs.repo_name }}" >> sonar-project.properties
+          echo "sonar.projectVersion=1.0" >> sonar-project.properties
+          echo "sonar.sources=." >> sonar-project.properties
+          echo "sonar.host.url=${{ secrets.SONARQUBE_URL }}" >> sonar-project.properties
+          echo "sonar.login=${{ secrets.SONARQUBE_TOKEN }}" >> sonar-project.properties
           
           # Run SonarQube analysis
           sonar-scanner -Dsonar.projectKey=${{ steps.read_config.outputs.repo_name }} || echo "SonarQube analysis completed"
