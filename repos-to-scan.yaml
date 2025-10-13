@@ -16,7 +16,7 @@ repositories:
   #   scan_type: full
 
   - url: https://github.com/OzJasonGit/PFBD
-    name: pfbd-project
+    name: pfbd-project 
     branch: main  # Changed from master to main
     scan_type: full
   # Testing updated Jira dashboard link
