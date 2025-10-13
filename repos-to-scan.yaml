@@ -10,7 +10,8 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/tensorflow/models
+  # - url: https://github.com/tensorflow/models
+    url: https://github.com/OzJasonGit/PFBD
     name: tensorflow-models
     branch: master
     scan_type: full
