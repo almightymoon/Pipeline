@@ -96,7 +96,8 @@ jobs:
       with:
         scan-type: 'fs'
         scan-ref: './external-repo'
-        format: 'table'
+        format: 'json'
+        output: 'trivy-results.json'
         exit-code: '0'
         severity: 'HIGH,CRITICAL'
     
@@ -125,6 +126,13 @@ jobs:
         echo "========================================="
         echo "Secret scan completed"
         echo "========================================="
+        
+        # Save secret scan results for Jira integration
+        if [ -f "secrets-found.txt" ]; then
+          cp secrets-found.txt /tmp/secrets-found.txt
+        else
+          echo "No secrets found" > /tmp/secrets-found.txt
+        fi
     
     - name: Dependency Analysis
       if: steps.read_config.outputs.has_repos == 'true'
@@ -276,6 +284,22 @@ jobs:
         echo ""
         echo "========================================="
     
+    - name: Prepare Scan Results for Jira
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        # Copy Trivy results if available
+        if [ -f "trivy-results.json" ]; then
+          cp trivy-results.json /tmp/trivy-results.json
+          echo "Trivy results copied for Jira integration"
+        fi
+        
+        # Create summary of scan results
+        echo "Scan Summary:" > /tmp/scan-summary.txt
+        echo "- Repository: ${{ steps.read_config.outputs.repo_name }}" >> /tmp/scan-summary.txt
+        echo "- Scan Type: ${{ steps.read_config.outputs.scan_type }}" >> /tmp/scan-summary.txt
+        echo "- Scan Date: $(date)" >> /tmp/scan-summary.txt
+        echo "- Status: Completed" >> /tmp/scan-summary.txt
+
     - name: Create Jira Issue
       if: steps.read_config.outputs.has_repos == 'true' && secrets.JIRA_API_TOKEN != ''
       run: |
