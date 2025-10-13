@@ -72,6 +72,8 @@ jobs:
         repository: ${{ steps.read_config.outputs.repo_path }}
         ref: ${{ steps.read_config.outputs.repo_branch }}
         path: external-repo
+        token: ${{ secrets.GITHUB_TOKEN }}
+      continue-on-error: true
     
     - name: Repository Information
       if: steps.read_config.outputs.has_repos == 'true'
@@ -564,7 +566,7 @@ jobs:
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
     
     - name: Summary Report
-      if: steps.read_config.outputs.has_repos == 'true'
+      if: steps.read_config.outputs.has_repos == 'true' && success()
       run: |
         echo "========================================="
         echo "COMPREHENSIVE SCAN SUMMARY"
@@ -587,7 +589,23 @@ jobs:
         echo "✅ Jira Integration"
         echo ""
         echo "Results available in:"
-        echo "• Grafana Dashboard: http://213.109.162.134:30102/d/69bcd2b5-88d9-47e6-84af-c5f2e45f23cc/pipeline-dashboard"
+        echo "• Grafana Dashboard: http://213.109.162.134:30102/d/9f0568b8-30a1-4306-ae44-f2f05a7c90d2/pipeline-dashboard-real-data"
         echo "• Jira Issues: https://faniqueprimus.atlassian.net/jira/software/projects/KAN/boards/1"
         echo "• GitHub Actions: https://github.com/almightymoon/Pipeline/actions/runs/${{ github.run_id }}"
         echo "========================================="
+    
+    - name: Create Jira Failure Issue
+      if: steps.read_config.outputs.has_repos == 'true' && failure()
+      run: |
+        pip install requests
+        python scripts/create_jira_failure_issue.py
+      env:
+        JIRA_URL: ${{ secrets.JIRA_URL }}
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
+        REPO_URL: ${{ steps.read_config.outputs.repo_url }}
+        REPO_BRANCH: ${{ steps.read_config.outputs.repo_branch }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
