@@ -11,8 +11,8 @@ repositories:
   
   # Add your repositories below:
   # - url: https://github.com/tensorflow/models
-    url: https://github.com/OzJasonGit/PFBD
-    name: tensorflow-models
+  - url: https://github.com/OzJasonGit/PFBD
+    name: pfbd-project
     branch: master
     scan_type: full
   # Testing real data collection for dashboard
