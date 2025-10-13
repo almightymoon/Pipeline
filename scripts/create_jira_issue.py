@@ -369,7 +369,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Grafana Dashboard](http://213.109.162.134:30102/d/69bcd2b5-88d9-47e6-84af-c5f2e45f23cc/pipeline-dashboard)
+• 📊 [Pipeline Dashboard - Real Data](http://213.109.162.134:30102/d/9f0568b8-30a1-4306-ae44-f2f05a7c90d2/pipeline-dashboard-real-data)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
@@ -389,7 +389,7 @@ def create_enhanced_description(base_description):
 
 **Next Steps:**
 1. Review security findings in pipeline logs (link above)
-2. Check Grafana dashboard for detailed metrics
+2. Check Pipeline Dashboard - Real Data for detailed metrics
 3. Address any critical vulnerabilities found
 4. Implement code quality improvements in **{repo_name}**
 5. Update scanned repository if security issues are discovered
