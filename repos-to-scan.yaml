@@ -11,7 +11,7 @@ repositories:
   
   # Add your repositories below:
   # - url: https://github.com/tensorflow/models
-  - url: https://github.com/OzJasonGit/PFBD
+  - url: https://github.com/OzJasonGit/PFBD.git 
     name: pfbd-project
     branch: master
     scan_type: full
