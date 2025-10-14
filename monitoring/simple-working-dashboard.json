@@ -1,0 +1,119 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Pipeline Dashboard - Neuropilot-project",
+    "tags": ["pipeline", "working"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "3",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "2", 
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "1",
+            "legendFormat": "Failed", 
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Test Results",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "51",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "1",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "98.1",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Repository Information",
+        "type": "text",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 8
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Repository Information\n\n**Repository:** Neuropilot-project\n**URL:** https://github.com/almightymoon/Neuropilot\n**Branch:** main#Changedfrommastertomain\n**Scan Type:** full\n\n**Last Scan:** Tue Oct 14 17:06:20 PKT 2025\n\n### Security Vulnerabilities\n- **Total:** 6\n- **Critical:** 0\n- **High:** 2\n- **Medium:** 2\n- **Low:** 2\n\n### Code Quality\n- **TODO Comments:** 23\n- **Debug Statements:** 9\n- **Large Files:** 6\n\n### Test Results\n- **Tests Passed:** 51\n- **Tests Failed:** 1\n- **Success Rate:** 98.1%"
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  },
+  "overwrite": true
+}
