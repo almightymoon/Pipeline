@@ -19,7 +19,7 @@ repositories:
     name: Neuropilot-project
     branch: main  # Changed from master to main 
     scan_type: full  
-  # Testing comprehensive dashboard with real metrics  
+  # Testing updated Jira dashboard link  
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
