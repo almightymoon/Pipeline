@@ -17,7 +17,7 @@ repositories:
 
   # - url: https://github.com/almightymoon/Neuropilot
   #   name: Neuropilot-project
-  #   branch: main  # Changed from master to main 
+  #   branch: main  # Changed from master to main  
   #   scan_type: full  
   # # Testing updated Jira dashboard link   
 
