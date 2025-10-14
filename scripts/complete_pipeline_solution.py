@@ -730,7 +730,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "id": 7,
                     "title": f"🔧 Code Quality Issues - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
                     "options": {
                         "mode": "markdown",
                         "content": get_code_quality_issues_list_for_dashboard(metrics)

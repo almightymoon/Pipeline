@@ -128,6 +128,43 @@ def get_security_issues_summary():
             except Exception as e:
                 scan_results.append(f"Trivy scan completed (parse error: {str(e)[:50]})")
         
+        # Also check current directory for Trivy results
+        elif os.path.exists('trivy-results.json'):
+            try:
+                with open('trivy-results.json', 'r') as f:
+                    trivy_data = json.load(f)
+                    
+                    total_vulns = 0
+                    critical_vulns = 0
+                    high_vulns = 0
+                    
+                    if 'Results' in trivy_data:
+                        for result in trivy_data['Results']:
+                            if 'Vulnerabilities' in result:
+                                for vuln in result['Vulnerabilities']:
+                                    total_vulns += 1
+                                    severity = vuln.get('Severity', '').upper()
+                                    if severity == 'CRITICAL':
+                                        critical_vulns += 1
+                                    elif severity == 'HIGH':
+                                        high_vulns += 1
+                    
+                    # Generate dynamic summary based on actual findings
+                    if total_vulns > 0:
+                        vuln_summary = f"{total_vulns} vulnerabilities found"
+                        if critical_vulns > 0:
+                            vuln_summary += f" ({critical_vulns} critical"
+                        if high_vulns > 0:
+                            vuln_summary += f", {high_vulns} high"
+                        if critical_vulns > 0 or high_vulns > 0:
+                            vuln_summary += ")"
+                        scan_results.append(vuln_summary)
+                    else:
+                        scan_results.append("No vulnerabilities detected")
+                        
+            except Exception as e:
+                scan_results.append(f"Trivy scan completed (parse error: {str(e)[:50]})")
+        
         # Check for secret scan results
         if os.path.exists('/tmp/secrets-found.txt'):
             try:
@@ -283,54 +320,58 @@ def get_detailed_vulnerability_list():
 def get_quality_analysis():
     """Get detailed quality analysis for Jira description"""
     try:
-        if not os.path.exists('/tmp/quality-results.txt'):
-            return "• Quality analysis not available"
-            
-        with open('/tmp/quality-results.txt', 'r') as f:
-            content = f.read()
-            
-        analysis_lines = []
+        # Check multiple locations for quality results
+        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
         
-        # Parse each metric
-        import re
+        for quality_file in quality_files:
+            if os.path.exists(quality_file):
+                with open(quality_file, 'r') as f:
+                    content = f.read()
+                    
+                analysis_lines = []
+                
+                # Parse each metric
+                import re
+                
+                # TODO/FIXME comments
+                todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
+                if todo_match:
+                    count = int(todo_match.group(1))
+                    if count > 0:
+                        analysis_lines.append(f"• {count} TODO/FIXME comments found (consider addressing)")
+                    else:
+                        analysis_lines.append("• No TODO/FIXME comments found ✅")
+                
+                # Debug statements
+                debug_match = re.search(r'Debug statements: (\d+)', content)
+                if debug_match:
+                    count = int(debug_match.group(1))
+                    if count > 0:
+                        analysis_lines.append(f"• {count} debug statements found (remove before production)")
+                    else:
+                        analysis_lines.append("• No debug statements found ✅")
+                
+                # Large files
+                large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
+                if large_match:
+                    count = int(large_match.group(1))
+                    if count > 0:
+                        analysis_lines.append(f"• {count} large files found (consider optimization)")
+                    else:
+                        analysis_lines.append("• No large files found ✅")
+                
+                # Total suggestions
+                total_match = re.search(r'Total suggestions: (\d+)', content)
+                if total_match:
+                    total = int(total_match.group(1))
+                    analysis_lines.append(f"• **Total improvements suggested: {total}**")
+                
+                if analysis_lines:
+                    return "\n".join(analysis_lines)
+                else:
+                    return "• No quality analysis data available - check pipeline logs"
         
-        # TODO/FIXME comments
-        todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
-        if todo_match:
-            count = int(todo_match.group(1))
-            if count > 0:
-                analysis_lines.append(f"• {count} TODO/FIXME comments found (consider addressing)")
-            else:
-                analysis_lines.append("• No TODO/FIXME comments found ✅")
-        
-        # Debug statements
-        debug_match = re.search(r'Debug statements: (\d+)', content)
-        if debug_match:
-            count = int(debug_match.group(1))
-            if count > 0:
-                analysis_lines.append(f"• {count} debug statements found (remove before production)")
-            else:
-                analysis_lines.append("• No debug statements found ✅")
-        
-        # Large files
-        large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-        if large_match:
-            count = int(large_match.group(1))
-            if count > 0:
-                analysis_lines.append(f"• {count} large files found (consider optimization)")
-            else:
-                analysis_lines.append("• No large files found ✅")
-        
-        # Total suggestions
-        total_match = re.search(r'Total suggestions: (\d+)', content)
-        if total_match:
-            total = int(total_match.group(1))
-            analysis_lines.append(f"• **Total improvements suggested: {total}**")
-        
-        if analysis_lines:
-            return "\n".join(analysis_lines)
-        else:
-            return "• No quality analysis data available - check pipeline logs"
+        return "• Quality analysis not available"
             
     except Exception as e:
         return "• Quality analysis error (check logs for details)"
@@ -338,58 +379,62 @@ def get_quality_analysis():
 def get_priority_actions():
     """Get priority actions based on quality analysis"""
     try:
-        if not os.path.exists('/tmp/quality-results.txt'):
-            return "• No priority actions available - check pipeline logs"
-            
-        with open('/tmp/quality-results.txt', 'r') as f:
-            content = f.read()
-            
-        actions = []
-        import re
+        # Check multiple locations for quality results
+        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
         
-        # Get counts
-        todo_count = int(re.search(r'TODO/FIXME comments: (\d+)', content).group(1)) if re.search(r'TODO/FIXME comments: (\d+)', content) else 0
-        debug_count = int(re.search(r'Debug statements: (\d+)', content).group(1)) if re.search(r'Debug statements: (\d+)', content) else 0
-        large_files = int(re.search(r'Large files \(>1MB\): (\d+)', content).group(1)) if re.search(r'Large files \(>1MB\): (\d+)', content) else 0
+        for quality_file in quality_files:
+            if os.path.exists(quality_file):
+                with open(quality_file, 'r') as f:
+                    content = f.read()
+                    
+                actions = []
+                import re
+                
+                # Get counts
+                todo_count = int(re.search(r'TODO/FIXME comments: (\d+)', content).group(1)) if re.search(r'TODO/FIXME comments: (\d+)', content) else 0
+                debug_count = int(re.search(r'Debug statements: (\d+)', content).group(1)) if re.search(r'Debug statements: (\d+)', content) else 0
+                large_files = int(re.search(r'Large files \(>1MB\): (\d+)', content).group(1)) if re.search(r'Large files \(>1MB\): (\d+)', content) else 0
+                
+                # Priority actions based on counts
+                if todo_count > 0:
+                    if todo_count > 200:
+                        priority = "🔴 HIGH"
+                        action = f"Address {todo_count} TODO/FIXME comments - critical for code maintainability"
+                    elif todo_count > 50:
+                        priority = "🟠 MEDIUM"
+                        action = f"Review and address {todo_count} TODO/FIXME comments"
+                    else:
+                        priority = "🟡 LOW"
+                        action = f"Consider addressing {todo_count} TODO/FIXME comments"
+                    actions.append(f"• {priority} | {action}")
+                    
+                if debug_count > 0:
+                    if debug_count > 300:
+                        priority = "🔴 HIGH"
+                        action = f"Remove {debug_count} debug statements before production deployment"
+                    elif debug_count > 100:
+                        priority = "🟠 MEDIUM"
+                        action = f"Clean up {debug_count} debug statements"
+                    else:
+                        priority = "🟡 LOW"
+                        action = f"Review {debug_count} debug statements"
+                    actions.append(f"• {priority} | {action}")
+                    
+                if large_files > 0:
+                    if large_files > 10:
+                        priority = "🟠 MEDIUM"
+                        action = f"Optimize {large_files} large files for better performance"
+                    else:
+                        priority = "🟡 LOW"
+                        action = f"Consider optimizing {large_files} large files"
+                    actions.append(f"• {priority} | {action}")
+                
+                if not actions:
+                    actions.append("• ✅ No immediate actions required - code quality is good")
+                    
+                return "\n".join(actions)
         
-        # Priority actions based on counts
-        if todo_count > 0:
-            if todo_count > 200:
-                priority = "🔴 HIGH"
-                action = f"Address {todo_count} TODO/FIXME comments - critical for code maintainability"
-            elif todo_count > 50:
-                priority = "🟠 MEDIUM"
-                action = f"Review and address {todo_count} TODO/FIXME comments"
-            else:
-                priority = "🟡 LOW"
-                action = f"Consider addressing {todo_count} TODO/FIXME comments"
-            actions.append(f"• {priority} | {action}")
-            
-        if debug_count > 0:
-            if debug_count > 300:
-                priority = "🔴 HIGH"
-                action = f"Remove {debug_count} debug statements before production deployment"
-            elif debug_count > 100:
-                priority = "🟠 MEDIUM"
-                action = f"Clean up {debug_count} debug statements"
-            else:
-                priority = "🟡 LOW"
-                action = f"Review {debug_count} debug statements"
-            actions.append(f"• {priority} | {action}")
-            
-        if large_files > 0:
-            if large_files > 10:
-                priority = "🟠 MEDIUM"
-                action = f"Optimize {large_files} large files for better performance"
-            else:
-                priority = "🟡 LOW"
-                action = f"Consider optimizing {large_files} large files"
-            actions.append(f"• {priority} | {action}")
-            
-        if not actions:
-            actions.append("• ✅ No immediate actions required - code quality is good")
-            
-        return "\n".join(actions)
+        return "• No priority actions available - check pipeline logs"
             
     except Exception as e:
         return "• Priority actions error (check logs for details)"
@@ -400,22 +445,39 @@ def get_scan_metrics():
         metrics = []
         
         # Check for metrics file
-        if os.path.exists('/tmp/scan-metrics.txt'):
-            with open('/tmp/scan-metrics.txt', 'r') as f:
-                content = f.read()
+        metrics_files = ['/tmp/scan-metrics.txt', 'quality-results.txt', '/tmp/quality-results.txt']
+        
+        for metrics_file in metrics_files:
+            if os.path.exists(metrics_file):
+                with open(metrics_file, 'r') as f:
+                    content = f.read()
+                    
+                # Extract metrics
+                import re
+                file_match = re.search(r'Total Files: (\d+)', content)
+                line_match = re.search(r'Total Lines: (\d+)', content)
+                size_match = re.search(r'Repository Size: (.+)', content)
                 
-            # Extract metrics
-            import re
-            file_match = re.search(r'Total Files: (\d+)', content)
-            line_match = re.search(r'Total Lines: (\d+)', content)
-            size_match = re.search(r'Repository Size: (.+)', content)
-            
-            if file_match:
-                metrics.append(f"Files scanned: {file_match.group(1)}")
-            if line_match:
-                metrics.append(f"Lines analyzed: {line_match.group(1)}")
-            if size_match:
-                metrics.append(f"Repository size: {size_match.group(1)}")
+                # Also check for quality results format
+                if not file_match:
+                    file_match = re.search(r'Files scanned: (\d+)', content)
+                if not size_match:
+                    size_match = re.search(r'Repository size: (.+)', content)
+                
+                if file_match:
+                    metrics.append(f"Files scanned: {file_match.group(1)}")
+                if line_match:
+                    metrics.append(f"Lines analyzed: {line_match.group(1)}")
+                if size_match:
+                    metrics.append(f"Repository size: {size_match.group(1).strip()}")
+                
+                # Pipeline run
+                run_match = re.search(r'Pipeline run: (#\d+)', content)
+                if run_match:
+                    metrics.append(f"Pipeline run: {run_match.group(1)}")
+                
+                if metrics:
+                    return " • ".join(metrics)
         
         # Check for scan duration
         github_run_number = os.environ.get('GITHUB_RUN_NUMBER', '')
