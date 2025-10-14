@@ -34,13 +34,13 @@ def get_latest_dashboard_uid():
                 latest_dashboard = dashboards[0]
                 return latest_dashboard.get('uid', 'ae4e244b-b4b3-42af-8bb4-1cfcf29f7112')
         
-        # Fallback to the real data dashboard UID if API call fails
-        return "1ecab61f-2167-43b5-9ff2-95e6c5c6c940"
+        # Fallback to the fixed real data dashboard UID if API call fails
+        return "b6808e27-0342-4064-ba10-4b9851171b2b"
         
     except Exception as e:
         print(f"Warning: Could not get latest dashboard UID: {e}")
-        # Return the real data dashboard UID as fallback
-        return "1ecab61f-2167-43b5-9ff2-95e6c5c6c940"
+        # Return the fixed real data dashboard UID as fallback
+        return "b6808e27-0342-4064-ba10-4b9851171b2b"
 
 def get_scan_status():
     """Get actual scan status from pipeline results"""
@@ -402,7 +402,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Pipeline Dashboard - Real Data](http://213.109.162.134:30102/d/1ecab61f-2167-43b5-9ff2-95e6c5c6c940/pipeline-dashboard-real-data)
+• 📊 [Pipeline Dashboard - Fixed Real Data](http://213.109.162.134:30102/d/b6808e27-0342-4064-ba10-4b9851171b2b/pipeline-dashboard-fixed-real-data)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
