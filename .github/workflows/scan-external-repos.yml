@@ -719,8 +719,28 @@ jobs:
         echo "Dockerfile Path: $DOCKERFILE_PATH"
         echo "========================================="
         
-        # Build the Docker image using the correct Dockerfile path
-        docker build -f "$DOCKERFILE_PATH" -t "$FULL_IMAGE_NAME" .
+        # Check if package-lock.json exists and modify Dockerfile if needed
+        TEMP_DOCKERFILE="/tmp/dockerfile_modified"
+        
+        if [ -f "$DOCKERFILE_PATH" ]; then
+          cp "$DOCKERFILE_PATH" "$TEMP_DOCKERFILE"
+          
+          # Check if package-lock.json exists in the same directory as the Dockerfile
+          DOCKERFILE_DIR=$(dirname "$DOCKERFILE_PATH")
+          if [ ! -f "$DOCKERFILE_DIR/package-lock.json" ] && grep -q "npm ci" "$TEMP_DOCKERFILE"; then
+            echo "⚠️ No package-lock.json found, replacing 'npm ci' with 'npm install' in Dockerfile"
+            sed -i 's/npm ci/npm install/g' "$TEMP_DOCKERFILE"
+          fi
+          
+          # Build the Docker image using the modified Dockerfile
+          docker build -f "$TEMP_DOCKERFILE" -t "$FULL_IMAGE_NAME" .
+          
+          # Clean up temporary file
+          rm -f "$TEMP_DOCKERFILE"
+        else
+          echo "❌ Dockerfile not found at $DOCKERFILE_PATH"
+          exit 1
+        fi
         
         # Save image info for later steps
         echo "image_name=$FULL_IMAGE_NAME" >> $GITHUB_OUTPUT
