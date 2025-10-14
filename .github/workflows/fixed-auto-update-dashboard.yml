@@ -142,7 +142,6 @@ jobs:
             This update was triggered automatically by changes to \`repos-to-scan.yaml\`.
             
             **Status:** ✅ Successfully updated" \
-            --label "dashboard,auto-update,success"
         else
           echo "No valid repository found in repos-to-scan.yaml"
         fi
