@@ -7,7 +7,40 @@ import sys
 import requests
 import json
 import subprocess
+import re
 from datetime import datetime
+
+def get_latest_dashboard_uid():
+    """Get the latest dashboard UID from Grafana"""
+    try:
+        # Try to get the latest dashboard UID by querying Grafana API
+        grafana_url = "http://213.109.162.134:30102"
+        grafana_user = "admin"
+        grafana_pass = "admin123"
+        
+        # Search for dashboards with "current-repository" in the title
+        search_url = f"{grafana_url}/api/search?query=current-repository"
+        
+        response = requests.get(
+            search_url,
+            auth=(grafana_user, grafana_pass),
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            dashboards = response.json()
+            if dashboards:
+                # Get the most recent dashboard (assuming they're ordered by creation time)
+                latest_dashboard = dashboards[0]
+                return latest_dashboard.get('uid', 'ae4e244b-b4b3-42af-8bb4-1cfcf29f7112')
+        
+        # Fallback to the real data dashboard UID if API call fails
+        return "1ecab61f-2167-43b5-9ff2-95e6c5c6c940"
+        
+    except Exception as e:
+        print(f"Warning: Could not get latest dashboard UID: {e}")
+        # Return the real data dashboard UID as fallback
+        return "1ecab61f-2167-43b5-9ff2-95e6c5c6c940"
 
 def get_scan_status():
     """Get actual scan status from pipeline results"""
@@ -369,7 +402,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Pipeline Dashboard - Dynamic](http://213.109.162.134:30102/d/ae4e244b-b4b3-42af-8bb4-1cfcf29f7112/pipeline-dashboard-current-repository)
+• 📊 [Pipeline Dashboard - Real Data](http://213.109.162.134:30102/d/1ecab61f-2167-43b5-9ff2-95e6c5c6c940/pipeline-dashboard-real-data)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**

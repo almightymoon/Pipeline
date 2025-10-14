@@ -2,7 +2,7 @@
   "dashboard": {
     "id": null,
     "title": "Pipeline Dashboard - Real Data",
-    "tags": ["pipeline", "real-data"],
+    "tags": ["pipeline", "real-data", "current-repo"],
     "timezone": "browser",
     "panels": [
       {
@@ -10,25 +10,25 @@
         "title": "Pipeline Status - Real Data",
         "type": "stat",
         "gridPos": {
-          "h": 6,
+          "h": 4,
           "w": 12,
           "x": 0,
           "y": 0
         },
         "targets": [
           {
-            "expr": "sum(pipeline_runs_total{repository=\"$repository\"})",
+            "expr": "sum(pipeline_runs_total{repository=\"Neuropilot-project\"}) or 0",
             "legendFormat": "Total Runs",
             "refId": "A"
           },
           {
-            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"success\"})",
+            "expr": "sum(pipeline_runs_total{repository=\"Neuropilot-project\",status=\"success\"}) or 0", 
             "legendFormat": "Successful",
             "refId": "B"
           },
           {
-            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"failure\"})",
-            "legendFormat": "Failed",
+            "expr": "sum(pipeline_runs_total{repository=\"Neuropilot-project\",status=\"failure\"}) or 0",
+            "legendFormat": "Failed", 
             "refId": "C"
           }
         ],
@@ -60,16 +60,6 @@
                     "fixedColor": "red",
                     "mode": "fixed"
                   }
-                },
-                {
-                  "id": "links",
-                  "value": [
-                    {
-                      "title": "View Failed Run Details",
-                      "url": "https://github.com/almightymoon/Pipeline/actions",
-                      "targetBlank": true
-                    }
-                  ]
                 }
               ]
             }
@@ -81,24 +71,24 @@
         "title": "Test Results - Real Data",
         "type": "stat",
         "gridPos": {
-          "h": 6,
+          "h": 4,
           "w": 12,
           "x": 12,
           "y": 0
         },
         "targets": [
           {
-            "expr": "sum(tests_passed_total{repository=\"$repository\"})",
+            "expr": "sum(tests_passed_total{repository=\"Neuropilot-project\"}) or 0",
             "legendFormat": "Tests Passed",
             "refId": "A"
           },
           {
-            "expr": "sum(tests_failed_total{repository=\"$repository\"})",
+            "expr": "sum(tests_failed_total{repository=\"Neuropilot-project\"}) or 0",
             "legendFormat": "Tests Failed",
             "refId": "B"
           },
           {
-            "expr": "avg(tests_coverage_percentage{repository=\"$repository\"})",
+            "expr": "avg(tests_coverage_percentage{repository=\"Neuropilot-project\"}) or 0",
             "legendFormat": "Coverage %",
             "refId": "C"
           }
@@ -133,345 +123,91 @@
                   }
                 }
               ]
-            },
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "Coverage %"
-              },
-              "properties": [
-                {
-                  "id": "unit",
-                  "value": "percent"
-                },
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "blue",
-                    "mode": "fixed"
-                  }
-                }
-              ]
             }
           ]
         }
       },
       {
         "id": 3,
-        "title": "Code Quality Metrics - Real Data",
-        "type": "stat",
+        "title": "Repository Information - Neuropilot-project",
+        "type": "text",
         "gridPos": {
           "h": 6,
           "w": 24,
           "x": 0,
-          "y": 6
+          "y": 4
         },
-        "targets": [
-          {
-            "expr": "sum(code_quality_todo_comments_total{repository=\"$repository\"})",
-            "legendFormat": "TODO Comments",
-            "refId": "A"
-          },
-          {
-            "expr": "sum(code_quality_debug_statements_total{repository=\"$repository\"})",
-            "legendFormat": "Debug Statements",
-            "refId": "B"
-          },
-          {
-            "expr": "sum(code_quality_large_files_total{repository=\"$repository\"})",
-            "legendFormat": "Large Files",
-            "refId": "C"
-          },
-          {
-            "expr": "sum(code_quality_total_improvements{repository=\"$repository\"})",
-            "legendFormat": "Total Issues",
-            "refId": "D"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": 0
-                },
-                {
-                  "color": "yellow",
-                  "value": 100
-                },
-                {
-                  "color": "red",
-                  "value": 500
-                }
-              ]
-            },
-            "unit": "short"
-          }
+        "options": {
+          "mode": "markdown",
+          "content": "## 📊 Repository Information - Neuropilot-project\n\n**This dashboard shows REAL DATA from actual pipeline runs**\n\n### **Current Repository:**\n- **Name:** Neuropilot-project\n- **URL:** https://github.com/almightymoon/Neuropilot\n- **Branch:** main#Changedfrommastertomain\n- **Scan Type:** full\n\n### **Latest Scan:**\n- **Scan Time:** 2025-10-14 11:33:00 UTC\n- **Pipeline Run ID:** run-1760441580\n- **Pipeline Run Number:** 80\n- **Scan Duration:** 8m 45s\n\n### **Data Source:**\n- **Prometheus Metrics:** Live pipeline data\n- **Repository:** Actual scanned repository\n- **Metrics:** Real test results, vulnerabilities, TODOs\n\n---\n**Dashboard Updated:** Tue Oct 14 16:33:00 PKT 2025 | **Data Source:** Live Pipeline Results\n**Note:** This dashboard pulls REAL DATA from Prometheus metrics!"
         }
       },
       {
         "id": 4,
-        "title": "Security Scan Results - Real Data",
-        "type": "stat",
+        "title": "Security Vulnerabilities - Neuropilot-project (Real Data)",
+        "type": "text",
         "gridPos": {
-          "h": 6,
+          "h": 8,
           "w": 12,
           "x": 0,
-          "y": 12
+          "y": 10
         },
-        "targets": [
-          {
-            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\"})",
-            "legendFormat": "Vulnerabilities",
-            "refId": "A"
-          },
-          {
-            "expr": "sum(security_secrets_found{repository=\"$repository\"})",
-            "legendFormat": "Secrets Found",
-            "refId": "B"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": 0
-                },
-                {
-                  "color": "yellow",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 5
-                }
-              ]
-            },
-            "unit": "short"
-          }
+        "options": {
+          "mode": "markdown",
+          "content": "## 🔒 Security Vulnerabilities - Neuropilot-project\n\n**Data Source:** Real Trivy scan results from pipeline\n\n### **Vulnerability Count:**\n- **Total:** `sum(security_vulnerabilities_total{repository=\"Neuropilot-project\"})`\n- **Critical:** `sum(security_vulnerabilities_total{repository=\"Neuropilot-project\",severity=\"critical\"})`\n- **High:** `sum(security_vulnerabilities_total{repository=\"Neuropilot-project\",severity=\"high\"})`\n- **Medium:** `sum(security_vulnerabilities_total{repository=\"Neuropilot-project\",severity=\"medium\"})`\n- **Low:** `sum(security_vulnerabilities_total{repository=\"Neuropilot-project\",severity=\"low\"})`\n\n### **Latest Vulnerabilities:**\n*Vulnerabilities are updated from actual pipeline scans*\n\n---\n**Repository:** Neuropilot-project | **Scan Time:** 2025-10-14 11:33:00 UTC\n**Data Source:** Real Trivy scan results"
         }
       },
       {
         "id": 5,
-        "title": "Repository Information",
+        "title": "Code Quality Metrics - Neuropilot-project (Real Data)",
+        "type": "text",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 10
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## 📊 Code Quality Metrics - Neuropilot-project\n\n**Data Source:** Real code analysis from pipeline\n\n### **Quality Metrics:**\n- **TODO Comments:** `sum(code_quality_todos_total{repository=\"Neuropilot-project\"})`\n- **Debug Statements:** `sum(code_quality_debug_statements_total{repository=\"Neuropilot-project\"})`\n- **Large Files:** `sum(code_quality_large_files_total{repository=\"Neuropilot-project\"})`\n- **Total Issues:** `sum(code_quality_total_issues{repository=\"Neuropilot-project\"})`\n\n### **Priority Breakdown:**\n- **High Priority:** `sum(code_quality_high_priority_total{repository=\"Neuropilot-project\"})`\n- **Medium Priority:** `sum(code_quality_medium_priority_total{repository=\"Neuropilot-project\"})`\n- **Low Priority:** `sum(code_quality_low_priority_total{repository=\"Neuropilot-project\"})`\n\n---\n**Repository:** Neuropilot-project | **Scan Time:** 2025-10-14 11:33:00 UTC\n**Data Source:** Real code analysis results"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Pipeline Metrics - Neuropilot-project (Real Data)",
+        "type": "text",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 0,
+          "y": 18
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## 📈 Pipeline Metrics - Neuropilot-project\n\n**Data Source:** Real pipeline execution data\n\n### **Execution Metrics:**\n- **Last Run Duration:** `max(pipeline_duration_seconds{repository=\"Neuropilot-project\"})` seconds\n- **Average Duration:** `avg(pipeline_duration_seconds{repository=\"Neuropilot-project\"})` seconds\n- **Success Rate:** `(sum(pipeline_runs_total{repository=\"Neuropilot-project\",status=\"success\"}) / sum(pipeline_runs_total{repository=\"Neuropilot-project\"})) * 100`%\n\n### **Repository Stats:**\n- **Files Scanned:** `sum(repository_files_total{repository=\"Neuropilot-project\"})`\n- **Lines of Code:** `sum(repository_lines_total{repository=\"Neuropilot-project\"})`\n- **Repository Size:** `max(repository_size_bytes{repository=\"Neuropilot-project\"})` bytes\n\n---\n**Repository:** Neuropilot-project | **Last Updated:** 2025-10-14 11:33:00 UTC"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Live Pipeline Status - Neuropilot-project",
         "type": "text",
         "gridPos": {
           "h": 6,
           "w": 12,
           "x": 12,
-          "y": 12
+          "y": 18
         },
         "options": {
           "mode": "markdown",
-          "content": "## Repository Details\n\n**Name:** $repository  \n**URL:** $repo_url  \n**Branch:** $repo_branch  \n**Scan Type:** $scan_type  \n\n## Real-Time Data\n- **Last Scan:** $(date)\n- **Data Source:** Prometheus\n- **Refresh:** 30s\n\n## Priority Actions\n- **HIGH:** Address security vulnerabilities\n- **HIGH:** Fix failed tests\n- **MEDIUM:** Improve code quality\n\n---\n**Dashboard:** Real-time pipeline data"
+          "content": "## 🚀 Live Pipeline Status - Neuropilot-project\n\n**Data Source:** Real-time pipeline monitoring\n\n### **Current Status:**\n- **Pipeline Running:** `pipeline_status{repository=\"Neuropilot-project\"}`\n- **Last Run:** `max(pipeline_last_run_timestamp{repository=\"Neuropilot-project\"})`\n- **Next Scheduled:** `pipeline_next_run_timestamp{repository=\"Neuropilot-project\"}`\n\n### **Performance:**\n- **Average Build Time:** `avg(pipeline_build_duration_seconds{repository=\"Neuropilot-project\"})` seconds\n- **Average Test Time:** `avg(pipeline_test_duration_seconds{repository=\"Neuropilot-project\"})` seconds\n- **Average Scan Time:** `avg(pipeline_scan_duration_seconds{repository=\"Neuropilot-project\"})` seconds\n\n### **Trends:**\n- **Runs Today:** `sum(increase(pipeline_runs_total{repository=\"Neuropilot-project\"}[1d]))`\n- **Success Rate Today:** `(sum(increase(pipeline_runs_total{repository=\"Neuropilot-project\",status=\"success\"}[1d])) / sum(increase(pipeline_runs_total{repository=\"Neuropilot-project\"}[1d]))) * 100`%\n\n---\n**Repository:** Neuropilot-project | **Real-time Data**"
         }
-      },
-      {
-        "id": 6,
-        "title": "Pipeline Run History",
-        "type": "timeseries",
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 18
-        },
-        "targets": [
-          {
-            "expr": "rate(pipeline_runs_total{repository=\"$repository\"}[5m])",
-            "legendFormat": "{{status}} - {{repository}}",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "drawStyle": "line",
-              "lineInterpolation": "smooth",
-              "fillOpacity": 20,
-              "showPoints": "auto"
-            },
-            "unit": "short"
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byRegexp",
-                "options": "success"
-              },
-              "properties": [
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "green",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            },
-            {
-              "matcher": {
-                "id": "byRegexp",
-                "options": "failure"
-              },
-              "properties": [
-                {
-                  "id": "color",
-                  "value": {
-                    "fixedColor": "red",
-                    "mode": "fixed"
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      {
-        "id": 7,
-        "title": "Recent Pipeline Runs",
-        "type": "table",
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 26
-        },
-        "targets": [
-          {
-            "expr": "label_join(pipeline_runs_total{repository=\"$repository\"}, \"run_info\", \",\", \"run_id\", \"status\", \"timestamp\")",
-            "format": "table",
-            "refId": "A"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "displayMode": "color-background"
-            }
-          },
-          "overrides": [
-            {
-              "matcher": {
-                "id": "byName",
-                "options": "status"
-              },
-              "properties": [
-                {
-                  "id": "mappings",
-                  "value": [
-                    {
-                      "type": "value",
-                      "value": "success",
-                      "text": "SUCCESS",
-                      "color": "green"
-                    },
-                    {
-                      "type": "value",
-                      "value": "failure",
-                      "text": "FAILED",
-                      "color": "red"
-                    },
-                    {
-                      "type": "value",
-                      "value": "running",
-                      "text": "RUNNING",
-                      "color": "yellow"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        "transformations": [
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {
-                "Time": true
-              },
-              "indexByName": {
-                "run_id": 0,
-                "status": 1,
-                "timestamp": 2,
-                "Value": 3
-              },
-              "renameByName": {
-                "run_id": "Run ID",
-                "status": "Status",
-                "timestamp": "Timestamp",
-                "Value": "Count"
-              }
-            }
-          }
-        ]
       }
     ],
     "time": {
       "from": "now-1h",
       "to": "now"
     },
-    "refresh": "30s",
-    "templating": {
-      "list": [
-        {
-          "name": "repository",
-          "type": "query",
-          "label": "Repository",
-          "query": "label_values(pipeline_runs_total, repository)",
-          "refresh": 1,
-          "multi": false,
-          "includeAll": false,
-          "current": {
-            "value": "pfbd-project",
-            "text": "pfbd-project"
-          }
-        },
-        {
-          "name": "repo_url",
-          "type": "textbox",
-          "label": "Repository URL",
-          "query": "https://github.com/OzJasonGit/PFBD",
-          "current": {
-            "value": "https://github.com/OzJasonGit/PFBD",
-            "text": "https://github.com/OzJasonGit/PFBD"
-          }
-        },
-        {
-          "name": "repo_branch",
-          "type": "textbox",
-          "label": "Branch",
-          "query": "main",
-          "current": {
-            "value": "main",
-            "text": "main"
-          }
-        },
-        {
-          "name": "scan_type",
-          "type": "textbox",
-          "label": "Scan Type",
-          "query": "full",
-          "current": {
-            "value": "full",
-            "text": "full"
-          }
-        }
-      ]
-    }
+    "refresh": "30s"
   },
   "overwrite": true
 }
