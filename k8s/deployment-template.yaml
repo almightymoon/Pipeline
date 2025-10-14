@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: DEPLOYMENT_NAME_PLACEHOLDER
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: REPO_NAME_PLACEHOLDER
+    pipeline-run: "RUN_NUMBER_PLACEHOLDER"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: REPO_NAME_PLACEHOLDER
+  template:
+    metadata:
+      labels:
+        app: REPO_NAME_PLACEHOLDER
+    spec:
+      containers:
+      - name: REPO_NAME_PLACEHOLDER
+        image: IMAGE_NAME_PLACEHOLDER
+        ports:
+        - containerPort: 3000
+        - containerPort: 8080
+        - containerPort: 80
+        env:
+        - name: REPO_NAME
+          value: "REPO_NAME_PLACEHOLDER"
+        - name: REPO_URL
+          value: "REPO_URL_PLACEHOLDER"
+        - name: PIPELINE_RUN
+          value: "RUN_NUMBER_PLACEHOLDER"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: SERVICE_NAME_PLACEHOLDER
+  namespace: NAMESPACE_PLACEHOLDER
+  labels:
+    app: REPO_NAME_PLACEHOLDER
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: NODE_PORT_PLACEHOLDER
+  selector:
+    app: REPO_NAME_PLACEHOLDER
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: INGRESS_NAME_PLACEHOLDER
+  namespace: NAMESPACE_PLACEHOLDER
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: HOST_NAME_PLACEHOLDER
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: SERVICE_NAME_PLACEHOLDER
+            port:
+              number: 80

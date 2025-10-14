@@ -717,77 +717,20 @@ jobs:
         # Create namespace if it doesn't exist
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
         
-        # Create deployment YAML
-        cat > /tmp/deployment.yaml << EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: $DEPLOYMENT_NAME
-  namespace: $NAMESPACE
-  labels:
-    app: ${{ steps.read_config.outputs.repo_name }}
-    pipeline-run: "${{ github.run_number }}"
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: ${{ steps.read_config.outputs.repo_name }}
-  template:
-    metadata:
-      labels:
-        app: ${{ steps.read_config.outputs.repo_name }}
-    spec:
-      containers:
-      - name: ${{ steps.read_config.outputs.repo_name }}
-        image: ${{ steps.docker_build.outputs.image_name }}
-        ports:
-        - containerPort: 3000
-        - containerPort: 8080
-        - containerPort: 80
-        env:
-        - name: REPO_NAME
-          value: "${{ steps.read_config.outputs.repo_name }}"
-        - name: REPO_URL
-          value: "${{ steps.read_config.outputs.repo_url }}"
-        - name: PIPELINE_RUN
-          value: "${{ github.run_number }}"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: $SERVICE_NAME
-  namespace: $NAMESPACE
-  labels:
-    app: ${{ steps.read_config.outputs.repo_name }}
-spec:
-  type: NodePort
-  ports:
-  - port: 80
-    targetPort: 3000
-    nodePort: 300${{ github.run_number }}
-  selector:
-    app: ${{ steps.read_config.outputs.repo_name }}
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ${{ steps.read_config.outputs.repo_name }}-ingress
-  namespace: $NAMESPACE
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - host: ${{ steps.read_config.outputs.repo_name }}.pipeline.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: $SERVICE_NAME
-            port:
-              number: 80
-EOF
+        # Copy deployment template and replace placeholders
+        cp k8s/deployment-template.yaml /tmp/deployment.yaml
+        
+        # Replace placeholders with actual values
+        sed -i "s/DEPLOYMENT_NAME_PLACEHOLDER/$DEPLOYMENT_NAME/g" /tmp/deployment.yaml
+        sed -i "s/NAMESPACE_PLACEHOLDER/$NAMESPACE/g" /tmp/deployment.yaml
+        sed -i "s/REPO_NAME_PLACEHOLDER/${{ steps.read_config.outputs.repo_name }}/g" /tmp/deployment.yaml
+        sed -i "s/RUN_NUMBER_PLACEHOLDER/${{ github.run_number }}/g" /tmp/deployment.yaml
+        sed -i "s/IMAGE_NAME_PLACEHOLDER/${{ steps.docker_build.outputs.image_name }}/g" /tmp/deployment.yaml
+        sed -i "s/REPO_URL_PLACEHOLDER/${{ steps.read_config.outputs.repo_url }}/g" /tmp/deployment.yaml
+        sed -i "s/SERVICE_NAME_PLACEHOLDER/$SERVICE_NAME/g" /tmp/deployment.yaml
+        sed -i "s/NODE_PORT_PLACEHOLDER/300${{ github.run_number }}/g" /tmp/deployment.yaml
+        sed -i "s/INGRESS_NAME_PLACEHOLDER/${{ steps.read_config.outputs.repo_name }}-ingress/g" /tmp/deployment.yaml
+        sed -i "s/HOST_NAME_PLACEHOLDER/${{ steps.read_config.outputs.repo_name }}.pipeline.local/g" /tmp/deployment.yaml
         
         # Apply the deployment
         kubectl apply -f /tmp/deployment.yaml
