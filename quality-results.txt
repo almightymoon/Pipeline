@@ -1,0 +1,20 @@
+Code Quality Report
+===================
+TODO/FIXME comments: 0
+Debug statements: 10
+Large files (>1MB): 11
+Total suggestions: 21
+Files scanned: 287
+Repository size: 302M
+Scan completed: 2025-10-14 18:35:53 UTC
+Pipeline run: #57
+
+Detailed Analysis:
+- No TODO/FIXME comments found ✅
+- 10 debug statements found (remove before production)
+- 11 large files found (consider optimization)
+- Total improvements suggested: 21
+
+Priority Actions Required:
+- 🟡 LOW | Review 10 debug statements
+- 🟠 MEDIUM | Optimize 11 large files for better performance

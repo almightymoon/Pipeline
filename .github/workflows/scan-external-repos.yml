@@ -597,11 +597,55 @@ jobs:
         REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
         REPO_URL: ${{ steps.read_config.outputs.repo_url }}
     
-    - name: Create Jira Issue
+    - name: Save Scan Results for Dashboard
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
-        pip install requests
-        python scripts/create_jira_issue.py
+        echo "💾 Saving scan results for dashboard integration..."
+        
+        # Create results directory
+        mkdir -p /tmp/scan-results
+        
+        # Save Trivy results
+        if [ -f "trivy-results.json" ]; then
+          cp trivy-results.json /tmp/scan-results/
+          echo "✅ Trivy results saved"
+        fi
+        
+        # Save quality results
+        if [ -f "/tmp/quality-results.txt" ]; then
+          cp /tmp/quality-results.txt /tmp/scan-results/
+          echo "✅ Quality results saved"
+        fi
+        
+        # Save test results
+        if [ -f "/tmp/test-results.json" ]; then
+          cp /tmp/test-results.json /tmp/scan-results/
+          echo "✅ Test results saved"
+        fi
+        
+        # Save secret detection results
+        if [ -f "/tmp/secrets-found.txt" ]; then
+          cp /tmp/secrets-found.txt /tmp/scan-results/
+          echo "✅ Secret detection results saved"
+        fi
+        
+        # Save scan metrics
+        if [ -f "/tmp/scan-metrics.txt" ]; then
+          cp /tmp/scan-metrics.txt /tmp/scan-results/
+          echo "✅ Scan metrics saved"
+        fi
+        
+        # List saved files
+        echo "📁 Saved scan result files:"
+        ls -la /tmp/scan-results/
+        
+        echo "✅ Scan results saved for dashboard integration"
+    
+    - name: Create Dashboard and Jira Issue
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        pip install requests pyyaml
+        python scripts/complete_pipeline_solution.py
       env:
         JIRA_URL: ${{ secrets.JIRA_URL }}
         JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}

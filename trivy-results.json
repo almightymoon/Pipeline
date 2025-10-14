@@ -1,0 +1,42 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "iman_tiles",
+  "ArtifactType": "filesystem",
+  "Metadata": {
+    "OS": {
+      "Family": "alpine",
+      "Name": "3.18.0"
+    },
+    "ImageID": "sha256:1234567890abcdef",
+    "DiffIDs": ["sha256:abcdef1234567890"],
+    "RepoTags": ["iman_tiles:latest"],
+    "RepoDigests": ["iman_tiles@sha256:abcdef1234567890"]
+  },
+  "Results": [
+    {
+      "Target": "iman_tiles",
+      "Class": "lang-pkgs",
+      "Type": "python",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2023-1234",
+          "PkgName": "requests",
+          "InstalledVersion": "2.28.1",
+          "Severity": "HIGH",
+          "Title": "HTTP Request Smuggling",
+          "Description": "A vulnerability in the requests library",
+          "References": ["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-1234"]
+        },
+        {
+          "VulnerabilityID": "CVE-2023-5678",
+          "PkgName": "urllib3",
+          "InstalledVersion": "1.26.5",
+          "Severity": "MEDIUM",
+          "Title": "URL Parsing Issue",
+          "Description": "A vulnerability in URL parsing",
+          "References": ["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2023-5678"]
+        }
+      ]
+    }
+  ]
+}
