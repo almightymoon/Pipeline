@@ -1,0 +1,104 @@
+name: Terminate Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'Repository name'
+        required: true
+        default: ''
+      deployment:
+        description: 'Deployment name'
+        required: true
+        default: ''
+      namespace:
+        description: 'Kubernetes namespace'
+        required: true
+        default: 'pipeline-apps'
+
+jobs:
+  terminate-deployment:
+    name: Terminate Kubernetes Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Pipeline Code
+      uses: actions/checkout@v4
+    
+    - name: Terminate Deployment
+      run: |
+        echo "========================================="
+        echo "Terminating Kubernetes Deployment"
+        echo "========================================="
+        echo "Repository: ${{ github.event.inputs.repository }}"
+        echo "Deployment: ${{ github.event.inputs.deployment }}"
+        echo "Namespace: ${{ github.event.inputs.namespace }}"
+        echo "========================================="
+        
+        # Set variables
+        REPO_NAME="${{ github.event.inputs.repository }}"
+        DEPLOYMENT_NAME="${{ github.event.inputs.deployment }}"
+        NAMESPACE="${{ github.event.inputs.namespace }}"
+        SERVICE_NAME="${REPO_NAME}-service"
+        INGRESS_NAME="${REPO_NAME}-ingress"
+        
+        echo "Terminating deployment: $DEPLOYMENT_NAME in namespace: $NAMESPACE"
+        
+        # Delete deployment
+        if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting deployment: $DEPLOYMENT_NAME"
+          kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE"
+          echo "✅ Deployment deleted successfully"
+        else
+          echo "⚠️ Deployment $DEPLOYMENT_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        # Delete service
+        if kubectl get service "$SERVICE_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting service: $SERVICE_NAME"
+          kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE"
+          echo "✅ Service deleted successfully"
+        else
+          echo "⚠️ Service $SERVICE_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        # Delete ingress
+        if kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting ingress: $INGRESS_NAME"
+          kubectl delete ingress "$INGRESS_NAME" -n "$NAMESPACE"
+          echo "✅ Ingress deleted successfully"
+        else
+          echo "⚠️ Ingress $INGRESS_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        # Check if namespace is empty and optionally delete it
+        RESOURCES=$(kubectl get all -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l)
+        if [ "$RESOURCES" -eq 0 ]; then
+          echo "Namespace $NAMESPACE is empty. Keeping namespace for future use."
+        else
+          echo "Namespace $NAMESPACE still has $RESOURCES resources. Keeping namespace."
+        fi
+        
+        echo "========================================="
+        echo "✅ TERMINATION COMPLETED"
+        echo "========================================="
+        echo "Deployment: $DEPLOYMENT_NAME - TERMINATED"
+        echo "Service: $SERVICE_NAME - TERMINATED"
+        echo "Ingress: $INGRESS_NAME - TERMINATED"
+        echo "Namespace: $NAMESPACE - PRESERVED"
+        echo "========================================="
+    
+    - name: Create Jira Termination Update
+      run: |
+        echo "========================================="
+        echo "Updating Jira with Termination Status"
+        echo "========================================="
+        
+        # This would typically update the original Jira issue
+        # For now, we'll just log the termination
+        echo "Deployment terminated for repository: ${{ github.event.inputs.repository }}"
+        echo "Termination completed at: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        echo "Termination initiated by: ${{ github.actor }}"
+        
+        echo "✅ Termination notification prepared"
+        echo "========================================="

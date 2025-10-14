@@ -567,6 +567,79 @@ def get_large_files_details_for_recommendations():
     except Exception as e:
         return []
 
+def get_deployment_status_content(repo_info, metrics):
+    """Generate deployment status content for dashboard"""
+    try:
+        # Get deployment information
+        dockerfile_exists = os.environ.get('DOCKERFILE_EXISTS', 'false').lower() == 'true'
+        app_url = os.environ.get('APP_URL', '')
+        deployment_name = os.environ.get('DEPLOYMENT_NAME', '')
+        service_name = os.environ.get('SERVICE_NAME', '')
+        namespace = os.environ.get('NAMESPACE', '')
+        node_port = os.environ.get('NODE_PORT', '')
+        
+        if dockerfile_exists and app_url:
+            terminate_url = f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml?repository={repo_info['name']}&deployment={deployment_name}&namespace={namespace}"
+            
+            return f"""### ✅ Application Successfully Deployed
+
+| **Property** | **Value** |
+|--------------|-----------|
+| **Status** | 🟢 Running and Accessible |
+| **App URL** | [{app_url}]({app_url}) |
+| **Deployment** | {deployment_name} |
+| **Service** | {service_name} |
+| **Namespace** | {namespace} |
+| **Node Port** | {node_port} |
+| **Container Port** | 3000 |
+
+**🎯 Quick Actions:**
+• [🚀 Test Application]({app_url}) - Click to test the running app
+• [🛑 Terminate Deployment]({terminate_url}) - Delete the deployment when done
+
+**📊 Deployment Details:**
+• **Docker Image:** Built from Dockerfile in repository
+• **Access Method:** Direct NodePort access
+• **Environment:** Kubernetes cluster (pipeline-apps namespace)
+• **Deployment Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}"""
+        
+        elif dockerfile_exists:
+            return f"""### ⚠️ Deployment Attempted (URL Not Available)
+
+| **Property** | **Value** |
+|--------------|-----------|
+| **Status** | 🟡 Deployment attempted but endpoint not accessible |
+| **Deployment** | {deployment_name or 'Unknown'} |
+| **Namespace** | {namespace or 'Unknown'} |
+
+**🔍 Troubleshooting:**
+• Check Kubernetes cluster status
+• Verify service endpoints
+• Review deployment logs in pipeline"""
+        
+        else:
+            return f"""### ℹ️ No Deployment (No Dockerfile)
+
+| **Property** | **Value** |
+|--------------|-----------|
+| **Status** | ⚪ No Dockerfile found |
+| **Reason** | Repository does not contain a Dockerfile |
+
+**📝 To Enable Deployment:**
+• Add a `Dockerfile` to the repository root
+• Configure container ports (3000, 8080, or 80)
+• Re-run the pipeline to trigger deployment"""
+        
+    except Exception as e:
+        return f"""### ❌ Deployment Status Error
+
+Error retrieving deployment information: {str(e)[:100]}
+
+**🔍 Check:**
+• Pipeline logs for deployment details
+• Kubernetes cluster connectivity
+• Environment variables configuration"""
+
 def get_code_quality_issues_list_for_dashboard(metrics):
     """Generate code quality issues list for dashboard"""
     try:
@@ -724,13 +797,28 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     }
                 },
                 
+                # ROW 2.5: Deployment Status (if deployed)
+                {
+                    "id": 4.5,
+                    "title": f"🚀 Deployment Status - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 4, "w": 24, "x": 0, "y": 10},
+                    "options": {
+                        "mode": "markdown",
+                        "content": f"""## 🚀 Deployment Status
+
+{get_deployment_status_content(repo_info, metrics)}
+"""
+                    }
+                },
+                
                 # ROW 3: Detailed Analysis (2 panels side by side)
                 # Panel 5: Security Vulnerabilities Details
                 {
                     "id": 5,
                     "title": f"🔍 Security Vulnerabilities - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 10},
+                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 14},
                     "options": {
                         "mode": "markdown",
                         "content": get_detailed_vulnerability_list_for_dashboard(metrics)
@@ -741,7 +829,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "id": 6,
                     "title": f"📁 Large Files & Optimization - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 10},
+                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 14},
                     "options": {
                         "mode": "markdown",
                         "content": f"""## 📁 Large Files Found - {repo_name}
@@ -768,7 +856,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "id": 7,
                     "title": f"🔧 Code Quality Analysis - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
                     "options": {
                         "mode": "markdown",
                         "content": f"""## 🔧 Code Quality Analysis - {repo_name}
@@ -794,7 +882,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "id": 8,
                     "title": f"🧪 Test Results Analysis - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
                     "options": {
                         "mode": "markdown",
                         "content": f"""## 🧪 Test Results Analysis - {repo_name}
@@ -899,11 +987,60 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     
+    # Get deployment information
+    dockerfile_exists = os.environ.get('DOCKERFILE_EXISTS', 'false').lower() == 'true'
+    app_url = os.environ.get('APP_URL', '')
+    deployment_name = os.environ.get('DEPLOYMENT_NAME', '')
+    service_name = os.environ.get('SERVICE_NAME', '')
+    namespace = os.environ.get('NAMESPACE', '')
+    node_port = os.environ.get('NODE_PORT', '')
+    
     # Get real scan results
     from create_jira_issue import get_detailed_vulnerability_list, get_quality_analysis, get_priority_actions, get_scan_metrics, get_security_issues_summary, get_scan_status
     
     vulnerabilities_found = get_scan_status()
     security_issues = get_security_issues_summary()
+    
+    # Create deployment section
+    deployment_section = ""
+    if dockerfile_exists and app_url:
+        terminate_url = f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml?repository={repo_name}&deployment={deployment_name}&namespace={namespace}"
+        
+        deployment_section = f"""
+*🚀 DEPLOYMENT INFORMATION:*
+• **Docker Build:** ✅ Completed (Dockerfile found)
+• **Kubernetes Deployment:** ✅ Deployed successfully
+• **Running App URL:** 🎯 [{app_url}]({app_url})
+• **Deployment Name:** {deployment_name}
+• **Namespace:** {namespace}
+• **Service:** {service_name}
+• **Node Port:** {node_port}
+
+*🛑 DEPLOYMENT MANAGEMENT:*
+• **Terminate Deployment:** [🛑 DELETE DEPLOYMENT]({terminate_url})
+• **Deployment Status:** 🟢 Running and accessible
+• **Access Method:** Direct NodePort access via {app_url}
+
+---
+"""
+    elif dockerfile_exists:
+        deployment_section = f"""
+*🚀 DEPLOYMENT INFORMATION:*
+• **Docker Build:** ✅ Completed (Dockerfile found)
+• **Kubernetes Deployment:** ⚠️ Deployment attempted but URL not available
+• **Deployment Name:** {deployment_name or 'Unknown'}
+• **Namespace:** {namespace or 'Unknown'}
+
+---
+"""
+    else:
+        deployment_section = f"""
+*🚀 DEPLOYMENT INFORMATION:*
+• **Docker Build:** ⚠️ Skipped (No Dockerfile found)
+• **Kubernetes Deployment:** ⚠️ Not applicable
+
+---
+"""
     
     # Create enhanced description with all details
     description = f"""
@@ -927,10 +1064,13 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 • 🎯 [View {repo_name} Dashboard]({dashboard_url})
 • This dashboard shows real-time metrics specific to {repo_name}
 
+{deployment_section}
+
 *Links:*
 • 🔗 [View Scanned Repository]({repo_url})
 • 📊 [Pipeline Dashboard for {repo_name}]({dashboard_url})
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+{f'• 🚀 [Running Application]({app_url})' if app_url else ''}
 
 *Security Scan Results:*
 • Status: {vulnerabilities_found}
@@ -951,14 +1091,16 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 
 *Next Steps:*
 1. Review the dedicated dashboard at {dashboard_url}
-2. Check security findings in pipeline logs
-3. Address any critical vulnerabilities found
-4. Implement code quality improvements in *{repo_name}*
-5. Update scanned repository if security issues are discovered
+{f'2. Test the running application at {app_url}' if app_url else '2. (No application deployed - no Dockerfile found)'}
+3. Check security findings in pipeline logs
+4. Address any critical vulnerabilities found
+5. Implement code quality improvements in *{repo_name}*
+{f'6. Terminate deployment when no longer needed: [🛑 DELETE]({terminate_url})' if dockerfile_exists and app_url else '6. Update scanned repository if security issues are discovered'}
 
 This issue was automatically created by the External Repository Scanner Pipeline
 Scanned Repository: {repo_name} | URL: {repo_url}
 Dedicated Dashboard: {dashboard_url}
+{f'Running Application: {app_url}' if app_url else 'No Application Deployed'}
 """
     
     # Prepare the payload

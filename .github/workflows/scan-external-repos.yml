@@ -652,6 +652,171 @@ jobs:
         
         echo "✅ Scan results saved for dashboard integration"
     
+    # ==========================================
+    # STAGE 9: DOCKER BUILD & KUBERNETES DEPLOYMENT
+    # ==========================================
+    - name: Check for Dockerfile
+      if: steps.read_config.outputs.has_repos == 'true'
+      id: check_dockerfile
+      run: |
+        cd external-repo
+        if [ -f "Dockerfile" ]; then
+          echo "dockerfile_exists=true" >> $GITHUB_OUTPUT
+          echo "✅ Dockerfile found - proceeding with Docker build"
+        else
+          echo "dockerfile_exists=false" >> $GITHUB_OUTPUT
+          echo "⚠️ No Dockerfile found - skipping Docker build and deployment"
+        fi
+    
+    - name: Build Docker Image
+      if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
+      id: docker_build
+      run: |
+        cd external-repo
+        
+        # Generate unique image name
+        IMAGE_NAME="${{ steps.read_config.outputs.repo_name }}"
+        IMAGE_TAG="${{ github.run_number }}"
+        FULL_IMAGE_NAME="pipeline-registry/${{ steps.read_config.outputs.repo_name }}:${{ github.run_number }}"
+        
+        echo "========================================="
+        echo "Building Docker Image"
+        echo "========================================="
+        echo "Repository: ${{ steps.read_config.outputs.repo_name }}"
+        echo "Image Name: $FULL_IMAGE_NAME"
+        echo "Tag: $IMAGE_TAG"
+        echo "========================================="
+        
+        # Build the Docker image
+        docker build -t "$FULL_IMAGE_NAME" .
+        
+        # Save image info for later steps
+        echo "image_name=$FULL_IMAGE_NAME" >> $GITHUB_OUTPUT
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        
+        echo "✅ Docker image built successfully: $FULL_IMAGE_NAME"
+    
+    - name: Deploy to Kubernetes
+      if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
+      id: k8s_deploy
+      run: |
+        echo "========================================="
+        echo "Deploying to Kubernetes"
+        echo "========================================="
+        
+        # Generate deployment name
+        DEPLOYMENT_NAME="${{ steps.read_config.outputs.repo_name }}-deployment"
+        SERVICE_NAME="${{ steps.read_config.outputs.repo_name }}-service"
+        NAMESPACE="pipeline-apps"
+        
+        echo "Deployment Name: $DEPLOYMENT_NAME"
+        echo "Service Name: $SERVICE_NAME"
+        echo "Namespace: $NAMESPACE"
+        echo "Image: ${{ steps.docker_build.outputs.image_name }}"
+        
+        # Create namespace if it doesn't exist
+        kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Create deployment YAML
+        cat > /tmp/deployment.yaml << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $DEPLOYMENT_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: ${{ steps.read_config.outputs.repo_name }}
+    pipeline-run: "${{ github.run_number }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${{ steps.read_config.outputs.repo_name }}
+  template:
+    metadata:
+      labels:
+        app: ${{ steps.read_config.outputs.repo_name }}
+    spec:
+      containers:
+      - name: ${{ steps.read_config.outputs.repo_name }}
+        image: ${{ steps.docker_build.outputs.image_name }}
+        ports:
+        - containerPort: 3000
+        - containerPort: 8080
+        - containerPort: 80
+        env:
+        - name: REPO_NAME
+          value: "${{ steps.read_config.outputs.repo_name }}"
+        - name: REPO_URL
+          value: "${{ steps.read_config.outputs.repo_url }}"
+        - name: PIPELINE_RUN
+          value: "${{ github.run_number }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: $SERVICE_NAME
+  namespace: $NAMESPACE
+  labels:
+    app: ${{ steps.read_config.outputs.repo_name }}
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: 300${{ github.run_number }}
+  selector:
+    app: ${{ steps.read_config.outputs.repo_name }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${{ steps.read_config.outputs.repo_name }}-ingress
+  namespace: $NAMESPACE
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: ${{ steps.read_config.outputs.repo_name }}.pipeline.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: $SERVICE_NAME
+            port:
+              number: 80
+EOF
+        
+        # Apply the deployment
+        kubectl apply -f /tmp/deployment.yaml
+        
+        # Wait for deployment to be ready
+        echo "Waiting for deployment to be ready..."
+        kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s
+        
+        # Get the service endpoint
+        NODE_PORT=$(kubectl get service $SERVICE_NAME -n $NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
+        CLUSTER_IP=$(kubectl get service $SERVICE_NAME -n $NAMESPACE -o jsonpath='{.spec.clusterIP}')
+        
+        # Generate app URLs
+        APP_URL="http://213.109.162.134:$NODE_PORT"
+        INTERNAL_URL="http://$CLUSTER_IP:80"
+        
+        echo "deployment_name=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
+        echo "service_name=$SERVICE_NAME" >> $GITHUB_OUTPUT
+        echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+        echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+        echo "internal_url=$INTERNAL_URL" >> $GITHUB_OUTPUT
+        echo "node_port=$NODE_PORT" >> $GITHUB_OUTPUT
+        
+        echo "✅ Deployment successful!"
+        echo "🚀 App URL: $APP_URL"
+        echo "🔗 Internal URL: $INTERNAL_URL"
+        echo "📊 Namespace: $NAMESPACE"
+        echo "🏷️  Deployment: $DEPLOYMENT_NAME"
+    
     - name: Create Dashboard and Jira Issue
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
@@ -668,6 +833,14 @@ jobs:
         SCAN_TYPE: ${{ steps.read_config.outputs.scan_type }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        # Docker & K8s deployment info
+        DOCKERFILE_EXISTS: ${{ steps.check_dockerfile.outputs.dockerfile_exists }}
+        DEPLOYMENT_NAME: ${{ steps.k8s_deploy.outputs.deployment_name }}
+        SERVICE_NAME: ${{ steps.k8s_deploy.outputs.service_name }}
+        NAMESPACE: ${{ steps.k8s_deploy.outputs.namespace }}
+        APP_URL: ${{ steps.k8s_deploy.outputs.app_url }}
+        INTERNAL_URL: ${{ steps.k8s_deploy.outputs.internal_url }}
+        NODE_PORT: ${{ steps.k8s_deploy.outputs.node_port }}
     
     - name: Summary Report
       if: steps.read_config.outputs.has_repos == 'true' && success()
@@ -690,6 +863,13 @@ jobs:
         echo "✅ Quality Assurance (QA)"
         echo "✅ ReportPortal Integration"
         echo "✅ Monitoring (Prometheus)"
+        if [ "${{ steps.check_dockerfile.outputs.dockerfile_exists }}" = "true" ]; then
+          echo "✅ Docker Build & Kubernetes Deployment"
+          echo "🚀 Running App: ${{ steps.k8s_deploy.outputs.app_url }}"
+          echo "🏷️  Deployment: ${{ steps.k8s_deploy.outputs.deployment_name }}"
+        else
+          echo "⚠️ Docker Build & Deployment (No Dockerfile found)"
+        fi
         echo "✅ Jira Integration"
         echo ""
         echo "Results available in:"
