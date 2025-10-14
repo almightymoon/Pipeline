@@ -15,12 +15,16 @@ repositories:
   #   branch: master
   #   scan_type: full 
 
-  - url: https://github.com/almightymoon/Neuropilot
-    name: Neuropilot-project
-    branch: main  # Changed from master to main   
-    scan_type: full  
+  # - url: https://github.com/almightymoon/Neuropilot
+  #   name: Neuropilot-project
+  #   branch: main  # Changed from master to main   
+  #   scan_type: full  
   # # Testing updated Jira dashboard link   
 
+      url: https://github.com/almightymoon/iman_tiles
+      name: iman_tiles
+      branch: main
+      scan_type: full
 # Scan types: 
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
 # - security-only: Only security and vulnerability scanning
