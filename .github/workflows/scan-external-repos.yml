@@ -776,7 +776,19 @@ jobs:
     - name: Deploy to Kubernetes
       if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
       id: k8s_deploy
+      env:
+        KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
       run: |
+        # Setup kubeconfig
+        echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
+        export KUBECONFIG=/tmp/kubeconfig
+        chmod 600 /tmp/kubeconfig
+        
+        # Verify connection
+        echo "🔍 Verifying Kubernetes connection..."
+        kubectl version --short || true
+        kubectl get nodes
+        
         echo "========================================="
         echo "Deploying to Kubernetes"
         echo "========================================="
