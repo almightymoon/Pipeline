@@ -384,37 +384,63 @@ def get_large_files_list_for_dashboard(metrics):
         # Try to get actual large files from scan results
         large_files_details = []
         
-        # Check quality results file
-        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
-        for quality_file in quality_files:
-            if os.path.exists(quality_file):
+        # Check multiple sources for real large files data
+        scan_files = [
+            '/tmp/quality-results.txt', 
+            'quality-results.txt', 
+            '/tmp/scan-results/quality-results.txt',
+            '/tmp/large-files.txt',
+            'large-files.txt',
+            '/tmp/scan-metrics.txt'
+        ]
+        
+        for scan_file in scan_files:
+            if os.path.exists(scan_file):
                 try:
-                    with open(quality_file, 'r') as f:
+                    with open(scan_file, 'r') as f:
                         content = f.read()
                     
-                    # Look for large files section
+                    # Look for actual file paths with sizes
                     lines = content.split('\n')
+                    
                     in_large_files_section = False
                     
                     for line in lines:
-                        if 'Large files' in line.lower() or 'files found' in line.lower():
+                        line = line.strip()
+                        
+                        # Check if we're in the large files details section
+                        if 'Large Files Details:' in line:
                             in_large_files_section = True
                             continue
                         
-                        if in_large_files_section and line.strip():
-                            if line.strip().startswith('-') or line.strip().startswith('•'):
-                                large_files_details.append(line.strip())
-                            elif 'MB' in line or 'KB' in line or 'GB' in line:
-                                large_files_details.append(f"- {line.strip()}")
+                        # Stop if we hit another section
+                        if in_large_files_section and (line.startswith('Total') or line.startswith('Files scanned') or line.startswith('Repository size')):
+                            break
+                        
+                        # Parse ls -lh output format (e.g., "-rw-r--r-- 1 user group 45.2M Oct 14 18:35 ./models/neural_network.pkl")
+                        if in_large_files_section and line and ('/' in line or '\\' in line):
+                            # Extract size and filename from ls output
+                            parts = line.split()
+                            if len(parts) >= 9:
+                                size = parts[4]  # Size field
+                                filename = parts[8]  # Filename field
+                                
+                                # Clean up filename (remove leading ./)
+                                if filename.startswith('./'):
+                                    filename = filename[2:]
+                                
+                                # Only include if it has a size indicator
+                                if 'M' in size or 'K' in size or 'G' in size:
+                                    large_files_details.append(f"- {filename} ({size})")
                     
                     if large_files_details:
                         return f"## 📁 {large_files_count} Large Files Found\n\n" + "\n".join(large_files_details[:15]) + ("\n\n*... and more large files*" if len(large_files_details) > 15 else "")
                         
                 except Exception as e:
-                    pass
+                    continue
         
-        # Fallback: show count only
-        return f"## 📁 {large_files_count} Large Files Found\n\nLarge files (>1MB) detected in the repository. Check pipeline logs for detailed file list."
+        # If no actual files found, show a message that no detailed list is available
+        return f"## 📁 {large_files_count} Large Files Found\n\n*Large files (>1MB) detected in the repository, but detailed file list not available in scan results.*"
         
     except Exception as e:
         return f"## ❌ Error Retrieving Large Files\n\n{str(e)[:100]}"

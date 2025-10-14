@@ -1,0 +1,24 @@
+Code Quality Report
+===================
+TODO/FIXME comments: 0
+Debug statements: 10
+Large files (>1MB): 11
+
+Large Files Details:
+-rw-r--r-- 1 user group 45.2M Oct 14 18:35 ./models/neural_network.pkl
+-rw-r--r-- 1 user group 32.1M Oct 14 18:35 ./data/training_dataset.csv
+-rw-r--r-- 1 user group 8.7M Oct 14 18:35 ./assets/images/background.jpg
+-rw-r--r-- 1 user group 5.3M Oct 14 18:35 ./logs/debug.log
+-rw-r--r-- 1 user group 4.8M Oct 14 18:35 ./cache/temp_data.bin
+-rw-r--r-- 1 user group 3.2M Oct 14 18:35 ./docs/manual.pdf
+-rw-r--r-- 1 user group 2.9M Oct 14 18:35 ./scripts/backup.sql
+-rw-r--r-- 1 user group 2.1M Oct 14 18:35 ./config/settings.json
+-rw-r--r-- 1 user group 1.8M Oct 14 18:35 ./tests/test_data.json
+-rw-r--r-- 1 user group 1.5M Oct 14 18:35 ./src/utils/helpers.py
+-rw-r--r-- 1 user group 1.2M Oct 14 18:35 ./temp/processing.tmp
+
+Total suggestions: 21
+
+Repository Information:
+Files scanned: 287
+Repository size: 302M

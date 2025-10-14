@@ -416,8 +416,19 @@ jobs:
         LARGE_FILES=$(find . -type f -size +1M -not -path "*/\.*" 2>/dev/null | wc -l || echo "0")
         echo "Large files (>1MB): $LARGE_FILES" >> /tmp/quality-results.txt
         
+        # Save actual large files with sizes
+        echo "" >> /tmp/quality-results.txt
+        echo "Large Files Details:" >> /tmp/quality-results.txt
+        find . -type f -size +1M -not -path "*/\.*" -exec ls -lh {} \; 2>/dev/null | head -20 >> /tmp/quality-results.txt || echo "  No large files found" >> /tmp/quality-results.txt
+        
         TOTAL_SUGGESTIONS=$((TODO_COUNT + DEBUG_COUNT + LARGE_FILES))
         echo "Total suggestions: $TOTAL_SUGGESTIONS" >> /tmp/quality-results.txt
+        
+        # Add repository information
+        echo "" >> /tmp/quality-results.txt
+        echo "Repository Information:" >> /tmp/quality-results.txt
+        echo "Files scanned: $(find . -type f -not -path '*/\.git/*' | wc -l)" >> /tmp/quality-results.txt
+        echo "Repository size: $(du -sh . | cut -f1)" >> /tmp/quality-results.txt
         
         echo "QA analysis completed"
     
