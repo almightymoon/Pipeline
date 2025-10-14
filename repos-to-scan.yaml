@@ -15,7 +15,7 @@ repositories:
   #   branch: master
   #   scan_type: full
 
-  - url: https://github.com/OzJasonGit/PFBD
+  - url: https://github.com/OzJasonGit/PFBD 
     name: pfbd-project 
     branch: main  # Changed from master to main 
     scan_type: full
