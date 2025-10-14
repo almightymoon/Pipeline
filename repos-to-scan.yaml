@@ -19,7 +19,7 @@ repositories:
     name: forex-project
     branch: main  # Changed from master to main 
     scan_type: full
-  # Testing updated dashboard for forex repository  
+  # Testing automatic dashboard updates  
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
