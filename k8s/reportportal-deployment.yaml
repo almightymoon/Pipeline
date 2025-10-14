@@ -1,0 +1,475 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reportportal
+  labels:
+    name: reportportal
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: reportportal-secrets
+  namespace: reportportal
+type: Opaque
+stringData:
+  postgres-password: "reportportal123"
+  rabbitmq-password: "reportportal123"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reportportal-config
+  namespace: reportportal
+data:
+  postgres.conf: |
+    # PostgreSQL configuration for ReportPortal
+    max_connections = 200
+    shared_buffers = 256MB
+    effective_cache_size = 1GB
+    maintenance_work_mem = 64MB
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+    default_statistics_target = 100
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: reportportal
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-pvc
+  namespace: reportportal
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reportportal-data-pvc
+  namespace: reportportal
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "reportportal"
+        - name: POSTGRES_USER
+          value: "rpuser"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: postgres-password
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: postgres-config
+          mountPath: /etc/postgresql/postgresql.conf
+          subPath: postgres.conf
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      - name: postgres-config
+        configMap:
+          name: reportportal-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: reportportal
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3.8-management
+        ports:
+        - containerPort: 5672
+        - containerPort: 15672
+        env:
+        - name: RABBITMQ_DEFAULT_USER
+          value: "rpuser"
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: rabbitmq-password
+        volumeMounts:
+        - name: rabbitmq-storage
+          mountPath: /var/lib/rabbitmq
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: rabbitmq-storage
+        persistentVolumeClaim:
+          claimName: rabbitmq-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: reportportal
+spec:
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 5672
+    targetPort: 5672
+    name: amqp
+  - port: 15672
+    targetPort: 15672
+    name: management
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportportal-gateway
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportportal-gateway
+  template:
+    metadata:
+      labels:
+        app: reportportal-gateway
+    spec:
+      containers:
+      - name: gateway
+        image: traefik:v2.4
+        ports:
+        - containerPort: 8080
+        args:
+        - --api.insecure=true
+        - --providers.kubernetescrd
+        - --entrypoints.web.address=:8080
+        - --entrypoints.websecure.address=:8443
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportportal-gateway
+  namespace: reportportal
+spec:
+  selector:
+    app: reportportal-gateway
+  ports:
+  - port: 8080
+    targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportportal-api
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportportal-api
+  template:
+    metadata:
+      labels:
+        app: reportportal-api
+    spec:
+      containers:
+      - name: api
+        image: reportportal/service-api:5.7.4
+        ports:
+        - containerPort: 8585
+        env:
+        - name: RP_DB_HOST
+          value: "postgres"
+        - name: RP_DB_PORT
+          value: "5432"
+        - name: RP_DB_NAME
+          value: "reportportal"
+        - name: RP_DB_USER
+          value: "rpuser"
+        - name: RP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: postgres-password
+        - name: RP_AMQP_HOST
+          value: "rabbitmq"
+        - name: RP_AMQP_PORT
+          value: "5672"
+        - name: RP_AMQP_USER
+          value: "rpuser"
+        - name: RP_AMQP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: rabbitmq-password
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportportal-api
+  namespace: reportportal
+spec:
+  selector:
+    app: reportportal-api
+  ports:
+  - port: 8585
+    targetPort: 8585
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportportal-ui
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportportal-ui
+  template:
+    metadata:
+      labels:
+        app: reportportal-ui
+    spec:
+      containers:
+      - name: ui
+        image: reportportal/service-ui:5.7.4
+        ports:
+        - containerPort: 8080
+        env:
+        - name: RP_SERVER_PORT
+          value: "8080"
+        - name: RP_API_BASE
+          value: "http://reportportal-api:8585"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportportal-ui
+  namespace: reportportal
+spec:
+  selector:
+    app: reportportal-ui
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportportal-uat
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportportal-uat
+  template:
+    metadata:
+      labels:
+        app: reportportal-uat
+    spec:
+      containers:
+      - name: uat
+        image: reportportal/service-uat:5.7.4
+        ports:
+        - containerPort: 9999
+        env:
+        - name: RP_DB_HOST
+          value: "postgres"
+        - name: RP_DB_PORT
+          value: "5432"
+        - name: RP_DB_NAME
+          value: "reportportal"
+        - name: RP_DB_USER
+          value: "rpuser"
+        - name: RP_DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: postgres-password
+        - name: RP_AMQP_HOST
+          value: "rabbitmq"
+        - name: RP_AMQP_PORT
+          value: "5672"
+        - name: RP_AMQP_USER
+          value: "rpuser"
+        - name: RP_AMQP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: reportportal-secrets
+              key: rabbitmq-password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportportal-uat
+  namespace: reportportal
+spec:
+  selector:
+    app: reportportal-uat
+  ports:
+  - port: 9999
+    targetPort: 9999
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportportal-index
+  namespace: reportportal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportportal-index
+  template:
+    metadata:
+      labels:
+        app: reportportal-index
+    spec:
+      containers:
+      - name: index
+        image: reportportal/service-index:5.7.4
+        ports:
+        - containerPort: 8080
+        env:
+        - name: RP_SERVER_PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportportal-index
+  namespace: reportportal
+spec:
+  selector:
+    app: reportportal-index
+  ports:
+  - port: 8080
+    targetPort: 8080
