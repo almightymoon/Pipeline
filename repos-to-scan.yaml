@@ -19,7 +19,7 @@ repositories:
     name: Neuropilot-project
     branch: main  # Changed from master to main 
     scan_type: full 
-  # Testing real data dashboard for Neuropilot-project  
+  # Testing fixed GitHub Actions workflow  
 
 # Scan types:
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
