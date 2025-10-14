@@ -21,7 +21,7 @@ repositories:
     scan_type: full  
   # Testing updated Jira dashboard link  
 
-# Scan types:
+# Scan types: 
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
 # - security-only: Only security and vulnerability scanning
 # - quick: Fast scan (basic checks and security only)
