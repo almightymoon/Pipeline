@@ -737,7 +737,15 @@ jobs:
               echo "🔍 Checking for package-lock.json in root directory:"
               ls -la package*.json || echo "No package files in root"
               
-              if [ ! -f "$DOCKERFILE_DIR/package-lock.json" ] && [ ! -f "package-lock.json" ] && grep -q "npm ci" "$TEMP_DOCKERFILE"; then
+              # Check if package-lock.json exists and fix Dockerfile accordingly
+              if [ -f "$DOCKERFILE_DIR/package-lock.json" ] && grep -q "COPY package\*\.json" "$TEMP_DOCKERFILE"; then
+                echo "🔧 package-lock.json found in $DOCKERFILE_DIR/ but Dockerfile copies from root - fixing COPY command"
+                # Replace COPY package*.json ./ with COPY result/package*.json ./
+                sed -i "s|COPY package\*\.json \./|COPY $DOCKERFILE_DIR/package*.json ./|g" "$TEMP_DOCKERFILE"
+                echo "🔧 Modified Dockerfile COPY command to use $DOCKERFILE_DIR/"
+                echo "🔧 Modified Dockerfile content:"
+                grep -n "COPY.*package" "$TEMP_DOCKERFILE" || echo "No COPY package commands found"
+              elif [ ! -f "$DOCKERFILE_DIR/package-lock.json" ] && [ ! -f "package-lock.json" ] && grep -q "npm ci" "$TEMP_DOCKERFILE"; then
                 echo "⚠️ No package-lock.json found in $DOCKERFILE_DIR/ or root, replacing 'npm ci' with 'npm install' in Dockerfile"
                 sed -i 's/npm ci/npm install/g' "$TEMP_DOCKERFILE"
                 echo "🔧 Modified Dockerfile content:"
