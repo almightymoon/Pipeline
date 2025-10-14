@@ -445,6 +445,128 @@ def get_large_files_list_for_dashboard(metrics):
     except Exception as e:
         return f"## ❌ Error Retrieving Large Files\n\n{str(e)[:100]}"
 
+def get_project_specific_recommendations(repo_name, large_files_details):
+    """Generate project-specific optimization recommendations based on actual files"""
+    try:
+        if not large_files_details:
+            return "No optimization recommendations needed."
+        
+        # Analyze file types from the actual large files
+        recommendations = []
+        
+        # Check for image files
+        image_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'])]
+        if image_files:
+            recommendations.append("**🖼️ Image Files:** Consider compressing images or using modern formats (WebP, AVIF)")
+        
+        # Check for video/media files
+        media_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.mp4', '.avi', '.mov', '.mkv', '.webm'])]
+        if media_files:
+            recommendations.append("**🎥 Media Files:** Consider using external CDN or cloud storage for large media files")
+        
+        # Check for data files
+        data_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.csv', '.json', '.xml', '.sql', '.db'])]
+        if data_files:
+            recommendations.append("**📊 Data Files:** Consider database storage or data compression")
+        
+        # Check for archives
+        archive_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.zip', '.tar', '.gz', '.rar', '.7z'])]
+        if archive_files:
+            recommendations.append("**📦 Archives:** Consider removing unnecessary archives or using .gitignore")
+        
+        # Check for logs
+        log_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.log', 'log/'])]
+        if log_files:
+            recommendations.append("**📝 Log Files:** Implement log rotation and cleanup policies")
+        
+        # Check for cache files
+        cache_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['cache/', 'temp/', '.tmp'])]
+        if cache_files:
+            recommendations.append("**🗂️ Cache Files:** Add to .gitignore and use proper cache cleanup")
+        
+        # Check for documentation
+        doc_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.pdf', '.doc', '.docx'])]
+        if doc_files:
+            recommendations.append("**📚 Documentation:** Consider using markdown files or external documentation hosting")
+        
+        # Check for binaries
+        binary_files = [f for f in large_files_details if any(ext in f.lower() for ext in ['.so', '.dll', '.exe', '.bin'])]
+        if binary_files:
+            recommendations.append("**⚙️ Binary Files:** Consider removing or using proper dependency management")
+        
+        if not recommendations:
+            recommendations.append("**📁 Large Files:** Consider reviewing if these files are necessary in the repository")
+        
+        return "\n".join(recommendations)
+        
+    except Exception as e:
+        return f"Error generating recommendations: {str(e)[:100]}"
+
+def get_large_files_details_for_recommendations():
+    """Get large files details for generating project-specific recommendations"""
+    try:
+        large_files_details = []
+        
+        # Check multiple sources for real large files data
+        scan_files = [
+            '/tmp/quality-results.txt', 
+            'quality-results.txt', 
+            '/tmp/scan-results/quality-results.txt',
+            '/tmp/large-files.txt',
+            'large-files.txt',
+            '/tmp/scan-metrics.txt'
+        ]
+        
+        for scan_file in scan_files:
+            if os.path.exists(scan_file):
+                try:
+                    with open(scan_file, 'r') as f:
+                        content = f.read()
+                    
+                    # Look for actual file paths with sizes
+                    lines = content.split('\n')
+                    
+                    in_large_files_section = False
+                    
+                    for line in lines:
+                        line = line.strip()
+                        
+                        # Check if we're in the large files details section
+                        if 'Large Files Details:' in line:
+                            in_large_files_section = True
+                            continue
+                        
+                        # Stop if we hit another section
+                        if in_large_files_section and (line.startswith('Total') or line.startswith('Files scanned') or line.startswith('Repository size')):
+                            break
+                        
+                        # Parse ls -lh output format (e.g., "-rw-r--r-- 1 user group 45.2M Oct 14 18:35 ./models/neural_network.pkl")
+                        if in_large_files_section and line and ('/' in line or '\\' in line):
+                            # Extract size and filename from ls output
+                            parts = line.split()
+                            if len(parts) >= 9:
+                                size = parts[4]  # Size field
+                                filename = parts[8]  # Filename field
+                                
+                                # Clean up filename (remove leading ./)
+                                if filename.startswith('./'):
+                                    filename = filename[2:]
+                                
+                                # Only include if it has a size indicator
+                                if 'M' in size or 'K' in size or 'G' in size:
+                                    large_files_details.append(filename)
+                        
+                    if large_files_details:
+                        return large_files_details
+                        
+                except Exception as e:
+                    continue
+        
+        return []
+        
+    except Exception as e:
+        return []
+
 def get_code_quality_issues_list_for_dashboard(metrics):
     """Generate code quality issues list for dashboard"""
     try:
@@ -498,10 +620,11 @@ def create_dashboard_with_real_data(repo_info, metrics):
             "timezone": "browser",
             "refresh": "30s",
             "panels": [
+                # ROW 1: Key Metrics (Top row - 3 equal panels)
                 # Panel 1: Pipeline Status
                 {
                     "id": 1,
-                    "title": f"Pipeline Status - {repo_name}",
+                    "title": f"🚀 Pipeline Status - {repo_name}",
                     "type": "stat",
                     "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
                     "targets": [
@@ -525,7 +648,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 # Panel 2: Security Vulnerabilities
                 {
                     "id": 2,
-                    "title": f"Security Vulnerabilities - {repo_name}",
+                    "title": f"🔒 Security Status - {repo_name}",
                     "type": "stat",
                     "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
                     "targets": [
@@ -548,10 +671,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 3: Code Quality (REAL DATA)
+                # Panel 3: Code Quality Overview
                 {
                     "id": 3,
-                    "title": f"Code Quality - {repo_name}",
+                    "title": f"📊 Code Quality - {repo_name}",
                     "type": "stat",
                     "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
                     "targets": [
@@ -574,92 +697,81 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 4: Test Results
+                
+                # ROW 2: Repository Information (Full width)
+                # Panel 4: Repository Information
                 {
                     "id": 4,
-                    "title": f"Test Results - {repo_name}",
-                    "type": "stat",
-                    "gridPos": {"h": 6, "w": 8, "x": 0, "y": 6},
-                    "targets": [
-                        {"expr": f"{metrics['tests']['passed']}", "legendFormat": "Tests Passed", "refId": "A"},
-                        {"expr": f"{metrics['tests']['failed']}", "legendFormat": "Tests Failed", "refId": "B"},
-                        {"expr": f"{metrics['tests']['coverage']}", "legendFormat": "Coverage %", "refId": "C"}
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "green", "value": 80},
-                                    {"color": "yellow", "value": 50},
-                                    {"color": "red", "value": None}
-                                ]
-                            },
-                            "unit": "short"
-                        }
+                    "title": f"📋 Repository Information - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 4, "w": 24, "x": 0, "y": 6},
+                    "options": {
+                        "mode": "markdown",
+                        "content": f"""## 📋 Repository Information
+
+| **Property** | **Value** |
+|--------------|-----------|
+| **Repository** | {repo_name} |
+| **URL** | [{repo_url}]({repo_url}) |
+| **Branch** | {repo_branch} |
+| **Scan Type** | {scan_type} |
+| **Scan Time** | {metrics['scan_info']['scan_time']} |
+| **Pipeline Run** | {metrics['scan_info']['pipeline_run']} |
+| **Files Scanned** | {metrics['scan_info']['files_scanned']} |
+| **Repository Size** | {metrics['scan_info']['repository_size']} |
+
+**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')} | **Dashboard Status:** ✅ Real-time data from pipeline run"""
                     }
                 },
-                # Panel 5: Repository Information
+                
+                # ROW 3: Detailed Analysis (2 panels side by side)
+                # Panel 5: Security Vulnerabilities Details
                 {
                     "id": 5,
-                    "title": "Repository Information",
+                    "title": f"🔍 Security Vulnerabilities - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 6, "w": 16, "x": 8, "y": 6},
+                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 10},
                     "options": {
                         "mode": "markdown",
-                        "content": f"""## 📊 Repository Information - {repo_name}
-
-**Repository:** {repo_name}  
-**URL:** [{repo_url}]({repo_url})  
-**Branch:** {repo_branch}  
-**Scan Type:** {scan_type}  
-**Scan Time:** {metrics['scan_info']['scan_time']}  
-**Pipeline Run:** {metrics['scan_info']['pipeline_run']}  
-**Files Scanned:** {metrics['scan_info']['files_scanned']}  
-**Repository Size:** {metrics['scan_info']['repository_size']}  
-
-**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}  
-**Dashboard Status:** ✅ Real-time data from pipeline run"""
+                        "content": get_detailed_vulnerability_list_for_dashboard(metrics)
                     }
                 },
-                # Panel 6: Security Details
+                # Panel 6: Large Files with Project-Specific Recommendations
                 {
                     "id": 6,
-                    "title": "🔒 Detailed Security Vulnerabilities",
+                    "title": f"📁 Large Files & Optimization - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 10},
                     "options": {
                         "mode": "markdown",
-                        "content": f"""## 🔒 Security Vulnerabilities Analysis - {repo_name}
+                        "content": f"""## 📁 Large Files Found - {repo_name}
 
-### Critical Vulnerabilities: {metrics['security']['critical']}
-{'✅ No critical vulnerabilities found' if metrics['security']['critical'] == 0 else f'🚨 {metrics["security"]["critical"]} critical vulnerabilities found!'}
+{get_large_files_list_for_dashboard(metrics)}
 
-### High Vulnerabilities: {metrics['security']['high']}
-{'✅ No high vulnerabilities found' if metrics['security']['high'] == 0 else f'⚠️ {metrics["security"]["high"]} high vulnerabilities found!'}
+---
 
-### Medium Vulnerabilities: {metrics['security']['medium']}
-{'✅ No medium vulnerabilities found' if metrics['security']['medium'] == 0 else f'🟡 {metrics["security"]["medium"]} medium vulnerabilities found!'}
+## 🎯 Project-Specific Optimization Recommendations
 
-### Low Vulnerabilities: {metrics['security']['low']}
-{'✅ No low vulnerabilities found' if metrics['security']['low'] == 0 else f'🔵 {metrics["security"]["low"]} low vulnerabilities found!'}
+{get_project_specific_recommendations(repo_name, get_large_files_details_for_recommendations())}
 
-### Overall Security Status:
-**Total Vulnerabilities:** {metrics['security']['total']}  
-**Security Grade:** {'🟢 EXCELLENT' if metrics['security']['total'] == 0 else '🟡 NEEDS ATTENTION' if metrics['security']['total'] < 5 else '🔴 CRITICAL'}
+---
 
-{'**✅ Repository is secure - no vulnerabilities detected!**' if metrics['security']['total'] == 0 else f'**⚠️ {metrics["security"]["total"]} vulnerabilities need attention**'}"""
+## 📊 File Analysis Summary
+- **Total Large Files:** {metrics['quality']['large_files']} files > 1MB
+- **Priority:** {'✅ No optimization needed' if metrics['quality']['large_files'] == 0 else '🟡 LOW' if metrics['quality']['large_files'] < 10 else '🔴 HIGH'} - Performance optimization {'not needed' if metrics['quality']['large_files'] == 0 else 'recommended'}"""
                     }
                 },
-                # Panel 7: Code Quality Details (REAL DATA)
+                
+                # ROW 4: Code Quality and Test Results (2 panels side by side)
+                # Panel 7: Code Quality Analysis
                 {
                     "id": 7,
-                    "title": "📝 Detailed Code Quality Issues",
+                    "title": f"🔧 Code Quality Analysis - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
                     "options": {
                         "mode": "markdown",
-                        "content": f"""## 📝 Code Quality Analysis - {repo_name}
+                        "content": f"""## 🔧 Code Quality Analysis - {repo_name}
 
 ### TODO/FIXME Comments: {metrics['quality']['todo_comments']}
 {'✅ No TODO/FIXME comments found - code is clean!' if metrics['quality']['todo_comments'] == 0 else f'⚠️ {metrics["quality"]["todo_comments"]} TODO/FIXME comments need attention'}
@@ -674,38 +786,13 @@ def create_dashboard_with_real_data(repo_info, metrics):
 **Grade:** {'🟢 EXCELLENT' if metrics['quality']['quality_score'] >= 90 else '🟡 GOOD' if metrics['quality']['quality_score'] >= 70 else '🔴 NEEDS IMPROVEMENT'}
 
 ### Total Improvements Needed: {metrics['quality']['total_improvements']}
-{'✅ No improvements needed - code is excellent!' if metrics['quality']['total_improvements'] == 0 else f'🎯 {metrics["quality"]["total_improvements"]} improvements suggested'}
-
-**📊 This data matches your Jira report exactly!**"""
+{'✅ No improvements needed - code is excellent!' if metrics['quality']['total_improvements'] == 0 else f'🎯 {metrics["quality"]["total_improvements"]} improvements suggested'}"""
                     }
                 },
-                # Panel 8: Large Files Details
+                # Panel 8: Test Results Analysis
                 {
                     "id": 8,
-                    "title": "📦 Large Files Details (Need Optimization)",
-                    "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 📦 Large Files Requiring Optimization - {repo_name}
-
-**Total Large Files:** {metrics['quality']['large_files']} files > 1MB
-
-### Optimization Recommendations:
-- **ML Models:** Consider using model compression or external storage
-- **Datasets:** Use data compression or chunked loading
-- **Log Files:** Implement log rotation and cleanup
-- **Cache Files:** Consider cleanup policies
-
-**Priority:** {'✅ No optimization needed' if metrics['quality']['large_files'] == 0 else '🟡 LOW' if metrics['quality']['large_files'] < 10 else '🔴 HIGH'} - Performance optimization {'not needed' if metrics['quality']['large_files'] == 0 else 'recommended'}
-
-**Note:** Large files can impact repository performance and clone times."""
-                    }
-                },
-                # Panel 9: Test Results Details
-                {
-                    "id": 9,
-                    "title": "🧪 Detailed Test Results",
+                    "title": f"🧪 Test Results Analysis - {repo_name}",
                     "type": "text",
                     "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
                     "options": {
@@ -727,39 +814,6 @@ def create_dashboard_with_real_data(repo_info, metrics):
 - **Quality:** {'🟢 EXCELLENT' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '🟡 GOOD' if metrics['tests']['failed'] <= 1 else '🔴 NEEDS ATTENTION'}
 
 {'**✅ Test suite is healthy with good coverage!**' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '**⚠️ Test suite needs attention**'}"""
-                    }
-                },
-                # Panel 5: Detailed Vulnerability List
-                {
-                    "id": 5,
-                    "title": f"🔍 Detailed Vulnerabilities - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
-                    "options": {
-                        "mode": "markdown",
-                        "content": get_detailed_vulnerability_list_for_dashboard(metrics)
-                    }
-                },
-                # Panel 6: Large Files List
-                {
-                    "id": 6,
-                    "title": f"📁 Large Files - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
-                    "options": {
-                        "mode": "markdown",
-                        "content": get_large_files_list_for_dashboard(metrics)
-                    }
-                },
-                # Panel 7: Code Quality Issues List
-                {
-                    "id": 7,
-                    "title": f"🔧 Code Quality Issues - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
-                    "options": {
-                        "mode": "markdown",
-                        "content": get_code_quality_issues_list_for_dashboard(metrics)
                     }
                 }
             ],

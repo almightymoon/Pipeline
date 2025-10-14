@@ -26,7 +26,6 @@ repositories:
     branch: main 
     scan_type: full      
 
-
 # Scan types: 
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
 # - security-only: Only security and vulnerability scanning
