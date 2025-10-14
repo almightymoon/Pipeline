@@ -13,7 +13,7 @@ repositories:
   - url: https://github.com/tensorflow/models
     name: tensorflow-models
     branch: master
-    scan_type: full
+    scan_type: full 
 
   # - url: https://github.com/almightymoon/Neuropilot
   #   name: Neuropilot-project
