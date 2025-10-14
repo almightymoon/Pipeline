@@ -660,11 +660,39 @@ jobs:
       id: check_dockerfile
       run: |
         cd external-repo
+        
+        # Check for Dockerfile in root or common subdirectories
+        DOCKERFILE_PATH=""
+        
+        # Check root directory first
         if [ -f "Dockerfile" ]; then
+          DOCKERFILE_PATH="Dockerfile"
+          echo "✅ Dockerfile found in root directory"
+        # Check common subdirectories for Dockerfiles
+        elif [ -f "result/Dockerfile" ]; then
+          DOCKERFILE_PATH="result/Dockerfile"
+          echo "✅ Dockerfile found in result/Dockerfile"
+        elif [ -f "vote/Dockerfile" ]; then
+          DOCKERFILE_PATH="vote/Dockerfile"
+          echo "✅ Dockerfile found in vote/Dockerfile"
+        elif [ -f "worker/Dockerfile" ]; then
+          DOCKERFILE_PATH="worker/Dockerfile"
+          echo "✅ Dockerfile found in worker/Dockerfile"
+        elif [ -f "seed-data/Dockerfile" ]; then
+          DOCKERFILE_PATH="seed-data/Dockerfile"
+          echo "✅ Dockerfile found in seed-data/Dockerfile"
+        else
+          echo "⚠️ No Dockerfile found in root or common subdirectories"
+          echo "Searched: Dockerfile, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
+        fi
+        
+        if [ -n "$DOCKERFILE_PATH" ]; then
           echo "dockerfile_exists=true" >> $GITHUB_OUTPUT
-          echo "✅ Dockerfile found - proceeding with Docker build"
+          echo "dockerfile_path=$DOCKERFILE_PATH" >> $GITHUB_OUTPUT
+          echo "✅ Dockerfile found at $DOCKERFILE_PATH - proceeding with Docker build"
         else
           echo "dockerfile_exists=false" >> $GITHUB_OUTPUT
+          echo "dockerfile_path=" >> $GITHUB_OUTPUT
           echo "⚠️ No Dockerfile found - skipping Docker build and deployment"
         fi
     
@@ -673,6 +701,9 @@ jobs:
       id: docker_build
       run: |
         cd external-repo
+        
+        # Get Dockerfile path from previous step
+        DOCKERFILE_PATH="${{ steps.check_dockerfile.outputs.dockerfile_path }}"
         
         # Generate unique image name
         IMAGE_NAME="${{ steps.read_config.outputs.repo_name }}"
@@ -685,14 +716,16 @@ jobs:
         echo "Repository: ${{ steps.read_config.outputs.repo_name }}"
         echo "Image Name: $FULL_IMAGE_NAME"
         echo "Tag: $IMAGE_TAG"
+        echo "Dockerfile Path: $DOCKERFILE_PATH"
         echo "========================================="
         
-        # Build the Docker image
-        docker build -t "$FULL_IMAGE_NAME" .
+        # Build the Docker image using the correct Dockerfile path
+        docker build -f "$DOCKERFILE_PATH" -t "$FULL_IMAGE_NAME" .
         
         # Save image info for later steps
         echo "image_name=$FULL_IMAGE_NAME" >> $GITHUB_OUTPUT
         echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "dockerfile_path=$DOCKERFILE_PATH" >> $GITHUB_OUTPUT
         
         echo "✅ Docker image built successfully: $FULL_IMAGE_NAME"
     
