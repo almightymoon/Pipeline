@@ -369,7 +369,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Pipeline Dashboard - Detailed Real Data](http://213.109.162.134:30102/d/070193c9-beb0-49eb-856d-080d0095db5b/pipeline-dashboard-detailed-real-data)
+• 📊 [Pipeline Dashboard - Complete Details](http://213.109.162.134:30102/d/fdc25d81-4cbc-4a72-ae9d-835c62961bff/pipeline-dashboard-complete-details)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
