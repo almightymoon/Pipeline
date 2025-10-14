@@ -1,0 +1,426 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Dynamic Pipeline Dashboard",
+    "tags": ["pipeline", "dynamic", "real-data"],
+    "timezone": "browser",
+    "templating": {
+      "list": [
+        {
+          "name": "repository",
+          "type": "query",
+          "query": "label_values(pipeline_runs_total, repository)",
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false,
+          "current": {
+            "selected": false,
+            "text": "Neuropilot-project",
+            "value": "Neuropilot-project"
+          }
+        },
+        {
+          "name": "repo_url",
+          "type": "textbox",
+          "query": "https://github.com/almightymoon/Neuropilot",
+          "current": {
+            "selected": false,
+            "text": "https://github.com/almightymoon/Neuropilot"
+          }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\"})",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"success\"})",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"failed\"})",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Repository Information",
+        "type": "text",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Repository Information\n\n**Repository:** $repository\n**URL:** $repo_url\n**Last Updated:** {{now}}\n\n### Real Metrics\n- **Pipeline Runs:** {{sum(pipeline_runs_total{repository=\"$repository\"})}} total\n- **Security Vulnerabilities:** {{sum(security_vulnerabilities_total{repository=\"$repository\"})}} total\n- **Code Quality Score:** {{code_quality_score{repository=\"$repository\"}}}%\n- **Tests Passed:** {{sum(tests_passed_total{repository=\"$repository\"})}}\n\n**Data Source:** Prometheus (Real-time)"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Security Vulnerabilities - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"CRITICAL\"})",
+            "legendFormat": "Critical",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"HIGH\"})",
+            "legendFormat": "High",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"MEDIUM\"})",
+            "legendFormat": "Medium",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"LOW\"})",
+            "legendFormat": "Low",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Code Quality Metrics - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(code_quality_todo_comments_total{repository=\"$repository\"})",
+            "legendFormat": "TODO/FIXME",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(code_quality_debug_statements_total{repository=\"$repository\"})",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(code_quality_large_files_total{repository=\"$repository\"})",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "code_quality_score{repository=\"$repository\"}",
+            "legendFormat": "Quality Score",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Test Results - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(tests_passed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(tests_failed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "tests_coverage_percentage{repository=\"$repository\"}",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Pipeline Timeline - Real Data",
+        "type": "timeseries",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 14
+        },
+        "targets": [
+          {
+            "expr": "pipeline_run_duration_seconds{repository=\"$repository\"}",
+            "legendFormat": "Duration (seconds)",
+            "refId": "A"
+          },
+          {
+            "expr": "pipeline_run_number{repository=\"$repository\"}",
+            "legendFormat": "Run Number",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "never",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Security Vulnerabilities Details",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "security_vulnerabilities_found{repository=\"$repository\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Code Quality Details",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 22
+        },
+        "targets": [
+          {
+            "expr": "code_quality_todo_comments_total{repository=\"$repository\"} or code_quality_debug_statements_total{repository=\"$repository\"} or code_quality_large_files_total{repository=\"$repository\"} or code_quality_score{repository=\"$repository\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  },
+  "overwrite": true
+}

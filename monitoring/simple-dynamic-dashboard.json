@@ -1,0 +1,247 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Dynamic Pipeline Dashboard - Real Data",
+    "tags": ["pipeline", "dynamic", "real-data"],
+    "timezone": "browser",
+    "templating": {
+      "list": [
+        {
+          "name": "repository",
+          "type": "query",
+          "query": "label_values(pipeline_runs_total, repository)",
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false,
+          "current": {
+            "selected": false,
+            "text": "Neuropilot-project",
+            "value": "Neuropilot-project"
+          }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\"})",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"success\"})",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"failed\"})",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Security Vulnerabilities - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"CRITICAL\"})",
+            "legendFormat": "Critical",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"HIGH\"})",
+            "legendFormat": "High",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"MEDIUM\"})",
+            "legendFormat": "Medium",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"LOW\"})",
+            "legendFormat": "Low",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Code Quality Metrics - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(code_quality_todo_comments_total{repository=\"$repository\"})",
+            "legendFormat": "TODO/FIXME",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(code_quality_debug_statements_total{repository=\"$repository\"})",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(code_quality_large_files_total{repository=\"$repository\"})",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "code_quality_score{repository=\"$repository\"}",
+            "legendFormat": "Quality Score",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Test Results - Real Data",
+        "type": "stat",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "sum(tests_passed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(tests_failed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "tests_coverage_percentage{repository=\"$repository\"}",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  },
+  "overwrite": true
+}
