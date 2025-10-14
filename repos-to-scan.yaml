@@ -21,7 +21,7 @@ repositories:
   #   scan_type: full  
   # # Testing updated Jira dashboard link   
 
-  - url: https://github.com/almightymoon/https://github.com/dockersamples/example-voting-app
+  - url: https://github.com/dockersamples/example-voting-app
     name: example-voting-app
     branch: main 
     scan_type: full      
