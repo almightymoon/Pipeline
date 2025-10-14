@@ -319,6 +319,136 @@ def extract_real_metrics_from_pipeline():
     
     return metrics
 
+def get_detailed_vulnerability_list_for_dashboard(metrics):
+    """Generate detailed vulnerability list for dashboard"""
+    try:
+        vulnerability_details = []
+        
+        # Check Trivy results
+        trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+        for trivy_file in trivy_files:
+            if os.path.exists(trivy_file):
+                try:
+                    with open(trivy_file, 'r') as f:
+                        trivy_data = json.load(f)
+                    
+                    if 'Results' in trivy_data:
+                        for result in trivy_data['Results']:
+                            if 'Vulnerabilities' in result:
+                                for vuln in result['Vulnerabilities']:
+                                    vuln_id = vuln.get('VulnerabilityID', 'Unknown')
+                                    pkg_name = vuln.get('PkgName', 'Unknown')
+                                    severity = vuln.get('Severity', 'Unknown')
+                                    title = vuln.get('Title', 'No title')
+                                    installed_version = vuln.get('InstalledVersion', 'Unknown')
+                                    
+                                    # Format severity with emoji
+                                    severity_emoji = {
+                                        'CRITICAL': '🔴',
+                                        'HIGH': '🟠', 
+                                        'MEDIUM': '🟡',
+                                        'LOW': '🟢'
+                                    }.get(severity.upper(), '⚪')
+                                    
+                                    vulnerability_details.append(
+                                        f"**{severity_emoji} {severity}** | {vuln_id}\n"
+                                        f"- Package: {pkg_name} ({installed_version})\n"
+                                        f"- Issue: {title}\n"
+                                    )
+                    
+                    if vulnerability_details:
+                        return "## 🔍 Security Vulnerabilities Found\n\n" + "\n".join(vulnerability_details[:10]) + ("\n\n*... and more vulnerabilities*" if len(vulnerability_details) > 10 else "")
+                    else:
+                        return "## ✅ No Vulnerabilities Found\n\nNo security vulnerabilities detected in the scan."
+                        
+                except Exception as e:
+                    return f"## ⚠️ Error Parsing Vulnerabilities\n\nCould not parse vulnerability details: {str(e)[:100]}"
+        
+        # If no vulnerabilities found
+        if metrics['security']['total'] == 0:
+            return "## ✅ No Vulnerabilities Found\n\nNo security vulnerabilities detected in the scan."
+        else:
+            return f"## 🔍 {metrics['security']['total']} Vulnerabilities Found\n\nCheck pipeline logs for detailed vulnerability information."
+        
+    except Exception as e:
+        return f"## ❌ Error Retrieving Vulnerabilities\n\n{str(e)[:100]}"
+
+def get_large_files_list_for_dashboard(metrics):
+    """Generate large files list for dashboard"""
+    try:
+        large_files_count = metrics['quality']['large_files']
+        
+        if large_files_count == 0:
+            return "## ✅ No Large Files Found\n\nAll files are under 1MB in size."
+        
+        # Try to get actual large files from scan results
+        large_files_details = []
+        
+        # Check quality results file
+        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
+        for quality_file in quality_files:
+            if os.path.exists(quality_file):
+                try:
+                    with open(quality_file, 'r') as f:
+                        content = f.read()
+                    
+                    # Look for large files section
+                    lines = content.split('\n')
+                    in_large_files_section = False
+                    
+                    for line in lines:
+                        if 'Large files' in line.lower() or 'files found' in line.lower():
+                            in_large_files_section = True
+                            continue
+                        
+                        if in_large_files_section and line.strip():
+                            if line.strip().startswith('-') or line.strip().startswith('•'):
+                                large_files_details.append(line.strip())
+                            elif 'MB' in line or 'KB' in line or 'GB' in line:
+                                large_files_details.append(f"- {line.strip()}")
+                    
+                    if large_files_details:
+                        return f"## 📁 {large_files_count} Large Files Found\n\n" + "\n".join(large_files_details[:15]) + ("\n\n*... and more large files*" if len(large_files_details) > 15 else "")
+                        
+                except Exception as e:
+                    pass
+        
+        # Fallback: show count only
+        return f"## 📁 {large_files_count} Large Files Found\n\nLarge files (>1MB) detected in the repository. Check pipeline logs for detailed file list."
+        
+    except Exception as e:
+        return f"## ❌ Error Retrieving Large Files\n\n{str(e)[:100]}"
+
+def get_code_quality_issues_list_for_dashboard(metrics):
+    """Generate code quality issues list for dashboard"""
+    try:
+        issues = []
+        
+        # TODO/FIXME comments
+        if metrics['quality']['todo_comments'] > 0:
+            issues.append(f"**📝 TODO/FIXME Comments:** {metrics['quality']['todo_comments']}")
+        
+        # Debug statements
+        if metrics['quality']['debug_statements'] > 0:
+            issues.append(f"**🐛 Debug Statements:** {metrics['quality']['debug_statements']}")
+        
+        # Large files
+        if metrics['quality']['large_files'] > 0:
+            issues.append(f"**📁 Large Files:** {metrics['quality']['large_files']}")
+        
+        # Quality score
+        quality_score = metrics['quality']['quality_score']
+        quality_status = "🟢 EXCELLENT" if quality_score >= 90 else "🟡 GOOD" if quality_score >= 70 else "🔴 NEEDS ATTENTION"
+        issues.append(f"**📊 Quality Score:** {quality_score}/100 ({quality_status})")
+        
+        if issues:
+            return "## 🔧 Code Quality Issues\n\n" + "\n".join(issues) + f"\n\n**Total Improvements Suggested:** {metrics['quality']['total_improvements']}"
+        else:
+            return "## ✅ No Code Quality Issues\n\nCode quality analysis shows no significant issues found."
+        
+    except Exception as e:
+        return f"## ❌ Error Retrieving Quality Issues\n\n{str(e)[:100]}"
+
 def create_dashboard_with_real_data(repo_info, metrics):
     """Create Grafana dashboard with real data"""
     
@@ -571,6 +701,39 @@ def create_dashboard_with_real_data(repo_info, metrics):
 - **Quality:** {'🟢 EXCELLENT' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '🟡 GOOD' if metrics['tests']['failed'] <= 1 else '🔴 NEEDS ATTENTION'}
 
 {'**✅ Test suite is healthy with good coverage!**' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '**⚠️ Test suite needs attention**'}"""
+                    }
+                },
+                # Panel 5: Detailed Vulnerability List
+                {
+                    "id": 5,
+                    "title": f"🔍 Detailed Vulnerabilities - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+                    "options": {
+                        "mode": "markdown",
+                        "content": get_detailed_vulnerability_list_for_dashboard(metrics)
+                    }
+                },
+                # Panel 6: Large Files List
+                {
+                    "id": 6,
+                    "title": f"📁 Large Files - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+                    "options": {
+                        "mode": "markdown",
+                        "content": get_large_files_list_for_dashboard(metrics)
+                    }
+                },
+                # Panel 7: Code Quality Issues List
+                {
+                    "id": 7,
+                    "title": f"🔧 Code Quality Issues - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+                    "options": {
+                        "mode": "markdown",
+                        "content": get_code_quality_issues_list_for_dashboard(metrics)
                     }
                 }
             ],

@@ -220,6 +220,66 @@ def get_quality_suggestions():
     except Exception as e:
         return None
 
+def get_detailed_vulnerability_list():
+    """Get detailed list of vulnerabilities found"""
+    try:
+        vulnerability_details = []
+        
+        # Check Trivy results
+        trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+        for trivy_file in trivy_files:
+            if os.path.exists(trivy_file):
+                try:
+                    with open(trivy_file, 'r') as f:
+                        trivy_data = json.load(f)
+                    
+                    if 'Results' in trivy_data:
+                        for result in trivy_data['Results']:
+                            if 'Vulnerabilities' in result:
+                                for vuln in result['Vulnerabilities']:
+                                    vuln_id = vuln.get('VulnerabilityID', 'Unknown')
+                                    pkg_name = vuln.get('PkgName', 'Unknown')
+                                    severity = vuln.get('Severity', 'Unknown')
+                                    title = vuln.get('Title', 'No title')
+                                    
+                                    # Format severity with emoji
+                                    severity_emoji = {
+                                        'CRITICAL': '🔴',
+                                        'HIGH': '🟠', 
+                                        'MEDIUM': '🟡',
+                                        'LOW': '🟢'
+                                    }.get(severity.upper(), '⚪')
+                                    
+                                    vulnerability_details.append(
+                                        f"• {severity_emoji} **{severity}** | {vuln_id} in {pkg_name}: {title}"
+                                    )
+                    
+                    if vulnerability_details:
+                        return "*🔍 Detailed Vulnerability List:*\n" + "\n".join(vulnerability_details[:10]) + ("\n• ... (and more)" if len(vulnerability_details) > 10 else "")
+                    else:
+                        return "*🔍 Detailed Vulnerability List:*\n• ✅ No vulnerabilities found"
+                        
+                except Exception as e:
+                    return "*🔍 Detailed Vulnerability List:*\n• ⚠️ Could not parse vulnerability details"
+        
+        # If no Trivy results, check for other security scan results
+        if os.path.exists('/tmp/secrets-found.txt'):
+            try:
+                with open('/tmp/secrets-found.txt', 'r') as f:
+                    secrets_content = f.read().strip()
+                
+                if secrets_content and "No secrets found" not in secrets_content:
+                    return "*🔍 Detailed Vulnerability List:*\n• 🔍 Potential secrets detected (check pipeline logs for details)"
+                else:
+                    return "*🔍 Detailed Vulnerability List:*\n• ✅ No secrets found"
+            except:
+                pass
+        
+        return "*🔍 Detailed Vulnerability List:*\n• ⚠️ No vulnerability scan data available"
+        
+    except Exception as e:
+        return "*🔍 Detailed Vulnerability List:*\n• ❌ Error retrieving vulnerability details"
+
 def get_quality_analysis():
     """Get detailed quality analysis for Jira description"""
     try:
@@ -412,52 +472,58 @@ def create_enhanced_description(base_description):
 
 ----
 
-🔍 **EXTERNAL REPOSITORY SCAN REPORT**
-----
+🔍 *EXTERNAL REPOSITORY SCAN REPORT*
 
-**Repository Being Scanned:**
-• **Name:** {repo_name}
-• **URL:** {repo_url}
-• **Link:** {repo_link}
-• **Branch:** {repo_branch}
-• **Scan Type:** {scan_type}
-• **Scan Time:** {current_time}
+*Repository Being Scanned:*
+• *Name:* {repo_name}
+• *URL:* {repo_url}
+• *Link:* {repo_link}
+• *Branch:* {repo_branch}
+• *Scan Type:* {scan_type}
+• *Scan Time:* {current_time}
 
-**Pipeline Information:**
+*Pipeline Information:*
 • Run ID: {github_run_id}
 • Run Number: {github_run_number}
 • Workflow: External Repository Security Scan
+• Status: ✅ Completed
 
-**Links:**
+*📊 DEDICATED DASHBOARD FOR THIS REPOSITORY:*
+• 🎯 [View {repo_name} Dashboard]({dashboard_url})
+• This dashboard shows real-time metrics specific to {repo_name}
+
+*Links:*
 • 🔗 [View Scanned Repository]({repo_url})
 • 📊 [Pipeline Dashboard for {repo_name}]({dashboard_url})
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
-**Security Scan Results:**
+*Security Scan Results:*
 • Status: {vulnerabilities_found}
 • Issues Found: {security_issues}
 • Scan Completed: ✅
 
-**📊 Code Quality Analysis - Detailed Breakdown:**
+{get_detailed_vulnerability_list()}
+
+*📊 Code Quality Analysis - Detailed Breakdown:*
 
 {get_quality_analysis()}
 
-**🎯 Priority Actions Required:**
+*🎯 Priority Actions Required:*
 {get_priority_actions()}
 
-**Scan Metrics:**
+*Scan Metrics:*
 • {get_scan_metrics()}
 
-**Next Steps:**
-1. Review security findings in pipeline logs (link above)
-2. Check Pipeline Dashboard - Real Data for detailed metrics
+*Next Steps:*
+1. Review the dedicated dashboard at {dashboard_url}
+2. Check security findings in pipeline logs
 3. Address any critical vulnerabilities found
-4. Implement code quality improvements in **{repo_name}**
+4. Implement code quality improvements in *{repo_name}*
 5. Update scanned repository if security issues are discovered
 
-----
-*This issue was automatically created by the External Repository Scanner Pipeline*
-*Scanned Repository: {repo_name} | URL: {repo_url}*
+This issue was automatically created by the External Repository Scanner Pipeline
+Scanned Repository: {repo_name} | URL: {repo_url}
+Dedicated Dashboard: {dashboard_url}
 """
     return enhanced_description
 
