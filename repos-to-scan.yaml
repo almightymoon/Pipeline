@@ -21,8 +21,8 @@ repositories:
   #   scan_type: full  
   # # Testing updated Jira dashboard link   
 
-  - url: https://github.com/almightymoon/node-jwt-auth
-    name: node-jwt-auth
+  - url: https://github.com/almightymoon/https://github.com/dockersamples/example-voting-app
+    name: example-voting-app
     branch: main 
     scan_type: full      
 
