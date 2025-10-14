@@ -20,6 +20,8 @@ A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitH
 ### 📊 Monitoring & Observability
 - **Prometheus**: Metrics collection and monitoring
 - **Grafana**: Beautiful dashboards and visualizations
+- **Repository-Specific Dashboards**: 🆕 Unique dashboard for each repository scanned
+- **Automated Dashboard Creation**: Auto-generates dashboards with real-time metrics
 - **Real-time Alerts**: Automated alerting system
 - **Pipeline Metrics**: Track build times, success rates, and more
 
@@ -236,6 +238,43 @@ Access Grafana at `http://your-server:30102`:
 - **Infrastructure**: Resource usage and health
 
 Default credentials: `admin` / `admin123`
+
+### 🆕 Repository-Specific Dashboards
+
+**Each repository gets its own unique dashboard!**
+
+When you scan a repository, the system automatically:
+1. ✅ Creates a unique Grafana dashboard for that repository
+2. ✅ Populates it with real-time metrics from the pipeline run
+3. ✅ Creates a Jira ticket with a direct link to that dashboard
+
+**Quick Start:**
+```bash
+# 1. Configure your repository
+vim repos-to-scan.yaml
+
+# 2. Run your pipeline (scans the repository)
+
+# 3. Create dashboard and Jira ticket
+./create-repo-dashboard.sh
+```
+
+**Example Dashboards:**
+- `tensorflow-models` → `http://213.109.162.134:30102/d/e03ed124.../tensorflow-models`
+- `neuropilot-project` → `http://213.109.162.134:30102/d/abc123.../neuropilot-project`
+- `your-repo` → Automatically generated with unique URL
+
+**What You Get:**
+- 📊 Security vulnerabilities (Critical, High, Medium, Low)
+- 📝 Code quality metrics (TODO comments, debug statements)
+- 🧪 Test results (passed, failed, coverage)
+- 📁 Repository info (files scanned, size, scan time)
+
+**Documentation:**
+- 📖 [Quick Start Guide](QUICK_START_DASHBOARDS.md)
+- 📖 [Full Documentation](REPOSITORY_DASHBOARD_GUIDE.md)
+- 📖 [Live Demo](DASHBOARD_DEMO.md)
+- 📖 [System Overview](SYSTEM_OVERVIEW.md)
 
 ### Prometheus Metrics
 

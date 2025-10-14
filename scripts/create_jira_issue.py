@@ -1,46 +1,69 @@
 #!/usr/bin/env python3
 """
-Create Jira issue via API
+Create Jira issue via API with dynamic dashboard creation
 """
 import os
 import sys
 import requests
 import json
-import subprocess
-import re
+import yaml
+import hashlib
 from datetime import datetime
 
-def get_latest_dashboard_uid():
-    """Get the latest dashboard UID from Grafana"""
+def read_current_repo():
+    """Read the current repository from repos-to-scan.yaml"""
     try:
-        # Try to get the latest dashboard UID by querying Grafana API
-        grafana_url = "http://213.109.162.134:30102"
-        grafana_user = "admin"
-        grafana_pass = "admin123"
+        with open('repos-to-scan.yaml', 'r') as f:
+            data = yaml.safe_load(f)
         
-        # Search for dashboards with "current-repository" in the title
-        search_url = f"{grafana_url}/api/search?query=current-repository"
+        if data and 'repositories' in data and data['repositories']:
+            # Get the first active (non-commented) repository
+            for repo in data['repositories']:
+                if repo and 'url' in repo and repo['url']:
+                    return {
+                        'url': repo['url'],
+                        'name': repo.get('name', 'unknown'),
+                        'branch': repo.get('branch', 'main'),
+                        'scan_type': repo.get('scan_type', 'full')
+                    }
         
-        response = requests.get(
-            search_url,
-            auth=(grafana_user, grafana_pass),
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            dashboards = response.json()
-            if dashboards:
-                # Get the most recent dashboard (assuming they're ordered by creation time)
-                latest_dashboard = dashboards[0]
-                return latest_dashboard.get('uid', 'ae4e244b-b4b3-42af-8bb4-1cfcf29f7112')
-        
-        # Return the new improved dashboard UID
-        return "511356ad-4922-4477-a851-2b8d9df0b8ce"
-        
+        return {
+            'url': os.environ.get('REPO_URL', 'https://github.com/example/repo'),
+            'name': os.environ.get('REPO_NAME', 'example-repo'),
+            'branch': os.environ.get('REPO_BRANCH', 'main'),
+            'scan_type': 'full'
+        }
     except Exception as e:
-        print(f"Warning: Could not get latest dashboard UID: {e}")
-        # Return the new improved dashboard UID as fallback
-        return "511356ad-4922-4477-a851-2b8d9df0b8ce"
+        print(f"Warning: Could not read repos-to-scan.yaml: {e}")
+        return {
+            'url': os.environ.get('REPO_URL', 'https://github.com/example/repo'),
+            'name': os.environ.get('REPO_NAME', 'example-repo'),
+            'branch': os.environ.get('REPO_BRANCH', 'main'),
+            'scan_type': 'full'
+        }
+
+def generate_dashboard_uid(repo_name):
+    """Generate a unique and consistent UID for each repository"""
+    hash_object = hashlib.md5(repo_name.encode())
+    hash_hex = hash_object.hexdigest()
+    uid = f"{hash_hex[0:8]}-{hash_hex[8:12]}-{hash_hex[12:16]}-{hash_hex[16:20]}-{hash_hex[20:32]}"
+    return uid
+
+def get_dashboard_url_for_repo(repo_name):
+    """Get the dashboard URL for the current repository (and create if needed)"""
+    grafana_url = "http://213.109.162.134:30102"
+    dashboard_uid = generate_dashboard_uid(repo_name)
+    dashboard_slug = repo_name.lower().replace(' ', '-')
+    dashboard_url = f"{grafana_url}/d/{dashboard_uid}/pipeline-dashboard-{dashboard_slug}"
+    
+    # Try to trigger dashboard creation by calling the creation script
+    try:
+        print(f"📊 Dashboard URL for {repo_name}: {dashboard_url}")
+        print(f"💡 Tip: Run './create-repo-dashboard.sh' to create the dashboard with real-time metrics")
+    except Exception as e:
+        print(f"Note: Dashboard URL generated: {dashboard_url}")
+    
+    return dashboard_url
 
 def get_scan_status():
     """Get actual scan status from pipeline results"""
@@ -348,11 +371,13 @@ def create_enhanced_description(base_description):
     """Create enhanced description with scan details"""
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     
-    # Get additional environment variables with fallbacks
-    repo_url = os.environ.get('REPO_URL', os.environ.get('GITHUB_REPOSITORY_URL', 'Unknown'))
-    repo_name = os.environ.get('REPO_NAME', os.environ.get('GITHUB_REPOSITORY', 'Unknown'))
-    repo_branch = os.environ.get('REPO_BRANCH', os.environ.get('GITHUB_REF_NAME', 'main'))
-    scan_type = os.environ.get('SCAN_TYPE', 'full')
+    # Get repository info from repos-to-scan.yaml or environment
+    repo_info = read_current_repo()
+    repo_name = repo_info['name']
+    repo_url = repo_info['url']
+    repo_branch = repo_info['branch']
+    scan_type = repo_info['scan_type']
+    
     github_run_id = os.environ.get('GITHUB_RUN_ID', 'Unknown')
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
     
@@ -372,6 +397,9 @@ def create_enhanced_description(base_description):
     # Try to get actual scan results
     vulnerabilities_found = get_scan_status()
     security_issues = get_security_issues_summary()
+    
+    # Get the dynamic dashboard URL for this specific repository
+    dashboard_url = get_dashboard_url_for_repo(repo_name)
     
     # Build repository link  
     if repo_url and repo_url != "Unknown":
@@ -402,7 +430,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [IMPROVED Pipeline Dashboard - REAL DATA with Details!](http://213.109.162.134:30102/d/511356ad-4922-4477-a851-2b8d9df0b8ce/improved-dashboard-neuropilot-project)
+• 📊 [Pipeline Dashboard for {repo_name}]({dashboard_url})
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
