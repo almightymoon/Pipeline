@@ -1,0 +1,350 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Comprehensive Pipeline Dashboard - Real Data",
+    "tags": ["pipeline", "comprehensive", "real-data"],
+    "timezone": "browser",
+    "templating": {
+      "list": [
+        {
+          "name": "repository",
+          "type": "query",
+          "query": "label_values(pipeline_runs_total, repository)",
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false,
+          "current": {
+            "selected": false,
+            "text": "Neuropilot-project",
+            "value": "Neuropilot-project"
+          }
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Pipeline Status Overview",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\"})",
+            "legendFormat": "Total Runs",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"success\"})",
+            "legendFormat": "Successful",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pipeline_runs_total{repository=\"$repository\",status=\"failed\"})",
+            "legendFormat": "Failed",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 1
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Security Vulnerabilities Details",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"CRITICAL\"})",
+            "legendFormat": "Critical",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"HIGH\"})",
+            "legendFormat": "High",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"MEDIUM\"})",
+            "legendFormat": "Medium",
+            "refId": "C"
+          },
+          {
+            "expr": "sum(security_vulnerabilities_found{repository=\"$repository\",severity=\"LOW\"})",
+            "legendFormat": "Low",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "red",
+                  "value": 5
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Code Quality Analysis",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "sum(code_quality_todo_comments_total{repository=\"$repository\"})",
+            "legendFormat": "TODO/FIXME",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(code_quality_debug_statements_total{repository=\"$repository\"})",
+            "legendFormat": "Debug Statements",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(code_quality_large_files_total{repository=\"$repository\"})",
+            "legendFormat": "Large Files",
+            "refId": "C"
+          },
+          {
+            "expr": "code_quality_score{repository=\"$repository\"}",
+            "legendFormat": "Quality Score",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 90
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Test Results",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 6
+        },
+        "targets": [
+          {
+            "expr": "sum(tests_passed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Passed",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(tests_failed_total{repository=\"$repository\"})",
+            "legendFormat": "Tests Failed",
+            "refId": "B"
+          },
+          {
+            "expr": "tests_coverage_percentage{repository=\"$repository\"}",
+            "legendFormat": "Coverage %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "green",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "short"
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Detailed Security Vulnerabilities",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 8,
+          "y": 6
+        },
+        "targets": [
+          {
+            "expr": "security_vulnerabilities_found{repository=\"$repository\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 6,
+        "title": "Code Quality Details",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "code_quality_todo_comments_total{repository=\"$repository\"} or code_quality_debug_statements_total{repository=\"$repository\"} or code_quality_large_files_total{repository=\"$repository\"} or code_quality_total_improvements{repository=\"$repository\"}",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "id": 7,
+        "title": "Pipeline Failure Analysis",
+        "type": "text",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "options": {
+          "mode": "markdown",
+          "content": "## Pipeline Failure Analysis\n\n**Current Repository:** $repository\n\n### Failure Reasons (if any):\n- **Checkout Issues:** Repository access problems\n- **Build Failures:** Dependency or compilation errors\n- **Test Failures:** Unit/integration test failures\n- **Security Scan Issues:** Vulnerability scanner problems\n- **Deployment Issues:** Infrastructure or configuration problems\n\n### Success Indicators:\n✅ **Scan Completed Successfully** - All security checks passed\n✅ **No Critical Vulnerabilities** - Repository is secure\n✅ **Code Quality Good** - Minimal technical debt\n✅ **Tests Passing** - High test coverage maintained\n\n### Action Items:\n1. Review any failed pipeline runs in GitHub Actions\n2. Check Jira issues for detailed failure analysis\n3. Monitor security vulnerabilities regularly\n4. Address code quality improvements\n\n**Last Updated:** {{now}}\n**Data Source:** Prometheus (Real-time)"
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  },
+  "overwrite": true
+}
