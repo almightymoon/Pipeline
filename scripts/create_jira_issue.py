@@ -34,13 +34,13 @@ def get_latest_dashboard_uid():
                 latest_dashboard = dashboards[0]
                 return latest_dashboard.get('uid', 'ae4e244b-b4b3-42af-8bb4-1cfcf29f7112')
         
-        # Fallback to the working dashboard UID if API call fails
-        return "6c8598d8-895f-4289-89d8-3ad3592da8ab"
+        # Return the new real data dashboard UID
+        return "d183f30a-5a3d-4710-9e45-647775ef0a0d"
         
     except Exception as e:
         print(f"Warning: Could not get latest dashboard UID: {e}")
-        # Return the working dashboard UID as fallback
-        return "6c8598d8-895f-4289-89d8-3ad3592da8ab"
+        # Return the new real data dashboard UID as fallback
+        return "d183f30a-5a3d-4710-9e45-647775ef0a0d"
 
 def get_scan_status():
     """Get actual scan status from pipeline results"""
@@ -402,7 +402,7 @@ def create_enhanced_description(base_description):
 
 **Links:**
 • 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Pipeline Dashboard - Neuropilot-project](http://213.109.162.134:30102/d/6c8598d8-895f-4289-89d8-3ad3592da8ab/pipeline-dashboard-neuropilot-project)
+• 📊 [Pipeline Dashboard - REAL DATA (No Dummy Data!)](http://213.109.162.134:30102/d/d183f30a-5a3d-4710-9e45-647775ef0a0d/real-data-dashboard-neuropilot-project)
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 **Security Scan Results:**
