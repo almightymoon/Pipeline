@@ -10,15 +10,15 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/tensorflow/models
-    name: tensorflow-models
-    branch: master
-    scan_type: full 
+  # - url: https://github.com/tensorflow/models
+  #   name: tensorflow-models
+  #   branch: master
+  #   scan_type: full 
 
-  # - url: https://github.com/almightymoon/Neuropilot
-  #   name: Neuropilot-project
-  #   branch: main  # Changed from master to main  
-  #   scan_type: full  
+  - url: https://github.com/almightymoon/Neuropilot
+    name: Neuropilot-project
+    branch: main  # Changed from master to main   
+    scan_type: full  
   # # Testing updated Jira dashboard link   
 
 # Scan types: 
