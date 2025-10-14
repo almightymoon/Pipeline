@@ -819,45 +819,66 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     
-    # Create description
+    # Get real scan results
+    from create_jira_issue import get_detailed_vulnerability_list, get_quality_analysis, get_priority_actions, get_scan_metrics, get_security_issues_summary, get_scan_status
+    
+    vulnerabilities_found = get_scan_status()
+    security_issues = get_security_issues_summary()
+    
+    # Create enhanced description with all details
     description = f"""
-🔍 **EXTERNAL REPOSITORY SCAN REPORT**
-----
+🔍 *EXTERNAL REPOSITORY SCAN REPORT*
 
-**Repository Being Scanned:**
-• **Name:** {repo_name}
-• **URL:** {repo_url}
-• **Link:** [{repo_name}]({repo_url})
-• **Branch:** {repo_branch}
-• **Scan Type:** {scan_type}
-• **Scan Time:** {current_time}
+*Repository Being Scanned:*
+• *Name:* {repo_name}
+• *URL:* {repo_url}
+• *Link:* [{repo_name}]({repo_url})
+• *Branch:* {repo_branch}
+• *Scan Type:* {scan_type}
+• *Scan Time:* {current_time}
 
-**Pipeline Information:**
+*Pipeline Information:*
 • Run ID: {github_run_id}
 • Run Number: {github_run_number}
 • Workflow: External Repository Security Scan
 • Status: ✅ Completed
 
-**📊 DEDICATED DASHBOARD FOR THIS REPOSITORY:**
+*📊 DEDICATED DASHBOARD FOR THIS REPOSITORY:*
 • 🎯 [View {repo_name} Dashboard]({dashboard_url})
 • This dashboard shows real-time metrics specific to {repo_name}
 
-**Links:**
+*Links:*
 • 🔗 [View Scanned Repository]({repo_url})
 • 📊 [Pipeline Dashboard for {repo_name}]({dashboard_url})
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
-**Next Steps:**
+*Security Scan Results:*
+• Status: {vulnerabilities_found}
+• Issues Found: {security_issues}
+• Scan Completed: ✅
+
+{get_detailed_vulnerability_list()}
+
+*📊 Code Quality Analysis - Detailed Breakdown:*
+
+{get_quality_analysis()}
+
+*🎯 Priority Actions Required:*
+{get_priority_actions()}
+
+*Scan Metrics:*
+• {get_scan_metrics()}
+
+*Next Steps:*
 1. Review the dedicated dashboard at {dashboard_url}
 2. Check security findings in pipeline logs
 3. Address any critical vulnerabilities found
-4. Implement code quality improvements in {repo_name}
+4. Implement code quality improvements in *{repo_name}*
 5. Update scanned repository if security issues are discovered
 
-----
-*This issue was automatically created by the External Repository Scanner Pipeline*
-*Scanned Repository: {repo_name} | URL: {repo_url}*
-*Dedicated Dashboard: {dashboard_url}*
+This issue was automatically created by the External Repository Scanner Pipeline
+Scanned Repository: {repo_name} | URL: {repo_url}
+Dedicated Dashboard: {dashboard_url}
 """
     
     # Prepare the payload
