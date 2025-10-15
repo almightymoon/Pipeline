@@ -26,9 +26,15 @@ spec:
         #   - |
         #     # Custom entrypoint detection logic removed - let Dockerfile CMD run
         ports:
-        - containerPort: 3000
-        - containerPort: 8080
-        - containerPort: 80
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        - name: http-alt
+          containerPort: 8000
+          protocol: TCP
+        - name: http-8080
+          containerPort: 8080
+          protocol: TCP
         env:
         - name: REPO_NAME
           value: "REPO_NAME_PLACEHOLDER"
@@ -47,8 +53,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-  - port: 80
-    targetPort: 8000
+  - name: http
+    port: 80
+    targetPort: http
     nodePort: NODE_PORT_PLACEHOLDER
   selector:
     app: REPO_NAME_PLACEHOLDER
