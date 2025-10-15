@@ -919,6 +919,35 @@ jobs:
         
         echo "✅ Namespace cleaned - ready for new deployment"
         
+        # Auto-detect application port from Docker image
+        echo "🔍 Auto-detecting application port..."
+        
+        # Try to detect EXPOSE port from Dockerfile
+        APP_PORT=""
+        if [ -f "external-repo/Dockerfile" ]; then
+          APP_PORT=$(grep -i "^EXPOSE" external-repo/Dockerfile | head -1 | awk '{print $2}' | tr -d '\r')
+          if [ -n "$APP_PORT" ]; then
+            echo "✅ Found EXPOSE port in Dockerfile: $APP_PORT"
+          fi
+        fi
+        
+        # If not found in Dockerfile, inspect the Docker image
+        if [ -z "$APP_PORT" ]; then
+          echo "🔍 Inspecting Docker image for exposed ports..."
+          APP_PORT=$(docker inspect ${{ steps.docker_build.outputs.image_name }} --format='{{range $p, $conf := .Config.ExposedPorts}}{{$p}}{{end}}' | cut -d'/' -f1 | head -1)
+          if [ -n "$APP_PORT" ]; then
+            echo "✅ Found exposed port in Docker image: $APP_PORT"
+          fi
+        fi
+        
+        # Fallback to common ports if still not found
+        if [ -z "$APP_PORT" ]; then
+          echo "⚠️  No port detected, using default port 5000"
+          APP_PORT=5000
+        fi
+        
+        echo "📊 Using application port: $APP_PORT"
+        
         # Copy deployment template and replace placeholders
         cp k8s/deployment-template.yaml /tmp/deployment.yaml
         
@@ -930,6 +959,7 @@ jobs:
         sed -i "s|IMAGE_NAME_PLACEHOLDER|${{ steps.docker_build.outputs.image_name }}|g" /tmp/deployment.yaml
         sed -i "s|REPO_URL_PLACEHOLDER|${{ steps.read_config.outputs.repo_url }}|g" /tmp/deployment.yaml
         sed -i "s|SERVICE_NAME_PLACEHOLDER|$SERVICE_NAME|g" /tmp/deployment.yaml
+        sed -i "s|APP_PORT_PLACEHOLDER|$APP_PORT|g" /tmp/deployment.yaml
         # Generate valid NodePort (30000-32767 range)
         NODE_PORT=$((30000 + (${{ github.run_number }} % 2768)))
         sed -i "s|NODE_PORT_PLACEHOLDER|$NODE_PORT|g" /tmp/deployment.yaml

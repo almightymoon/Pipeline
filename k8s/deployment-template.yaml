@@ -19,24 +19,9 @@ spec:
       - name: REPO_NAME_PLACEHOLDER
         image: IMAGE_NAME_PLACEHOLDER
         imagePullPolicy: IfNotPresent
-        # Let the application run with its default command from Dockerfile
-        # Only override for specific applications that need custom entrypoint detection
-        # command: ["/bin/sh", "-c"]
-        # args:
-        #   - |
-        #     # Custom entrypoint detection logic removed - let Dockerfile CMD run
         ports:
         - name: http
-          containerPort: 5000
-          protocol: TCP
-        - name: http-3000
-          containerPort: 3000
-          protocol: TCP
-        - name: http-8000
-          containerPort: 8000
-          protocol: TCP
-        - name: http-8080
-          containerPort: 8080
+          containerPort: APP_PORT_PLACEHOLDER
           protocol: TCP
         env:
         - name: REPO_NAME
@@ -45,6 +30,8 @@ spec:
           value: "REPO_URL_PLACEHOLDER"
         - name: PIPELINE_RUN
           value: "RUN_NUMBER_PLACEHOLDER"
+        - name: PORT
+          value: "APP_PORT_PLACEHOLDER"
 ---
 apiVersion: v1
 kind: Service
@@ -58,7 +45,7 @@ spec:
   ports:
   - name: http
     port: 80
-    targetPort: http
+    targetPort: APP_PORT_PLACEHOLDER
     nodePort: NODE_PORT_PLACEHOLDER
   selector:
     app: REPO_NAME_PLACEHOLDER
