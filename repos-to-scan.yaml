@@ -15,21 +15,22 @@ repositories:
   #   branch: master
   #   scan_type: full 
 
-  # - url: https://github.com/almightymoon/Neuropilot
-  #   name: Neuropilot-project
-  #   branch: main  # Changed from master to main   
-  #   scan_type: full  
+  - url: https://github.com/edwin/hello-world-java-docker.git
+    name: hello-world-java-docker
+    branch: main   # Changed from master to main   
+    scan_type: full  
   # # Testing updated Jira dashboard link   
 
-  - url: https://github.com/almightymoon/dockerized-hello-world-app
-    name: dockerized-hello-world-app
-    branch: main 
-    scan_type: full       
+  # - url: https://github.com/almightymoon/dockerized-hello-world-app
+  #   name: dockerized-hello-world-app
+  #   branch: main 
+  #   scan_type: full       
 
   # - url: https://github.com/almightymoon/qaicb
   #   name: qaicb
   #   branch: main 
   #   scan_type: full  
+
 
 # Scan types: 
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
