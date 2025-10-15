@@ -56,7 +56,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: APP_HOST_PLACEHOLDER
+  - host: HOST_NAME_PLACEHOLDER
     http:
       paths:
       - path: /
