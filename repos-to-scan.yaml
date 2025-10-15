@@ -15,8 +15,8 @@ repositories:
   #   branch: master
   #   scan_type: full 
 
-  - url: https://github.com/edwin/hello-world-java-docker.git
-    name: hello-world-java-docker
+  - url: https://github.com/almightymoon/sample-docker-app.git
+    name: sample-docker-app
     branch: main   # Changed from master to main   
     scan_type: full  
   # # Testing updated Jira dashboard link   
