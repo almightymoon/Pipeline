@@ -37,3 +37,4 @@ repositories:
 # - security-only: Only security and vulnerability scanning
 # - quick: Fast scan (basic checks and security only)
 
+# Test commit to trigger external repo scanner
