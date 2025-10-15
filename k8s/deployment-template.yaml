@@ -19,9 +19,6 @@ spec:
       - name: REPO_NAME_PLACEHOLDER
         image: IMAGE_NAME_PLACEHOLDER
         imagePullPolicy: IfNotPresent
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -34,38 +31,7 @@ spec:
               cd /usr/local/app && node server.js
             elif [ -f "/usr/local/app/result/server.js" ]; then
               echo "✅ Found server.js in /usr/local/app/result/"
-              echo "🚀 Starting example-voting-app with database setup..."
-              
-              # Set up environment variables for the app
-              export POSTGRES_HOST=localhost
-              export POSTGRES_DB=postgres
-              export POSTGRES_USER=postgres
-              export POSTGRES_PASSWORD=password
-              export REDIS_HOST=localhost
-              export REDIS_PORT=6379
-              
-              # Install and start PostgreSQL
-              echo "📦 Installing PostgreSQL..."
-              apt-get update -qq && apt-get install -y postgresql postgresql-contrib
-              
-              # Start PostgreSQL service
-              service postgresql start
-              
-              # Create database and user
-              sudo -u postgres psql -c "CREATE DATABASE postgres;"
-              sudo -u postgres psql -c "CREATE USER postgres WITH PASSWORD 'password';"
-              sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;"
-              
-              # Install and start Redis
-              echo "📦 Installing Redis..."
-              apt-get install -y redis-server
-              service redis-server start
-              
-              # Wait for services to be ready
-              sleep 5
-              
-              # Start the application
-              echo "🎯 Starting example-voting-app..."
+              echo "🚀 Starting the actual application..."
               cd /usr/local/app/result && node server.js
             elif [ -f "/usr/local/app/vote/app.py" ]; then
               echo "✅ Found app.py in /usr/local/app/vote/"
