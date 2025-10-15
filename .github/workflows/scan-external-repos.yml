@@ -869,6 +869,25 @@ jobs:
         # Create namespace if it doesn't exist
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
         
+        # Delete old deployment if it exists (to free up resources and avoid conflicts)
+        echo "🗑️  Checking for existing deployment..."
+        if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "📌 Found existing deployment, terminating..."
+          kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --wait=true --timeout=60s
+          echo "✅ Old deployment terminated"
+        else
+          echo "ℹ️  No existing deployment found"
+        fi
+        
+        # Delete old service if it exists (to free up NodePort)
+        if kubectl get service "$SERVICE_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "📌 Found existing service, deleting..."
+          kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE" --wait=true --timeout=30s
+          echo "✅ Old service deleted"
+        else
+          echo "ℹ️  No existing service found"
+        fi
+        
         # Copy deployment template and replace placeholders
         cp k8s/deployment-template.yaml /tmp/deployment.yaml
         
