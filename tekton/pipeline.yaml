@@ -98,6 +98,10 @@ spec:
         name: build-and-analyze-task
       runAfter: ["validate-commit"]
       params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
         - name: image-name
           value: $(params.image-name)
         - name: image-tag

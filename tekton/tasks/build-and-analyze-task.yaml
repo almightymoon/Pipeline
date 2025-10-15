@@ -10,6 +10,13 @@ spec:
   description: "Build container images and analyze dependencies"
   
   params:
+    - name: git-url
+      type: string
+      description: "Git repository URL"
+    - name: git-revision
+      type: string
+      description: "Git revision/branch"
+      default: "main"
     - name: image-name
       type: string
       description: "Container image name"
