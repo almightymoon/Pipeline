@@ -866,19 +866,19 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "content": f"""## 🔧 Code Quality Analysis - {repo_name}
 
 ### TODO/FIXME Comments: {metrics['quality']['todo_comments']}
-{'✅ No TODO/FIXME comments found - code is clean!' if metrics['quality']['todo_comments'] == 0 else f'⚠️ {metrics["quality"]["todo_comments"]} TODO/FIXME comments need attention'}
+{'No TODO/FIXME comments found - code is clean!' if metrics['quality']['todo_comments'] == 0 else f'{metrics["quality"]["todo_comments"]} TODO/FIXME comments need attention'}
 
 ### Debug Statements: {metrics['quality']['debug_statements']}
-{'✅ No debug statements found - production ready!' if metrics['quality']['debug_statements'] == 0 else f'🔧 {metrics["quality"]["debug_statements"]} debug statements should be removed'}
+{'No debug statements found - production ready!' if metrics['quality']['debug_statements'] == 0 else f'{metrics["quality"]["debug_statements"]} debug statements should be removed'}
 
 ### Large Files (>1MB): {metrics['quality']['large_files']}
-{'✅ No large files found - optimized!' if metrics['quality']['large_files'] == 0 else f'📦 {metrics["quality"]["large_files"]} large files need optimization'}
+{'No large files found - optimized!' if metrics['quality']['large_files'] == 0 else f'{metrics["quality"]["large_files"]} large files need optimization'}
 
 ### Quality Score: {metrics['quality']['quality_score']}/100
-**Grade:** {'🟢 EXCELLENT' if metrics['quality']['quality_score'] >= 90 else '🟡 GOOD' if metrics['quality']['quality_score'] >= 70 else '🔴 NEEDS IMPROVEMENT'}
+**Grade:** {'EXCELLENT' if metrics['quality']['quality_score'] >= 90 else 'GOOD' if metrics['quality']['quality_score'] >= 70 else 'NEEDS IMPROVEMENT'}
 
 ### Total Improvements Needed: {metrics['quality']['total_improvements']}
-{'✅ No improvements needed - code is excellent!' if metrics['quality']['total_improvements'] == 0 else f'🎯 {metrics["quality"]["total_improvements"]} improvements suggested'}"""
+{'No improvements needed - code is excellent!' if metrics['quality']['total_improvements'] == 0 else f'{metrics["quality"]["total_improvements"]} improvements suggested'}"""
                     }
                 },
                 # Panel 8: Test Results Analysis
@@ -1083,11 +1083,11 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 
 {get_detailed_vulnerability_list()}
 
-*📊 Code Quality Analysis - Detailed Breakdown:*
+*Code Quality Analysis - Detailed Breakdown:*
 
 {get_quality_analysis()}
 
-*🎯 Priority Actions Required:*
+*Priority Actions Required:*
 {get_priority_actions()}
 
 *Scan Metrics:*

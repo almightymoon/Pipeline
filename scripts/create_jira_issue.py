@@ -292,12 +292,12 @@ def get_detailed_vulnerability_list():
                                     )
                     
                     if vulnerability_details:
-                        return "*🔍 Detailed Vulnerability List:*\n" + "\n".join(vulnerability_details[:10]) + ("\n• ... (and more)" if len(vulnerability_details) > 10 else "")
+                        return "Detailed Vulnerability List:\n" + "\n".join(vulnerability_details[:10]) + ("\n• ... (and more)" if len(vulnerability_details) > 10 else "")
                     else:
-                        return "*🔍 Detailed Vulnerability List:*\n• ✅ No vulnerabilities found"
+                        return "Detailed Vulnerability List:\n• No vulnerabilities found"
                         
                 except Exception as e:
-                    return "*🔍 Detailed Vulnerability List:*\n• ⚠️ Could not parse vulnerability details"
+                    return "Detailed Vulnerability List:\n• Could not parse vulnerability details"
         
         # If no Trivy results, check for other security scan results
         if os.path.exists('/tmp/secrets-found.txt'):
@@ -306,16 +306,16 @@ def get_detailed_vulnerability_list():
                     secrets_content = f.read().strip()
                 
                 if secrets_content and "No secrets found" not in secrets_content:
-                    return "*🔍 Detailed Vulnerability List:*\n• 🔍 Potential secrets detected (check pipeline logs for details)"
+                    return "Detailed Vulnerability List:\n• Potential secrets detected (check pipeline logs for details)"
                 else:
-                    return "*🔍 Detailed Vulnerability List:*\n• ✅ No secrets found"
+                    return "Detailed Vulnerability List:\n• No secrets found"
             except:
                 pass
         
-        return "*🔍 Detailed Vulnerability List:*\n• ⚠️ No vulnerability scan data available"
+        return "Detailed Vulnerability List:\n• No vulnerability scan data available"
         
     except Exception as e:
-        return "*🔍 Detailed Vulnerability List:*\n• ❌ Error retrieving vulnerability details"
+        return "Detailed Vulnerability List:\n• Error retrieving vulnerability details"
 
 def get_quality_analysis():
     """Get detailed quality analysis for Jira description"""
@@ -340,7 +340,7 @@ def get_quality_analysis():
                     if count > 0:
                         analysis_lines.append(f"• {count} TODO/FIXME comments found (consider addressing)")
                     else:
-                        analysis_lines.append("• No TODO/FIXME comments found ✅")
+                        analysis_lines.append("• No TODO/FIXME comments found")
                 
                 # Debug statements
                 debug_match = re.search(r'Debug statements: (\d+)', content)
@@ -349,7 +349,7 @@ def get_quality_analysis():
                     if count > 0:
                         analysis_lines.append(f"• {count} debug statements found (remove before production)")
                     else:
-                        analysis_lines.append("• No debug statements found ✅")
+                        analysis_lines.append("• No debug statements found")
                 
                 # Large files
                 large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
@@ -358,7 +358,7 @@ def get_quality_analysis():
                     if count > 0:
                         analysis_lines.append(f"• {count} large files found (consider optimization)")
                     else:
-                        analysis_lines.append("• No large files found ✅")
+                        analysis_lines.append("• No large files found")
                 
                 # Total suggestions
                 total_match = re.search(r'Total suggestions: (\d+)', content)
@@ -398,39 +398,39 @@ def get_priority_actions():
                 # Priority actions based on counts
                 if todo_count > 0:
                     if todo_count > 200:
-                        priority = "🔴 HIGH"
+                        priority = "HIGH"
                         action = f"Address {todo_count} TODO/FIXME comments - critical for code maintainability"
                     elif todo_count > 50:
-                        priority = "🟠 MEDIUM"
+                        priority = "MEDIUM"
                         action = f"Review and address {todo_count} TODO/FIXME comments"
                     else:
-                        priority = "🟡 LOW"
+                        priority = "LOW"
                         action = f"Consider addressing {todo_count} TODO/FIXME comments"
                     actions.append(f"• {priority} | {action}")
                     
                 if debug_count > 0:
                     if debug_count > 300:
-                        priority = "🔴 HIGH"
+                        priority = "HIGH"
                         action = f"Remove {debug_count} debug statements before production deployment"
                     elif debug_count > 100:
-                        priority = "🟠 MEDIUM"
+                        priority = "MEDIUM"
                         action = f"Clean up {debug_count} debug statements"
                     else:
-                        priority = "🟡 LOW"
+                        priority = "LOW"
                         action = f"Review {debug_count} debug statements"
                     actions.append(f"• {priority} | {action}")
                     
                 if large_files > 0:
                     if large_files > 10:
-                        priority = "🟠 MEDIUM"
+                        priority = "MEDIUM"
                         action = f"Optimize {large_files} large files for better performance"
                     else:
-                        priority = "🟡 LOW"
+                        priority = "LOW"
                         action = f"Consider optimizing {large_files} large files"
                     actions.append(f"• {priority} | {action}")
                 
                 if not actions:
-                    actions.append("• ✅ No immediate actions required - code quality is good")
+                    actions.append("• No immediate actions required - code quality is good")
                     
                 return "\n".join(actions)
         
