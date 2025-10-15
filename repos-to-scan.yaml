@@ -18,7 +18,7 @@ repositories:
   - url: https://github.com/almightymoon/sample-docker-app.git
     name: sample-docker-app
     branch: main   # Changed from master to main   
-    scan_type: full  
+    scan_type: full   
   # # Testing updated Jira dashboard link   
 
   # - url: https://github.com/almightymoon/dockerized-hello-world-app
