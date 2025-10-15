@@ -668,6 +668,14 @@ jobs:
       run: |
         cd external-repo
         
+        # Debug: List all files in current directory
+        echo "📁 Current directory: $(pwd)"
+        echo "📁 Files in current directory:"
+        ls -la
+        echo "📁 Looking for Dockerfiles recursively:"
+        find . -name "Dockerfile*" -type f | head -10
+        echo ""
+        
         # Check for Dockerfile in root or common subdirectories
         DOCKERFILE_PATH=""
         
