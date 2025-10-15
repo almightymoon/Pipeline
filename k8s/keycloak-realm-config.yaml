@@ -1,0 +1,342 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-config
+  namespace: keycloak
+data:
+  ml-pipeline-realm.json: |
+    {
+      "realm": "ml-pipeline",
+      "displayName": "ML Pipeline Realm",
+      "enabled": true,
+      "sslRequired": "externalRequests",
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": true,
+      "editUsernameAllowed": false,
+      "bruteForceProtected": true,
+      "permanentLockout": false,
+      "maxFailureWaitSeconds": 900,
+      "minimumQuickLoginWaitSeconds": 60,
+      "waitIncrementSeconds": 60,
+      "quickLoginCheckMilliSeconds": 1000,
+      "maxDeltaTimeSeconds": 43200,
+      "failureFactor": 30,
+      "defaultRoles": ["offline_access", "uma_authorization"],
+      "requiredCredentials": ["password"],
+      "otpPolicyType": "totp",
+      "otpPolicyAlgorithm": "HmacSHA1",
+      "otpPolicyInitialCounter": 0,
+      "otpPolicyDigits": 6,
+      "otpPolicyLookAheadWindow": 1,
+      "otpPolicyPeriod": 30,
+      "otpPolicyCodeReusable": false,
+      "webAuthnPolicyRpEntityName": "keycloak",
+      "webAuthnPolicySignatureAlgorithms": ["ES256"],
+      "webAuthnPolicyRpId": "",
+      "webAuthnPolicyAttestationConveyancePreference": "not specified",
+      "webAuthnPolicyAuthenticatorAttachment": "not specified",
+      "webAuthnPolicyRequireResidentKey": "not specified",
+      "webAuthnPolicyUserVerificationRequirement": "not specified",
+      "webAuthnPolicyCreateTimeout": 0,
+      "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+      "webAuthnPolicyAcceptableAaguids": [],
+      "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
+      "webAuthnPolicyPasswordlessSignatureAlgorithms": ["ES256"],
+      "webAuthnPolicyPasswordlessRpId": "",
+      "webAuthnPolicyPasswordlessAttestationConveyancePreference": "not specified",
+      "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+      "webAuthnPolicyPasswordlessRequireResidentKey": "not specified",
+      "webAuthnPolicyPasswordlessUserVerificationRequirement": "not specified",
+      "webAuthnPolicyPasswordlessCreateTimeout": 0,
+      "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
+      "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+      "clients": [
+        {
+          "clientId": "ml-pipeline-client",
+          "name": "ML Pipeline Client",
+          "description": "Client for ML Pipeline authentication",
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "ml-pipeline-client-secret",
+          "redirectUris": [
+            "http://localhost:8080/*",
+            "https://ml-pipeline.yourcompany.com/*",
+            "http://keycloak.pipeline.local/*"
+          ],
+          "webOrigins": [
+            "http://localhost:8080",
+            "https://ml-pipeline.yourcompany.com",
+            "http://keycloak.pipeline.local"
+          ],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": false,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.force.post.binding": "false",
+            "saml.multivalued.roles": "false",
+            "saml.encrypt": "false",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "false",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "profile",
+            "roles",
+            "email"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ]
+        },
+        {
+          "clientId": "tekton-pipeline-client",
+          "name": "Tekton Pipeline Client",
+          "description": "Client for Tekton Pipeline authentication",
+          "enabled": true,
+          "alwaysDisplayInConsole": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "tekton-pipeline-client-secret",
+          "redirectUris": [
+            "http://localhost:8080/*",
+            "https://tekton.yourcompany.com/*"
+          ],
+          "webOrigins": [
+            "http://localhost:8080",
+            "https://tekton.yourcompany.com"
+          ],
+          "notBefore": 0,
+          "bearerOnly": false,
+          "consentRequired": false,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "frontchannelLogout": false,
+          "protocol": "openid-connect",
+          "attributes": {
+            "saml.assertion.signature": "false",
+            "saml.force.post.binding": "false",
+            "saml.multivalued.roles": "false",
+            "saml.encrypt": "false",
+            "saml.server.signature": "false",
+            "saml.server.signature.keyinfo.ext": "false",
+            "exclude.session.state.from.auth.response": "false",
+            "saml_force_name_id_format": "false",
+            "saml.client.signature": "false",
+            "tls.client.certificate.bound.access.tokens": "false",
+            "saml.authnstatement": "false",
+            "display.on.consent.screen": "false",
+            "saml.onetimeuse.condition": "false"
+          },
+          "authenticationFlowBindingOverrides": {},
+          "fullScopeAllowed": true,
+          "nodeReRegistrationTimeout": -1,
+          "defaultClientScopes": [
+            "web-origins",
+            "role_list",
+            "profile",
+            "roles",
+            "email"
+          ],
+          "optionalClientScopes": [
+            "address",
+            "phone",
+            "offline_access",
+            "microprofile-jwt"
+          ]
+        }
+      ],
+      "clientScopes": [
+        {
+          "name": "ml-pipeline-scope",
+          "description": "ML Pipeline specific scope",
+          "protocol": "openid-connect",
+          "attributes": {
+            "include.in.token.scope": "true",
+            "display.on.consent.screen": "true",
+            "consent.screen.text": "ML Pipeline Access"
+          }
+        }
+      ],
+      "defaultDefaultClientScopes": [
+        "role_list",
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ],
+      "defaultOptionalClientScopes": [
+        "offline_access",
+        "address",
+        "phone",
+        "microprofile-jwt"
+      ],
+      "browserSecurityHeaders": {
+        "contentSecurityPolicyReportOnly": "",
+        "xContentTypeOptions": "nosniff",
+        "xRobotsTag": "none",
+        "xFrameOptions": "SAMEORIGIN",
+        "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+        "xXSSProtection": "1; mode=block",
+        "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+      },
+      "smtpServer": {},
+      "roles": {
+        "realm": [
+          {
+            "name": "ml-pipeline-admin",
+            "description": "ML Pipeline Administrator",
+            "composite": false,
+            "composites": {},
+            "clientRole": false,
+            "containerId": "ml-pipeline"
+          },
+          {
+            "name": "ml-pipeline-developer",
+            "description": "ML Pipeline Developer",
+            "composite": false,
+            "composites": {},
+            "clientRole": false,
+            "containerId": "ml-pipeline"
+          },
+          {
+            "name": "ml-pipeline-viewer",
+            "description": "ML Pipeline Viewer",
+            "composite": false,
+            "composites": {},
+            "clientRole": false,
+            "containerId": "ml-pipeline"
+          },
+          {
+            "name": "tekton-pipeline-admin",
+            "description": "Tekton Pipeline Administrator",
+            "composite": false,
+            "composites": {},
+            "clientRole": false,
+            "containerId": "ml-pipeline"
+          },
+          {
+            "name": "tekton-pipeline-user",
+            "description": "Tekton Pipeline User",
+            "composite": false,
+            "composites": {},
+            "clientRole": false,
+            "containerId": "ml-pipeline"
+          }
+        ]
+      },
+      "groups": [
+        {
+          "name": "ml-pipeline-admins",
+          "path": "/ml-pipeline-admins",
+          "realmRoles": ["ml-pipeline-admin", "tekton-pipeline-admin"],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "name": "ml-pipeline-developers",
+          "path": "/ml-pipeline-developers",
+          "realmRoles": ["ml-pipeline-developer", "tekton-pipeline-user"],
+          "clientRoles": {},
+          "subGroups": []
+        },
+        {
+          "name": "ml-pipeline-viewers",
+          "path": "/ml-pipeline-viewers",
+          "realmRoles": ["ml-pipeline-viewer"],
+          "clientRoles": {},
+          "subGroups": []
+        }
+      ],
+      "defaultGroups": [],
+      "clientPolicies": {
+        "policies": []
+      },
+      "clientProfiles": {
+        "profiles": []
+      }
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-realm-import
+  namespace: keycloak
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: keycloak-realm-import
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "🔄 Waiting for Keycloak to be ready..."
+          
+          # Wait for Keycloak to be ready
+          until curl -f http://keycloak:8080/realms/master; do
+            echo "⏳ Keycloak not ready yet, waiting..."
+            sleep 10
+          done
+          
+          echo "✅ Keycloak is ready, importing realm..."
+          
+          # Get admin token
+          ADMIN_TOKEN=$(curl -s -X POST \
+            "http://keycloak:8080/realms/master/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "username=admin" \
+            -d "password=admin123" \
+            -d "grant_type=password" \
+            -d "client_id=admin-cli" | jq -r '.access_token')
+          
+          if [ "$ADMIN_TOKEN" = "null" ] || [ -z "$ADMIN_TOKEN" ]; then
+            echo "❌ Failed to get admin token"
+            exit 1
+          fi
+          
+          echo "✅ Admin token obtained"
+          
+          # Import realm
+          curl -X POST \
+            "http://keycloak:8080/admin/realms" \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @/config/ml-pipeline-realm.json
+          
+          echo "✅ Realm imported successfully"
+        volumeMounts:
+        - name: realm-config
+          mountPath: /config
+      volumes:
+      - name: realm-config
+        configMap:
+          name: keycloak-realm-config

@@ -1,0 +1,234 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: validate-commit-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: validate-commit
+    app.kubernetes.io/component: security
+spec:
+  description: "Validate commit signature and generate supply chain attestations"
+  
+  params:
+    - name: git-url
+      type: string
+      description: "Git repository URL"
+    - name: git-revision
+      type: string
+      description: "Git revision/branch"
+    - name: keycloak-url
+      type: string
+      description: "Keycloak server URL"
+  
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: secrets
+      description: "Secrets workspace"
+    - name: attestations
+      description: "Supply chain attestations workspace"
+  
+  steps:
+    - name: validate-git-signature
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔍 Validating Git commit signature..."
+        
+        # Check if commit is signed
+        if git verify-commit HEAD; then
+          echo "✅ Commit signature is valid"
+        else
+          echo "⚠️ Commit is not signed or signature is invalid"
+          # In enterprise environments, you might want to fail here
+          # For now, we'll continue with a warning
+        fi
+        
+        # Extract commit information
+        COMMIT_SHA=$(git rev-parse HEAD)
+        COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an <%ae>")
+        COMMIT_DATE=$(git log -1 --pretty=format:"%ci")
+        COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+        
+        echo "Commit SHA: $COMMIT_SHA"
+        echo "Author: $COMMIT_AUTHOR"
+        echo "Date: $COMMIT_DATE"
+        echo "Message: $COMMIT_MESSAGE"
+        
+        # Save commit info for attestation
+        cat > /workspace/attestations/commit-info.json << EOF
+        {
+          "sha": "$COMMIT_SHA",
+          "author": "$COMMIT_AUTHOR",
+          "date": "$COMMIT_DATE",
+          "message": "$COMMIT_MESSAGE",
+          "url": "$(params.git-url)",
+          "revision": "$(params.git-revision)"
+        }
+        EOF
+        
+        echo "✅ Commit validation completed"
+      workingDir: $(workspaces.source.path)
+    
+    - name: generate-changelog
+      image: alpine/git:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "📝 Generating changelog..."
+        
+        # Generate changelog from last commit
+        git log -1 --pretty=format:"## [%h] %s%n%n**Author:** %an <%ae>%n**Date:** %ci%n%n%b" > /workspace/attestations/changelog.md
+        
+        echo "✅ Changelog generated"
+      workingDir: $(workspaces.source.path)
+    
+    - name: create-intoto-layout
+      image: python:3.11-slim
+      script: |
+        #!/usr/bin/env python3
+        import json
+        import os
+        from datetime import datetime, timedelta
+        
+        print("🔐 Creating in-toto supply chain layout...")
+        
+        # Read commit info
+        with open('/workspace/attestations/commit-info.json', 'r') as f:
+            commit_info = json.load(f)
+        
+        # Create in-toto layout
+        layout = {
+            "_type": "layout",
+            "expires": (datetime.utcnow() + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "readme": "Enterprise ML Pipeline Supply Chain Layout",
+            "keys": {},
+            "steps": [
+                {
+                    "name": "validate-commit",
+                    "expected_materials": [],
+                    "expected_products": [
+                        ["CREATE", "commit-info.json"],
+                        ["CREATE", "changelog.md"]
+                    ],
+                    "pubkeys": [],
+                    "expected_command": "validate-commit-task"
+                },
+                {
+                    "name": "build-and-analyze",
+                    "expected_materials": [
+                        ["MATCH", "**", "WITH", "PRODUCTS", "FROM", "validate-commit"]
+                    ],
+                    "expected_products": [
+                        ["CREATE", "Dockerfile"],
+                        ["CREATE", "requirements.txt"],
+                        ["CREATE", "sbom.json"]
+                    ],
+                    "pubkeys": [],
+                    "expected_command": "build-and-analyze-task"
+                },
+                {
+                    "name": "security-analysis",
+                    "expected_materials": [
+                        ["MATCH", "**", "WITH", "PRODUCTS", "FROM", "build-and-analyze"]
+                    ],
+                    "expected_products": [
+                        ["CREATE", "trivy-results.json"],
+                        ["CREATE", "sonarqube-results.json"],
+                        ["CREATE", "defectdojo-results.json"]
+                    ],
+                    "pubkeys": [],
+                    "expected_command": "security-analysis-task"
+                }
+            ],
+            "inspect": []
+        }
+        
+        # Save layout
+        with open('/workspace/attestations/layout.json', 'w') as f:
+            json.dump(layout, f, indent=2)
+        
+        print("✅ in-toto layout created")
+    
+    - name: authenticate-with-keycloak
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔐 Authenticating with Keycloak..."
+        
+        # Get Keycloak credentials from secrets
+        KEYCLOAK_CLIENT_ID=$(cat /workspace/secrets/keycloak-client-id)
+        KEYCLOAK_CLIENT_SECRET=$(cat /workspace/secrets/keycloak-client-secret)
+        
+        # Authenticate and get token
+        TOKEN_RESPONSE=$(curl -s -X POST \
+          "$(params.keycloak-url)/realms/ml-pipeline/protocol/openid-connect/token" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=client_credentials" \
+          -d "client_id=$KEYCLOAK_CLIENT_ID" \
+          -d "client_secret=$KEYCLOAK_CLIENT_SECRET")
+        
+        ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
+        
+        if [ "$ACCESS_TOKEN" != "null" ] && [ "$ACCESS_TOKEN" != "" ]; then
+          echo "✅ Successfully authenticated with Keycloak"
+          echo "$ACCESS_TOKEN" > /workspace/secrets/keycloak-token
+        else
+          echo "❌ Failed to authenticate with Keycloak"
+          exit 1
+        fi
+    
+    - name: create-jira-issue
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🎫 Creating Jira issue for pipeline start..."
+        
+        # Get Jira credentials
+        JIRA_URL=$(cat /workspace/secrets/jira-url)
+        JIRA_EMAIL=$(cat /workspace/secrets/jira-email)
+        JIRA_API_TOKEN=$(cat /workspace/secrets/jira-api-token)
+        JIRA_PROJECT_KEY=$(cat /workspace/secrets/jira-project-key)
+        
+        # Read commit info
+        COMMIT_SHA=$(jq -r '.sha' /workspace/attestations/commit-info.json)
+        COMMIT_AUTHOR=$(jq -r '.author' /workspace/attestations/commit-info.json)
+        COMMIT_MESSAGE=$(jq -r '.message' /workspace/attestations/commit-info.json)
+        
+        # Create Jira issue
+        ISSUE_DATA=$(cat << EOF
+        {
+          "fields": {
+            "project": {"key": "$JIRA_PROJECT_KEY"},
+            "summary": "🚀 Pipeline Started: $COMMIT_MESSAGE",
+            "description": "Pipeline execution started for commit $COMMIT_SHA\\n\\n**Commit Details:**\\n- SHA: $COMMIT_SHA\\n- Author: $COMMIT_AUTHOR\\n- Message: $COMMIT_MESSAGE\\n- Repository: $(params.git-url)\\n- Branch: $(params.git-revision)\\n\\n**Pipeline Stages:**\\n1. ✅ Validate Commit\\n2. ⏳ Build & Analyze\\n3. ⏳ Security Analysis\\n4. ⏳ Publish Artifacts\\n5. ⏳ Deploy to K8s\\n6. ⏳ Run Tests\\n7. ⏳ QA Testing\\n8. ⏳ Monitoring\\n9. ⏳ Cleanup",
+            "issuetype": {"name": "Task"},
+            "priority": {"name": "Medium"},
+            "labels": ["pipeline", "ci-cd", "ml-pipeline"]
+          }
+        }
+        EOF
+        )
+        
+        ISSUE_RESPONSE=$(curl -s -X POST \
+          "$JIRA_URL/rest/api/2/issue" \
+          -H "Authorization: Basic $(echo -n "$JIRA_EMAIL:$JIRA_API_TOKEN" | base64)" \
+          -H "Content-Type: application/json" \
+          -d "$ISSUE_DATA")
+        
+        ISSUE_KEY=$(echo "$ISSUE_RESPONSE" | jq -r '.key')
+        
+        if [ "$ISSUE_KEY" != "null" ] && [ "$ISSUE_KEY" != "" ]; then
+          echo "✅ Jira issue created: $ISSUE_KEY"
+          echo "$ISSUE_KEY" > /workspace/attestations/jira-issue-key
+        else
+          echo "❌ Failed to create Jira issue"
+          exit 1
+        fi

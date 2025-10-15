@@ -15,8 +15,11 @@ from datetime import datetime
 # Prometheus Pushgateway Configuration
 PROMETHEUS_URL = "http://213.109.162.134:30103"  # Adjust if different
 GRAFANA_URL = "http://213.109.162.134:30102"
-GRAFANA_USER = "admin"
-GRAFANA_PASS = "admin123"
+# Security: Use environment variables instead of hardcoded credentials
+GRAFANA_USER = os.environ.get('GRAFANA_USERNAME', 'admin')
+GRAFANA_PASS = os.environ.get('GRAFANA_PASSWORD')
+if not GRAFANA_PASS:
+    raise ValueError("GRAFANA_PASSWORD environment variable is required")
 
 def read_current_repo():
     """Read the current repository from repos-to-scan.yaml"""

@@ -13,12 +13,16 @@ def create_improved_dashboard():
     
     # Grafana API details
     GRAFANA_URL = "http://213.109.162.134:30102"
-    GRAFANA_USER = "admin"
-    GRAFANA_PASS = "admin123"
+    # Security: Use environment variables instead of hardcoded credentials
+    GRAFANA_USER = os.environ.get('GRAFANA_USERNAME', 'admin')
+    GRAFANA_PASS = os.environ.get('GRAFANA_PASSWORD')
+    if not GRAFANA_PASS:
+        raise ValueError("GRAFANA_PASSWORD environment variable is required")
     
-    # Real data from the latest pipeline run
-    repo_name = "Neuropilot-project"
-    repo_url = "https://github.com/almightymoon/Neuropilot"
+    # Read current repository configuration dynamically
+    current_repo = read_current_repo()
+    repo_name = current_repo['name']
+    repo_url = current_repo['url']
     
     # Real metrics from the pipeline logs
     real_metrics = {

@@ -1,0 +1,314 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: security-scan-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: security-scan
+    app.kubernetes.io/component: security
+spec:
+  description: "Comprehensive security scanning with SonarQube, Trivy, and DefectDojo"
+  
+  params:
+    - name: sonarqube-url
+      type: string
+      description: "SonarQube server URL"
+    - name: defectdojo-url
+      type: string
+      description: "DefectDojo server URL"
+    - name: image-name
+      type: string
+      description: "Container image name"
+    - name: image-tag
+      type: string
+      description: "Container image tag"
+
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: sonar-token
+      description: "SonarQube authentication token"
+    - name: defectdojo-token
+      description: "DefectDojo authentication token"
+    - name: attestations
+      description: "Supply chain attestations"
+
+  steps:
+    - name: sonarqube-analysis
+      image: sonarsource/sonar-scanner-cli:latest
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "🔍 Running SonarQube code analysis..."
+        
+        cd /workspace/source
+        
+        # Configure SonarQube
+        cat > sonar-project.properties << EOF
+        sonar.projectKey=$(params.image-name)
+        sonar.projectName=$(params.image-name)
+        sonar.projectVersion=$(params.image-tag)
+        sonar.sources=.
+        sonar.host.url=$(params.sonarqube-url)
+        sonar.login=\$(cat /workspace/sonar-token/token)
+        sonar.python.coverage.reportPaths=coverage.xml
+        sonar.javascript.lcov.reportPaths=coverage/lcov.info
+        sonar.java.coveragePlugin=jacoco
+        sonar.java.binaries=target/classes
+        sonar.qualitygate.wait=true
+        sonar.qualitygate.timeout=300
+        EOF
+        
+        # Run SonarQube analysis
+        sonar-scanner \
+          -Dsonar.projectKey=$(params.image-name) \
+          -Dsonar.host.url=$(params.sonarqube-url) \
+          -Dsonar.login=$(cat /workspace/sonar-token/token)
+        
+        echo "✅ SonarQube analysis completed"
+
+    - name: trivy-filesystem-scan
+      image: aquasec/trivy:latest
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "🔒 Running Trivy filesystem scan..."
+        
+        cd /workspace/source
+        
+        # Scan filesystem for vulnerabilities
+        trivy fs --format json --output /workspace/attestations/filesystem-vulnerabilities.json . || true
+        
+        # Scan for secrets
+        trivy fs --scanners secret --format json --output /workspace/attestations/filesystem-secrets.json . || true
+        
+        # Scan for misconfigurations
+        trivy config --format json --output /workspace/attestations/config-scan.json . || true
+        
+        # Generate human-readable report
+        trivy fs --format table --output /workspace/attestations/filesystem-scan-report.txt . || true
+        
+        echo "✅ Trivy filesystem scan completed"
+
+    - name: gitleaks-secret-scan
+      image: gitleaks/gitleaks:latest
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "🔐 Running Gitleaks secret detection..."
+        
+        cd /workspace/source
+        
+        # Run Gitleaks scan
+        gitleaks detect --source . --report-path /workspace/attestations/gitleaks-report.json --report-format json || true
+        
+        # Generate summary
+        gitleaks detect --source . --report-path /workspace/attestations/gitleaks-summary.txt --report-format sarif || true
+        
+        echo "✅ Gitleaks secret scan completed"
+
+    - name: semgrep-sast-scan
+      image: returntocorp/semgrep:latest
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "🔍 Running Semgrep SAST analysis..."
+        
+        cd /workspace/source
+        
+        # Run Semgrep scan
+        semgrep --config=auto --json --output=/workspace/attestations/semgrep-report.json . || true
+        
+        # Run with security rules
+        semgrep --config=p/security-audit --json --output=/workspace/attestations/semgrep-security-report.json . || true
+        
+        echo "✅ Semgrep SAST analysis completed"
+
+    - name: upload-to-defectdojo
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "📤 Uploading security findings to DefectDojo..."
+        
+        # Install requests library
+        pip install requests
+        
+        # Upload findings to DefectDojo
+        python3 << EOF
+        import requests
+        import json
+        import os
+        
+        DEFECTDOJO_URL = "$(params.defectdojo-url)"
+        PROJECT_NAME = "$(params.image-name)"
+        ENGAGEMENT_NAME = "Pipeline Scan - $(params.image-tag)"
+        
+        # Read API token
+        with open('/workspace/defectdojo-token/token', 'r') as f:
+            api_token = f.read().strip()
+        
+        headers = {
+            'Authorization': f'Token {api_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Create engagement
+        engagement_data = {
+            'name': ENGAGEMENT_NAME,
+            'description': f'Security scan for {PROJECT_NAME} version {$(params.image-tag)}',
+            'target_start': '$(date -u +%Y-%m-%d)',
+            'target_end': '$(date -d "+1 day" -u +%Y-%m-%d)',
+            'status': 'In Progress'
+        }
+        
+        try:
+            # Get project ID
+            projects_response = requests.get(
+                f"{DEFECTDOJO_URL}/api/v2/projects/",
+                headers=headers,
+                timeout=30
+            )
+            
+            if projects_response.status_code == 200:
+                projects = projects_response.json()['results']
+                project_id = None
+                for project in projects:
+                    if project['name'] == PROJECT_NAME:
+                        project_id = project['id']
+                        break
+                
+                if project_id:
+                    # Create engagement
+                    engagement_data['project'] = project_id
+                    engagement_response = requests.post(
+                        f"{DEFECTDOJO_URL}/api/v2/engagements/",
+                        headers=headers,
+                        json=engagement_data,
+                        timeout=30
+                    )
+                    
+                    if engagement_response.status_code == 201:
+                        engagement_id = engagement_response.json()['id']
+                        print(f"✅ Engagement created with ID: {engagement_id}")
+                        
+                        # Upload Trivy results
+                        if os.path.exists('/workspace/attestations/filesystem-vulnerabilities.json'):
+                            with open('/workspace/attestations/filesystem-vulnerabilities.json', 'r') as f:
+                                trivy_data = f.read()
+                            
+                            upload_data = {
+                                'engagement': engagement_id,
+                                'scan_type': 'Trivy Scan',
+                                'file': ('trivy-report.json', trivy_data, 'application/json')
+                            }
+                            
+                            upload_response = requests.post(
+                                f"{DEFECTDOJO_URL}/api/v2/import-scan/",
+                                headers={'Authorization': f'Token {api_token}'},
+                                files=upload_data,
+                                timeout=60
+                            )
+                            
+                            if upload_response.status_code == 201:
+                                print("✅ Trivy results uploaded to DefectDojo")
+                            else:
+                                print(f"⚠️ Trivy upload failed: {upload_response.status_code}")
+                        
+                        # Upload Semgrep results
+                        if os.path.exists('/workspace/attestations/semgrep-report.json'):
+                            with open('/workspace/attestations/semgrep-report.json', 'r') as f:
+                                semgrep_data = f.read()
+                            
+                            upload_data = {
+                                'engagement': engagement_id,
+                                'scan_type': 'Semgrep JSON Report',
+                                'file': ('semgrep-report.json', semgrep_data, 'application/json')
+                            }
+                            
+                            upload_response = requests.post(
+                                f"{DEFECTDOJO_URL}/api/v2/import-scan/",
+                                headers={'Authorization': f'Token {api_token}'},
+                                files=upload_data,
+                                timeout=60
+                            )
+                            
+                            if upload_response.status_code == 201:
+                                print("✅ Semgrep results uploaded to DefectDojo")
+                            else:
+                                print(f"⚠️ Semgrep upload failed: {upload_response.status_code}")
+                    else:
+                        print(f"⚠️ Engagement creation failed: {engagement_response.status_code}")
+                else:
+                    print(f"⚠️ Project {PROJECT_NAME} not found in DefectDojo")
+            else:
+                print(f"⚠️ Failed to fetch projects: {projects_response.status_code}")
+        except Exception as e:
+            print(f"⚠️ DefectDojo integration error: {e}")
+        EOF
+
+    - name: create-security-attestation
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        set -e
+        
+        echo "📋 Creating security scan attestation..."
+        
+        # Count vulnerabilities by severity
+        CRITICAL=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL") | .VulnerabilityID' /workspace/attestations/filesystem-vulnerabilities.json 2>/dev/null | wc -l || echo "0")
+        HIGH=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH") | .VulnerabilityID' /workspace/attestations/filesystem-vulnerabilities.json 2>/dev/null | wc -l || echo "0")
+        MEDIUM=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "MEDIUM") | .VulnerabilityID' /workspace/attestations/filesystem-vulnerabilities.json 2>/dev/null | wc -l || echo "0")
+        LOW=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity == "LOW") | .VulnerabilityID' /workspace/attestations/filesystem-vulnerabilities.json 2>/dev/null | wc -l || echo "0")
+        
+        # Create attestation for this step
+        cat > /workspace/attestations/security-attestation.json << EOF
+        {
+          "_type": "link",
+          "name": "security-scan",
+          "materials": {
+            "source/": {
+              "sha256": "$(find /workspace/source -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)"
+            }
+          },
+          "products": {
+            "filesystem-vulnerabilities.json": {
+              "sha256": "$(sha256sum /workspace/attestations/filesystem-vulnerabilities.json | cut -d' ' -f1)"
+            },
+            "semgrep-report.json": {
+              "sha256": "$(sha256sum /workspace/attestations/semgrep-report.json | cut -d' ' -f1)"
+            },
+            "gitleaks-report.json": {
+              "sha256": "$(sha256sum /workspace/attestations/gitleaks-report.json | cut -d' ' -f1)"
+            }
+          },
+          "byproducts": {
+            "return-value": 0,
+            "stderr": "",
+            "stdout": "Security scan completed successfully"
+          },
+          "command": ["trivy", "fs", ".", "--format", "json"],
+          "environment": {
+            "sonarqube-url": "$(params.sonarqube-url)",
+            "defectdojo-url": "$(params.defectdojo-url)",
+            "vulnerabilities": {
+              "critical": $CRITICAL,
+              "high": $HIGH,
+              "medium": $MEDIUM,
+              "low": $LOW
+            }
+          }
+        }
+        EOF
+        
+        echo "✅ Security scan attestation created"
+        echo "SECURITY_SCAN_STATUS=SUCCESS" >> /workspace/attestations/security-results.txt
+        echo "VULNERABILITIES_CRITICAL=$CRITICAL" >> /workspace/attestations/security-results.txt
+        echo "VULNERABILITIES_HIGH=$HIGH" >> /workspace/attestations/security-results.txt
+        echo "VULNERABILITIES_MEDIUM=$MEDIUM" >> /workspace/attestations/security-results.txt
+        echo "VULNERABILITIES_LOW=$LOW" >> /workspace/attestations/security-results.txt

@@ -1,0 +1,337 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: security-analysis-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: security-analysis
+    app.kubernetes.io/component: security
+spec:
+  description: "Comprehensive security analysis with SAST/SCA tools"
+  
+  params:
+    - name: sonarqube-url
+      type: string
+      description: "SonarQube server URL"
+    - name: defectdojo-url
+      type: string
+      description: "DefectDojo server URL"
+    - name: dependency-track-url
+      type: string
+      description: "Dependency Track server URL"
+    - name: vault-url
+      type: string
+      description: "Vault server URL"
+  
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: secrets
+      description: "Secrets workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+    - name: attestations
+      description: "Supply chain attestations workspace"
+  
+  steps:
+    - name: sonarqube-analysis
+      image: sonarsource/sonar-scanner-cli:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔍 Running SonarQube analysis..."
+        
+        # Get SonarQube credentials
+        SONAR_TOKEN=$(cat /workspace/secrets/sonarqube-token)
+        
+        # Create sonar-project.properties
+        cat > /workspace/source/sonar-project.properties << EOF
+        sonar.projectKey=ml-pipeline-$(date +%s)
+        sonar.projectName=ML Pipeline
+        sonar.projectVersion=1.0
+        sonar.sources=src,scripts
+        sonar.tests=tests
+        sonar.host.url=$(params.sonarqube-url)
+        sonar.login=$SONAR_TOKEN
+        sonar.python.coverage.reportPaths=coverage.xml
+        sonar.exclusions=**/*.pyc,**/__pycache__/**,**/node_modules/**,**/target/**
+        EOF
+        
+        # Run SonarQube analysis
+        sonar-scanner \
+          -Dsonar.projectKey=ml-pipeline-$(date +%s) \
+          -Dsonar.host.url=$(params.sonarqube-url) \
+          -Dsonar.login=$SONAR_TOKEN
+        
+        # Wait for analysis to complete
+        sleep 30
+        
+        echo "✅ SonarQube analysis completed"
+      workingDir: $(workspaces.source.path)
+    
+    - name: trivy-filesystem-scan
+      image: aquasec/trivy:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔍 Running Trivy filesystem scan..."
+        
+        # Scan filesystem
+        trivy fs --format json --output /workspace/artifacts/trivy-fs-results.json /workspace/source
+        trivy fs --format table /workspace/source > /workspace/artifacts/trivy-fs-report.txt
+        
+        echo "✅ Trivy filesystem scan completed"
+    
+    - name: defectdojo-integration
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🛡️ Integrating with DefectDojo..."
+        
+        # Get DefectDojo credentials
+        DD_API_KEY=$(cat /workspace/secrets/defectdojo-api-key)
+        
+        # Create engagement
+        ENGAGEMENT_DATA=$(cat << EOF
+        {
+          "name": "ML Pipeline Security Scan - $(date +%Y%m%d-%H%M%S)",
+          "description": "Automated security scan for ML Pipeline",
+          "product": 1,
+          "lead": 1,
+          "status": "In Progress",
+          "engagement_type": "CI/CD",
+          "target_start": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "target_end": "$(date -u -d '+1 day' +%Y-%m-%dT%H:%M:%SZ)"
+        }
+        EOF
+        )
+        
+        # Create engagement
+        ENGAGEMENT_RESPONSE=$(curl -s -X POST \
+          "$(params.defectdojo-url)/api/v2/engagements/" \
+          -H "Authorization: Token $DD_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "$ENGAGEMENT_DATA")
+        
+        ENGAGEMENT_ID=$(echo "$ENGAGEMENT_RESPONSE" | jq -r '.id')
+        
+        if [ "$ENGAGEMENT_ID" != "null" ] && [ "$ENGAGEMENT_ID" != "" ]; then
+          echo "✅ DefectDojo engagement created: $ENGAGEMENT_ID"
+          echo "$ENGAGEMENT_ID" > /workspace/artifacts/defectdojo-engagement-id
+          
+          # Upload Trivy results to DefectDojo
+          curl -s -X POST \
+            "$(params.defectdojo-url)/api/v2/import-scan/" \
+            -H "Authorization: Token $DD_API_KEY" \
+            -F "file=@/workspace/artifacts/trivy-fs-results.json" \
+            -F "scan_type=Trivy Scan" \
+            -F "engagement=$ENGAGEMENT_ID" \
+            -F "auto_create_context=true"
+          
+          echo "✅ Trivy results uploaded to DefectDojo"
+        else
+          echo "❌ Failed to create DefectDojo engagement"
+          exit 1
+        fi
+    
+    - name: dependency-track-integration
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "📊 Integrating with Dependency Track..."
+        
+        # Get Dependency Track credentials
+        DT_API_KEY=$(cat /workspace/secrets/dependency-track-api-key)
+        
+        # Create project
+        PROJECT_DATA=$(cat << EOF
+        {
+          "name": "ML Pipeline - $(date +%Y%m%d-%H%M%S)",
+          "description": "ML Pipeline dependency analysis",
+          "version": "1.0.0",
+          "classifier": "APPLICATION"
+        }
+        EOF
+        )
+        
+        # Create project
+        PROJECT_RESPONSE=$(curl -s -X PUT \
+          "$(params.dependency-track-url)/api/v1/project" \
+          -H "X-API-Key: $DT_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "$PROJECT_DATA")
+        
+        PROJECT_UUID=$(echo "$PROJECT_RESPONSE" | jq -r '.uuid')
+        
+        if [ "$PROJECT_UUID" != "null" ] && [ "$PROJECT_UUID" != "" ]; then
+          echo "✅ Dependency Track project created: $PROJECT_UUID"
+          echo "$PROJECT_UUID" > /workspace/artifacts/dependency-track-project-uuid
+          
+          # Upload SBOM to Dependency Track
+          if [ -f "/workspace/artifacts/sbom.json" ]; then
+            curl -s -X POST \
+              "$(params.dependency-track-url)/api/v1/bom" \
+              -H "X-API-Key: $DT_API_KEY" \
+              -F "project=$PROJECT_UUID" \
+              -F "bom=@/workspace/artifacts/sbom.json"
+            
+            echo "✅ SBOM uploaded to Dependency Track"
+          fi
+        else
+          echo "❌ Failed to create Dependency Track project"
+          exit 1
+        fi
+    
+    - name: secret-scan
+      image: trufflesecurity/trufflehog:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔐 Running secret scan with TruffleHog..."
+        
+        # Scan for secrets
+        trufflehog filesystem /workspace/source \
+          --json \
+          --output /workspace/artifacts/trufflehog-results.json || true
+        
+        # Also generate human-readable report
+        trufflehog filesystem /workspace/source \
+          --output /workspace/artifacts/trufflehog-report.txt || true
+        
+        echo "✅ Secret scan completed"
+    
+    - name: generate-security-report
+      image: python:3.11-slim
+      script: |
+        #!/usr/bin/env python3
+        import json
+        import os
+        from datetime import datetime
+        
+        print("📊 Generating comprehensive security report...")
+        
+        # Collect all security scan results
+        security_report = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'scans': {},
+            'summary': {
+                'total_vulnerabilities': 0,
+                'critical': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0,
+                'secrets_found': 0
+            }
+        }
+        
+        # Process Trivy results
+        if os.path.exists('/workspace/artifacts/trivy-fs-results.json'):
+            with open('/workspace/artifacts/trivy-fs-results.json', 'r') as f:
+                trivy_data = json.load(f)
+                security_report['scans']['trivy'] = trivy_data
+                
+                # Count vulnerabilities
+                for result in trivy_data.get('Results', []):
+                    for vuln in result.get('Vulnerabilities', []):
+                        severity = vuln.get('Severity', '').lower()
+                        security_report['summary']['total_vulnerabilities'] += 1
+                        if severity in security_report['summary']:
+                            security_report['summary'][severity] += 1
+        
+        # Process TruffleHog results
+        if os.path.exists('/workspace/artifacts/trufflehog-results.json'):
+            with open('/workspace/artifacts/trufflehog-results.json', 'r') as f:
+                trufflehog_data = json.load(f)
+                security_report['scans']['trufflehog'] = trufflehog_data
+                security_report['summary']['secrets_found'] = len(trufflehog_data)
+        
+        # Add DefectDojo engagement info
+        if os.path.exists('/workspace/artifacts/defectdojo-engagement-id'):
+            with open('/workspace/artifacts/defectdojo-engagement-id', 'r') as f:
+                engagement_id = f.read().strip()
+                security_report['defectdojo'] = {
+                    'engagement_id': engagement_id,
+                    'url': f"$(params.defectdojo-url)/engagement/{engagement_id}"
+                }
+        
+        # Add Dependency Track project info
+        if os.path.exists('/workspace/artifacts/dependency-track-project-uuid'):
+            with open('/workspace/artifacts/dependency-track-project-uuid', 'r') as f:
+                project_uuid = f.read().strip()
+                security_report['dependency_track'] = {
+                    'project_uuid': project_uuid,
+                    'url': f"$(params.dependency-track-url)/projects/{project_uuid}"
+                }
+        
+        # Save security report
+        with open('/workspace/artifacts/security-report.json', 'w') as f:
+            json.dump(security_report, f, indent=2)
+        
+        print("✅ Security report generated")
+        print(f"Total vulnerabilities: {security_report['summary']['total_vulnerabilities']}")
+        print(f"Secrets found: {security_report['summary']['secrets_found']}")
+    
+    - name: create-security-attestation
+      image: python:3.11-slim
+      script: |
+        #!/usr/bin/env python3
+        import json
+        from datetime import datetime
+        
+        print("🔐 Creating security analysis attestation...")
+        
+        # Read existing layout
+        with open('/workspace/attestations/layout.json', 'r') as f:
+            layout = json.load(f)
+        
+        # Create security attestation
+        security_attestation = {
+            "_type": "link",
+            "name": "security-analysis",
+            "materials": [
+                {
+                    "uri": "file:sbom.json",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual hash
+                    }
+                }
+            ],
+            "products": [
+                {
+                    "uri": "file:security-report.json",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual hash
+                    }
+                },
+                {
+                    "uri": "file:trivy-fs-results.json",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual hash
+                    }
+                }
+            ],
+            "byproducts": {
+                "stdout": "Security analysis completed successfully",
+                "stderr": "",
+                "return-value": 0
+            },
+            "command": ["security-analysis-task"],
+            "environment": {
+                "sonarqube-url": "$(params.sonarqube-url)",
+                "defectdojo-url": "$(params.defectdojo-url)",
+                "dependency-track-url": "$(params.dependency-track-url)"
+            }
+        }
+        
+        # Save attestation
+        with open('/workspace/attestations/security-attestation.json', 'w') as f:
+            json.dump(security_attestation, f, indent=2)
+        
+        print("✅ Security attestation created")

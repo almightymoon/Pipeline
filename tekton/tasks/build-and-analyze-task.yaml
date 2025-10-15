@@ -1,0 +1,320 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-and-analyze-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: build-and-analyze
+    app.kubernetes.io/component: build
+spec:
+  description: "Build container images and analyze dependencies"
+  
+  params:
+    - name: image-name
+      type: string
+      description: "Container image name"
+    - name: image-tag
+      type: string
+      description: "Container image tag"
+    - name: harbor-url
+      type: string
+      description: "Harbor registry URL"
+    - name: nexus-url
+      type: string
+      description: "Nexus repository URL"
+    - name: vault-url
+      type: string
+      description: "Vault server URL"
+  
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: secrets
+      description: "Secrets workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+    - name: attestations
+      description: "Supply chain attestations workspace"
+  
+  steps:
+    - name: authenticate-with-vault
+      image: vault:1.15.2
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔐 Authenticating with Vault..."
+        
+        # Get Vault credentials
+        VAULT_ROLE_ID=$(cat /workspace/secrets/vault-role-id)
+        VAULT_SECRET_ID=$(cat /workspace/secrets/vault-secret-id)
+        
+        # Authenticate with Vault
+        export VAULT_ADDR=$(params.vault-url)
+        
+        # Get auth token
+        AUTH_RESPONSE=$(vault write -field=token auth/approle/login \
+          role_id="$VAULT_ROLE_ID" \
+          secret_id="$VAULT_SECRET_ID")
+        
+        export VAULT_TOKEN="$AUTH_RESPONSE"
+        
+        echo "✅ Successfully authenticated with Vault"
+        echo "$VAULT_TOKEN" > /workspace/secrets/vault-token
+    
+    - name: analyze-dependencies
+      image: python:3.11-slim
+      script: |
+        #!/usr/bin/env python3
+        import json
+        import subprocess
+        import os
+        from datetime import datetime
+        
+        print("📦 Analyzing dependencies...")
+        
+        # Check for different dependency files
+        dependency_files = {
+            'requirements.txt': 'pip',
+            'package.json': 'npm',
+            'go.mod': 'go',
+            'pom.xml': 'maven',
+            'build.gradle': 'gradle'
+        }
+        
+        found_dependencies = {}
+        
+        for file, tool in dependency_files.items():
+            if os.path.exists(f'/workspace/source/{file}'):
+                print(f"Found {file} - using {tool}")
+                found_dependencies[file] = tool
+        
+        # Generate dependency analysis
+        dependency_analysis = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'files_found': list(found_dependencies.keys()),
+            'tools_used': list(found_dependencies.values()),
+            'analysis': {}
+        }
+        
+        # Analyze Python dependencies
+        if 'requirements.txt' in found_dependencies:
+            try:
+                result = subprocess.run(['pip', 'list', '--format=json'], 
+                                      capture_output=True, text=True, cwd='/workspace/source')
+                if result.returncode == 0:
+                    packages = json.loads(result.stdout)
+                    dependency_analysis['analysis']['python'] = {
+                        'total_packages': len(packages),
+                        'packages': packages[:10]  # First 10 packages
+                    }
+            except Exception as e:
+                print(f"Error analyzing Python dependencies: {e}")
+        
+        # Analyze Node.js dependencies
+        if 'package.json' in found_dependencies:
+            try:
+                with open('/workspace/source/package.json', 'r') as f:
+                    package_data = json.load(f)
+                    dependency_analysis['analysis']['nodejs'] = {
+                        'dependencies': len(package_data.get('dependencies', {})),
+                        'devDependencies': len(package_data.get('devDependencies', {}))
+                    }
+            except Exception as e:
+                print(f"Error analyzing Node.js dependencies: {e}")
+        
+        # Save dependency analysis
+        with open('/workspace/artifacts/dependency-analysis.json', 'w') as f:
+            json.dump(dependency_analysis, f, indent=2)
+        
+        print("✅ Dependency analysis completed")
+    
+    - name: generate-sbom
+      image: cyclonedx/cyclonedx-cli:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "📋 Generating Software Bill of Materials (SBOM)..."
+        
+        # Generate SBOM for different project types
+        if [ -f "/workspace/source/requirements.txt" ]; then
+          echo "Generating Python SBOM..."
+          cyclonedx-py -o /workspace/artifacts/sbom.json /workspace/source
+        elif [ -f "/workspace/source/package.json" ]; then
+          echo "Generating Node.js SBOM..."
+          cyclonedx-npm -o /workspace/artifacts/sbom.json /workspace/source
+        elif [ -f "/workspace/source/go.mod" ]; then
+          echo "Generating Go SBOM..."
+          cyclonedx-go -o /workspace/artifacts/sbom.json /workspace/source
+        else
+          echo "No supported dependency file found, creating basic SBOM..."
+          cat > /workspace/artifacts/sbom.json << EOF
+        {
+          "bomFormat": "CycloneDX",
+          "specVersion": "1.4",
+          "version": 1,
+          "metadata": {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "tools": [
+              {
+                "vendor": "ML Pipeline",
+                "name": "Enterprise CI/CD",
+                "version": "1.0.0"
+              }
+            ],
+            "component": {
+              "type": "application",
+              "name": "$(params.image-name)",
+              "version": "$(params.image-tag)"
+            }
+          },
+          "components": []
+        }
+        EOF
+        fi
+        
+        echo "✅ SBOM generated"
+    
+    - name: build-docker-image
+      image: gcr.io/kaniko-project/executor:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🐳 Building Docker image..."
+        
+        # Get Harbor credentials
+        HARBOR_USERNAME=$(cat /workspace/secrets/harbor-username)
+        HARBOR_PASSWORD=$(cat /workspace/secrets/harbor-password)
+        
+        # Configure Docker registry
+        echo "{\"auths\":{\"$(params.harbor-url)\":{\"username\":\"$HARBOR_USERNAME\",\"password\":\"$HARBOR_PASSWORD\"}}}" > /kaniko/.docker/config.json
+        
+        # Build and push image
+        /kaniko/executor \
+          --context=/workspace/source \
+          --dockerfile=/workspace/source/Dockerfile \
+          --destination=$(params.harbor-url)/$(params.image-name):$(params.image-tag) \
+          --destination=$(params.harbor-url)/$(params.image-name):latest \
+          --cache=true \
+          --cache-ttl=24h
+        
+        echo "✅ Docker image built and pushed to Harbor"
+    
+    - name: scan-image-with-trivy
+      image: aquasec/trivy:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "🔍 Scanning Docker image with Trivy..."
+        
+        # Get Harbor credentials
+        HARBOR_USERNAME=$(cat /workspace/secrets/harbor-username)
+        HARBOR_PASSWORD=$(cat /workspace/secrets/harbor-password)
+        
+        # Login to Harbor
+        echo "$HARBOR_PASSWORD" | docker login $(params.harbor-url) -u "$HARBOR_USERNAME" --password-stdin
+        
+        # Scan image
+        trivy image --format json --output /workspace/artifacts/trivy-image-results.json \
+          $(params.harbor-url)/$(params.image-name):$(params.image-tag)
+        
+        # Also generate human-readable report
+        trivy image --format table \
+          $(params.harbor-url)/$(params.image-name):$(params.image-tag) > /workspace/artifacts/trivy-image-report.txt
+        
+        echo "✅ Image scanning completed"
+    
+    - name: publish-to-nexus
+      image: curlimages/curl:latest
+      script: |
+        #!/bin/sh
+        set -e
+        
+        echo "📦 Publishing artifacts to Nexus..."
+        
+        # Get Nexus credentials
+        NEXUS_USERNAME=$(cat /workspace/secrets/nexus-username)
+        NEXUS_PASSWORD=$(cat /workspace/secrets/nexus-password)
+        
+        # Create repository path
+        REPO_PATH="ml-pipeline/$(params.image-name)/$(params.image-tag)"
+        
+        # Upload SBOM
+        curl -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+          --upload-file /workspace/artifacts/sbom.json \
+          "$(params.nexus-url)/repository/raw/$REPO_PATH/sbom.json"
+        
+        # Upload dependency analysis
+        curl -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+          --upload-file /workspace/artifacts/dependency-analysis.json \
+          "$(params.nexus-url)/repository/raw/$REPO_PATH/dependency-analysis.json"
+        
+        # Upload Trivy results
+        curl -u "$NEXUS_USERNAME:$NEXUS_PASSWORD" \
+          --upload-file /workspace/artifacts/trivy-image-results.json \
+          "$(params.nexus-url)/repository/raw/$REPO_PATH/trivy-image-results.json"
+        
+        echo "✅ Artifacts published to Nexus"
+    
+    - name: create-build-attestation
+      image: python:3.11-slim
+      script: |
+        #!/usr/bin/env python3
+        import json
+        import hashlib
+        from datetime import datetime
+        
+        print("🔐 Creating build attestation...")
+        
+        # Read existing layout
+        with open('/workspace/attestations/layout.json', 'r') as f:
+            layout = json.load(f)
+        
+        # Create build attestation
+        build_attestation = {
+            "_type": "link",
+            "name": "build-and-analyze",
+            "materials": [
+                {
+                    "uri": "git+$(params.git-url)@$(params.git-revision)",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual hash in real implementation
+                    }
+                }
+            ],
+            "products": [
+                {
+                    "uri": "$(params.harbor-url)/$(params.image-name):$(params.image-tag)",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual image hash
+                    }
+                },
+                {
+                    "uri": "file:sbom.json",
+                    "digest": {
+                        "sha256": "placeholder"  # Would be actual file hash
+                    }
+                }
+            ],
+            "byproducts": {
+                "stdout": "Build completed successfully",
+                "stderr": "",
+                "return-value": 0
+            },
+            "command": ["build-and-analyze-task"],
+            "environment": {
+                "image-name": "$(params.image-name)",
+                "image-tag": "$(params.image-tag)",
+                "harbor-url": "$(params.harbor-url)",
+                "nexus-url": "$(params.nexus-url)"
+            }
+        }
+        
+        # Save attestation
+        with open('/workspace/attestations/build-attestation.json', 'w') as f:
+            json.dump(build_attestation, f, indent=2)
+        
+        print("✅ Build attestation created")

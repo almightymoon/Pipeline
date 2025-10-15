@@ -1,0 +1,315 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ml-pipeline-enterprise
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: ml-pipeline
+    app.kubernetes.io/component: pipeline
+    app.kubernetes.io/part-of: enterprise-ml
+spec:
+  description: "Enterprise ML/AI CI/CD Pipeline with Supply Chain Security"
+  
+  params:
+    - name: git-url
+      type: string
+      description: "Git repository URL"
+    - name: git-revision
+      type: string
+      description: "Git revision/branch"
+      default: "main"
+    - name: image-name
+      type: string
+      description: "Container image name"
+    - name: image-tag
+      type: string
+      description: "Container image tag"
+    - name: environment
+      type: string
+      description: "Target environment"
+      default: "staging"
+    - name: sonarqube-url
+      type: string
+      description: "SonarQube server URL"
+    - name: harbor-url
+      type: string
+      description: "Harbor registry URL"
+    - name: vault-url
+      type: string
+      description: "Vault server URL"
+    - name: defectdojo-url
+      type: string
+      description: "DefectDojo server URL"
+    - name: dependency-track-url
+      type: string
+      description: "Dependency Track server URL"
+    - name: nexus-url
+      type: string
+      description: "Nexus repository URL"
+    - name: reportportal-url
+      type: string
+      description: "ReportPortal server URL"
+    - name: prometheus-url
+      type: string
+      description: "Prometheus server URL"
+    - name: opensearch-url
+      type: string
+      description: "OpenSearch server URL"
+    - name: keycloak-url
+      type: string
+      description: "Keycloak server URL"
+    - name: argocd-url
+      type: string
+      description: "ArgoCD server URL"
+
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: secrets
+      description: "Secrets workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+    - name: attestations
+      description: "Supply chain attestations workspace"
+
+  tasks:
+    # Stage 1: Validate Commit (Supply Chain Security)
+    - name: validate-commit
+      taskRef:
+        name: validate-commit-task
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: keycloak-url
+          value: $(params.keycloak-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: attestations
+          workspace: attestations
+
+    # Stage 2: Build & Dependency Analysis
+    - name: build-and-analyze
+      taskRef:
+        name: build-and-analyze-task
+      runAfter: ["validate-commit"]
+      params:
+        - name: image-name
+          value: $(params.image-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: harbor-url
+          value: $(params.harbor-url)
+        - name: nexus-url
+          value: $(params.nexus-url)
+        - name: vault-url
+          value: $(params.vault-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+    # Stage 3: Security Analysis (SAST/SCA)
+    - name: security-analysis
+      taskRef:
+        name: security-analysis-task
+      runAfter: ["build-and-analyze"]
+      params:
+        - name: sonarqube-url
+          value: $(params.sonarqube-url)
+        - name: defectdojo-url
+          value: $(params.defectdojo-url)
+        - name: dependency-track-url
+          value: $(params.dependency-track-url)
+        - name: vault-url
+          value: $(params.vault-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+    # Stage 4: Publish Artifacts
+    - name: publish-artifacts
+      taskRef:
+        name: publish-artifacts-task
+      runAfter: ["security-analysis"]
+      params:
+        - name: image-name
+          value: $(params.image-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: harbor-url
+          value: $(params.harbor-url)
+        - name: nexus-url
+          value: $(params.nexus-url)
+        - name: vault-url
+          value: $(params.vault-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+    # Stage 5: Deploy to Kubernetes
+    - name: deploy-to-k8s
+      taskRef:
+        name: deploy-to-k8s-task
+      runAfter: ["publish-artifacts"]
+      params:
+        - name: image-name
+          value: $(params.image-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: environment
+          value: $(params.environment)
+        - name: vault-url
+          value: $(params.vault-url)
+        - name: argocd-url
+          value: $(params.argocd-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+    # Stage 6: Run Tests (Parallel)
+    - name: run-unit-tests
+      taskRef:
+        name: run-unit-tests-task
+      runAfter: ["deploy-to-k8s"]
+      params:
+        - name: reportportal-url
+          value: $(params.reportportal-url)
+        - name: opensearch-url
+          value: $(params.opensearch-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+
+    - name: run-integration-tests
+      taskRef:
+        name: run-integration-tests-task
+      runAfter: ["deploy-to-k8s"]
+      params:
+        - name: reportportal-url
+          value: $(params.reportportal-url)
+        - name: opensearch-url
+          value: $(params.opensearch-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+
+    - name: run-performance-tests
+      taskRef:
+        name: run-performance-tests-task
+      runAfter: ["deploy-to-k8s"]
+      params:
+        - name: reportportal-url
+          value: $(params.reportportal-url)
+        - name: opensearch-url
+          value: $(params.opensearch-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+
+    # Stage 7: QA Testing
+    - name: qa-testing
+      taskRef:
+        name: qa-testing-task
+      runAfter: ["run-unit-tests", "run-integration-tests", "run-performance-tests"]
+      params:
+        - name: reportportal-url
+          value: $(params.reportportal-url)
+        - name: opensearch-url
+          value: $(params.opensearch-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+
+    # Stage 8: Monitoring & Reporting
+    - name: monitoring-reporting
+      taskRef:
+        name: monitoring-reporting-task
+      runAfter: ["qa-testing"]
+      params:
+        - name: prometheus-url
+          value: $(params.prometheus-url)
+        - name: opensearch-url
+          value: $(params.opensearch-url)
+        - name: reportportal-url
+          value: $(params.reportportal-url)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+    # Stage 9: Cleanup & Notifications
+    - name: cleanup-notifications
+      taskRef:
+        name: cleanup-notifications-task
+      runAfter: ["monitoring-reporting"]
+      params:
+        - name: environment
+          value: $(params.environment)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: secrets
+          workspace: secrets
+        - name: artifacts
+          workspace: artifacts
+        - name: attestations
+          workspace: attestations
+
+  finally:
+    - name: pipeline-cleanup
+      taskRef:
+        name: pipeline-cleanup-task
+      workspaces:
+        - name: source
+          workspace: source
+        - name: artifacts
+          workspace: artifacts

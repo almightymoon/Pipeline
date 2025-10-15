@@ -14,9 +14,13 @@ import re
 from datetime import datetime
 
 # Configuration
-GRAFANA_URL = "http://213.109.162.134:30102"
-GRAFANA_USER = "admin"
-GRAFANA_PASS = "admin123"
+# Configuration - Use environment variables for URLs
+GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://localhost:30102')
+# Security: Use environment variables instead of hardcoded credentials
+GRAFANA_USER = os.environ.get('GRAFANA_USERNAME', 'admin')
+GRAFANA_PASS = os.environ.get('GRAFANA_PASSWORD')
+if not GRAFANA_PASS:
+    raise ValueError("GRAFANA_PASSWORD environment variable is required")
 
 def read_current_repo():
     """Read the current repository from repos-to-scan.yaml"""

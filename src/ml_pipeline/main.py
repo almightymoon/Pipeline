@@ -59,9 +59,14 @@ class MLPipeline:
 
 def main():
     """Main entry point"""
-    pipeline = MLPipeline()
-    result = pipeline.run()
-    print(f"Pipeline result: {result}")
+    try:
+        pipeline = MLPipeline()
+        result = pipeline.run()
+        print(f"Pipeline result: {result}")
+        return 0
+    except Exception as e:
+        logger.error(f"Pipeline execution failed: {str(e)}")
+        return 1
 
 if __name__ == "__main__":
-    main()
+    exit(main())
