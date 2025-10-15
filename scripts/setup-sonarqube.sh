@@ -40,6 +40,7 @@ docker run -d \
   -e SONAR_JDBC_URL=jdbc:h2:tcp://localhost:9092/sonar \
   -e SONAR_JDBC_USERNAME=sonar \
   -e SONAR_JDBC_PASSWORD=sonar \
+  -e SONAR_EMBEDDEDDATABASE_PORT=9092 \
   -e SONAR_WEB_JAVAADDITIONALOPTS="-Xmx1g -XX:+UseG1GC" \
   -e SONAR_CE_JAVAADDITIONALOPTS="-Xmx512m -XX:+UseG1GC" \
   -v "$(pwd)/sonarqube-data:/opt/sonarqube/data" \
