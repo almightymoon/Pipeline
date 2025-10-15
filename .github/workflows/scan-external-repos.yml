@@ -789,7 +789,41 @@ jobs:
         
         # Transfer Docker image to VPS
         echo "📤 Uploading Docker image to VPS..."
-        sshpass -p '${{ secrets.VPS_PASSWORD }}' scp -o StrictHostKeyChecking=no /tmp/docker-image.tar ubuntu@213.109.162.134:/tmp/docker-image.tar
+        
+        # Check if tar file exists and get its size
+        if [ ! -f "/tmp/docker-image.tar" ]; then
+          echo "❌ Error: Docker image tar file not found at /tmp/docker-image.tar"
+          exit 1
+        fi
+        
+        FILE_SIZE=$(du -h /tmp/docker-image.tar | cut -f1)
+        echo "📊 Docker image size: $FILE_SIZE"
+        
+        # Transfer with retry mechanism
+        for i in {1..3}; do
+          echo "🔄 Transfer attempt $i/3..."
+          if sshpass -p '${{ secrets.VPS_PASSWORD }}' scp -o StrictHostKeyChecking=no -o ConnectTimeout=60 /tmp/docker-image.tar ubuntu@213.109.162.134:/tmp/docker-image.tar; then
+            echo "✅ File transfer successful"
+            break
+          else
+            echo "❌ Transfer attempt $i failed"
+            if [ $i -eq 3 ]; then
+              echo "❌ All transfer attempts failed"
+              exit 1
+            fi
+            echo "⏳ Waiting 10 seconds before retry..."
+            sleep 10
+          fi
+        done
+        
+        # Verify file was transferred successfully
+        echo "🔍 Verifying file transfer..."
+        if sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'test -f /tmp/docker-image.tar && echo "✅ File exists on VPS" || echo "❌ File not found on VPS"'; then
+          echo "✅ File verification successful"
+        else
+          echo "❌ File verification failed"
+          exit 1
+        fi
         
         # Import image into K3s
         echo "📥 Importing Docker image into K3s..."
