@@ -61,6 +61,12 @@ spec:
     - name: argocd-url
       type: string
       description: "ArgoCD server URL"
+    - name: jira-url
+      type: string
+      description: "Jira server URL"
+    - name: jira-project-key
+      type: string
+      description: "Jira project key"
 
   workspaces:
     - name: source
@@ -298,6 +304,10 @@ spec:
       params:
         - name: environment
           value: $(params.environment)
+        - name: jira-url
+          value: $(params.jira-url)
+        - name: jira-project-key
+          value: $(params.jira-project-key)
       workspaces:
         - name: source
           workspace: source
