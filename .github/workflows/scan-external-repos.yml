@@ -1018,6 +1018,10 @@ jobs:
         APP_URL: ${{ steps.k8s_deploy.outputs.app_url }}
         INTERNAL_URL: ${{ steps.k8s_deploy.outputs.internal_url }}
         NODE_PORT: ${{ steps.k8s_deploy.outputs.node_port }}
+        # Grafana credentials
+        GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+        GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
+        GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
     
     - name: Summary Report
       if: steps.read_config.outputs.has_repos == 'true' && success()
