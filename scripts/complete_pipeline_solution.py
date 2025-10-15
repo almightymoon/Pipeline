@@ -1010,121 +1010,192 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     if dockerfile_exists and app_url:
         terminate_url = f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml?repository={repo_name}&deployment={deployment_name}&namespace={namespace}"
         
-        deployment_section = f"""
-*🚀 DEPLOYMENT INFORMATION:*
-• **Docker Build:** ✅ Completed (Dockerfile found)
-• **Kubernetes Deployment:** ✅ Deployed successfully
-• **Running App URL:** 🎯 [{app_url}]({app_url})
-• **Deployment Name:** {deployment_name}
-• **Namespace:** {namespace}
-• **Service:** {service_name}
-• **Node Port:** {node_port}
+        deployment_section = f"""||Field||Value||
+|Docker Build|✅ Completed (Dockerfile detected)|
+|Kubernetes Deployment|✅ Successful|
+|Deployment Name|{deployment_name}|
+|Namespace|{namespace}|
+|Service|{service_name}|
+|Node Port|{node_port}|
+|Access URL|[🌐 Running Application|{app_url}]|
 
-*🛑 DEPLOYMENT MANAGEMENT:*
-• **Terminate Deployment:** [🛑 DELETE DEPLOYMENT]({terminate_url})
-• **Deployment Status:** 🟢 Running and accessible
-• **Access Method:** Direct NodePort access via {app_url}
-
----
-"""
+*Deployment Controls:*
+* 🟢 Status: Running and Accessible
+* [🛑 Terminate Deployment|{terminate_url}]"""
     elif dockerfile_exists:
-        deployment_section = f"""
-*🚀 DEPLOYMENT INFORMATION:*
-• **Docker Build:** ✅ Completed (Dockerfile found)
-• **Kubernetes Deployment:** ⚠️ Deployment attempted but URL not available
-• **Deployment Name:** {deployment_name or 'Unknown'}
-• **Namespace:** {namespace or 'Unknown'}
-
----
-"""
+        deployment_section = f"""||Field||Value||
+|Docker Build|✅ Completed (Dockerfile detected)|
+|Kubernetes Deployment|⚠️ Deployment attempted but URL not available|
+|Deployment Name|{deployment_name or 'Unknown'}|
+|Namespace|{namespace or 'Unknown'}|"""
     else:
-        deployment_section = f"""
-*🚀 DEPLOYMENT INFORMATION:*
-• **Docker Build:** ⚠️ Skipped (No Dockerfile found)
-• **Kubernetes Deployment:** ⚠️ Not applicable
-
----
-"""
+        deployment_section = f"""||Field||Value||
+|Docker Build|⚠️ Skipped (No Dockerfile found)|
+|Kubernetes Deployment|⚠️ Not applicable|"""
     
     # Create enhanced description with all details
+    # Get vulnerability and quality metrics
+    vuln_details = get_detailed_vulnerability_list()
+    quality_details = get_quality_analysis()
+    priority_actions = get_priority_actions()
+    scan_metrics = get_scan_metrics()
+    
+    # Parse vulnerability counts
+    critical_count = 0
+    high_count = 0
+    total_vulns = 0
+    try:
+        if os.path.exists('trivy-results.json') or os.path.exists('/tmp/trivy-results.json'):
+            trivy_file = 'trivy-results.json' if os.path.exists('trivy-results.json') else '/tmp/trivy-results.json'
+            with open(trivy_file, 'r') as f:
+                trivy_data = json.load(f)
+            if 'Results' in trivy_data:
+                for result in trivy_data['Results']:
+                    if 'Vulnerabilities' in result:
+                        for vuln in result['Vulnerabilities']:
+                            total_vulns += 1
+                            severity = vuln.get('Severity', '').upper()
+                            if severity == 'CRITICAL':
+                                critical_count += 1
+                            elif severity == 'HIGH':
+                                high_count += 1
+    except:
+        pass
+    
+    # Parse quality metrics
+    todo_count = 0
+    debug_count = 0
+    large_files = 0
+    total_improvements = 0
+    try:
+        if os.path.exists('/tmp/quality-results.txt'):
+            with open('/tmp/quality-results.txt', 'r') as f:
+                content = f.read()
+            import re
+            todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
+            if todo_match:
+                todo_count = int(todo_match.group(1))
+            debug_match = re.search(r'Debug statements: (\d+)', content)
+            if debug_match:
+                debug_count = int(debug_match.group(1))
+            large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
+            if large_match:
+                large_files = int(large_match.group(1))
+            total_match = re.search(r'Total suggestions: (\d+)', content)
+            if total_match:
+                total_improvements = int(total_match.group(1))
+    except:
+        pass
+    
+    # Parse secret counts
+    api_keys = 0
+    passwords = 0
+    tokens = 0
+    try:
+        if os.path.exists('/tmp/secrets-found.txt'):
+            with open('/tmp/secrets-found.txt', 'r') as f:
+                content = f.read()
+            import re
+            api_match = re.search(r'API Keys found: (\d+)', content)
+            if api_match:
+                api_keys = int(api_match.group(1))
+            pwd_match = re.search(r'Hardcoded passwords found: (\d+)', content)
+            if pwd_match:
+                passwords = int(pwd_match.group(1))
+            tok_match = re.search(r'Tokens found: (\d+)', content)
+            if tok_match:
+                tokens = int(tok_match.group(1))
+    except:
+        pass
+    
+    total_secrets = api_keys + passwords + tokens
+    
     description = f"""
-🔍 *EXTERNAL REPOSITORY SCAN REPORT*
+🔍 *External Repository Scan Report*
 
-*Repository Being Scanned:*
-• *Name:* {repo_name}
-• *URL:* {repo_url}
-• *Link:* [{repo_name}]({repo_url})
-• *Branch:* {repo_branch}
-• *Scan Type:* {scan_type}
-• *Scan Time:* {current_time}
+----
 
-*Pipeline Information:*
-• Run ID: {github_run_id}
-• Run Number: {github_run_number}
-• Workflow: External Repository Security Scan
-• Status: ✅ Completed
+h3. 🧩 Repository Information
 
-*📊 DEDICATED DASHBOARD FOR THIS REPOSITORY:*
-• 🎯 [View {repo_name} Dashboard]({dashboard_url})
-• This dashboard shows real-time metrics specific to {repo_name}
+||Field||Value||
+|Name|{repo_name}|
+|URL|[{repo_url}|{repo_url}]|
+|Branch|{repo_branch}|
+|Scan Type|{scan_type}|
+|Scan Time|{datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}|
+
+----
+
+h3. ⚙️ Pipeline Details
+
+||Field||Value||
+|Run ID|{github_run_id}|
+|Run Number|#{github_run_number}|
+|Workflow|External Repository Security Scan|
+|Status|✅ Completed|
+
+*Pipeline Links:*
+* [🔗 View Logs|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
+* [📊 Pipeline Dashboard (Grafana)|{dashboard_url}]
+* [📈 Prometheus Metrics|http://localhost:30090/graph?g0.expr=pipeline_scan_duration_seconds{{repo="{repo_name}"}}]
+
+----
+
+h3. 🚀 Deployment Overview
 
 {deployment_section}
 
-*Links:*
-• 🔗 [View Scanned Repository]({repo_url})
-• 📊 [Pipeline Dashboard for {repo_name}]({dashboard_url})
-• ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
-{f'• 🚀 [Running Application]({app_url})' if app_url else ''}
+----
 
-*📋 SCAN INFORMATION:*
-• **Repository Scanned:** {repo_name}
-• **Repository URL:** {repo_url}
-• **Branch:** {repo_branch}
-• **Scan Type:** {scan_type}
-• **Pipeline Run:** #{github_run_number}
-• **Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+h3. 🛡️ Security Scan Summary
 
-*🔗 SCAN REPORTS & TOOLS:*
-• **📊 Grafana Dashboard:** [View Real-Time Metrics]({dashboard_url})
-• **🔍 SonarQube Analysis:** [View Code Quality Report](http://213.109.162.134:30100/dashboard?id={repo_name})
-• **🛡️ Trivy Security Scan:** [Download Full Report](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
-• **📈 Prometheus Metrics:** [View Pipeline Metrics](http://213.109.162.134:30090/graph?g0.expr=pipeline_scan_duration_seconds{{repo="{repo_name}"}})
-• **📝 Pipeline Logs:** [View Complete Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+||Metric||Result||
+|Status|✅ Completed|
+|Total Vulnerabilities|{total_vulns} ({critical_count} Critical / {high_count} High)|
+|Secrets Detected|{total_secrets} (API Keys × {api_keys} • Passwords × {passwords} • Tokens × {tokens})|
+|Code Quality Issues|{total_improvements} improvements suggested|
 
-*Security Scan Results:*
-• Status: {vulnerabilities_found}
-• Issues Found: {security_issues}
-• Scan Completed: ✅
-• **🔗 View Detailed Trivy Report:** [Download JSON](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+*Top Vulnerabilities (via Trivy):*
 
-{get_detailed_vulnerability_list()}
+{vuln_details}
 
-*Code Quality Analysis - Detailed Breakdown:*
-• **🔗 View SonarQube Report:** [Open SonarQube](http://213.109.162.134:30100/dashboard?id={repo_name})
+*Security Tools:*
+* [🔍 Trivy Full Report (JSON)|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
+* [🧠 SonarQube Code Quality Report|http://localhost:30100/dashboard?id={repo_name}] _(Note: SonarQube running locally)_
+* [📊 Grafana Real-Time Dashboard|{dashboard_url}]
 
-{get_quality_analysis()}
+----
 
-*Priority Actions Required:*
-{get_priority_actions()}
+h3. 🧮 Code Quality Breakdown
 
-*Scan Metrics:*
-• {get_scan_metrics()}
-• **🔗 View All Metrics:** [Prometheus Dashboard](http://213.109.162.134:30090)
+||Metric||Count||
+|Debug Statements|{debug_count}|
+|Large Files|{large_files}|
+|TODO/FIXME Comments|{todo_count}|
+|Suggested Improvements|{total_improvements}|
 
-*Next Steps:*
-1. Review the dedicated Grafana dashboard at {dashboard_url}
-2. Check SonarQube for detailed code quality analysis: [Open SonarQube](http://213.109.162.134:30100/dashboard?id={repo_name})
-3. Download Trivy security scan artifacts from [GitHub Actions](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
-{f'4. Test the running application at {app_url}' if app_url else '4. (No application deployed - no Dockerfile found)'}
-5. Review Prometheus metrics: [View Metrics](http://213.109.162.134:30090)
-6. Address any critical vulnerabilities found
-7. Implement code quality improvements in *{repo_name}*
-{f'8. Terminate deployment when no longer needed: [🛑 DELETE]({terminate_url})' if dockerfile_exists and app_url else '8. Update scanned repository if security issues are discovered'}
+{quality_details}
 
-This issue was automatically created by the External Repository Scanner Pipeline
-Scanned Repository: {repo_name} | URL: {repo_url}
-Dedicated Dashboard: {dashboard_url}
-{f'Running Application: {app_url}' if app_url else 'No Application Deployed'}
+*Quality Reports:*
+* [🔗 View SonarQube Dashboard|http://localhost:30100/dashboard?id={repo_name}] _(Local access only)_
+* [🧾 Full Logs|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
+
+----
+
+h3. ✅ Recommended Next Steps
+
+{priority_actions}
+
+{f'# Validate application functionality at: [👉 {app_url}|{app_url}]' if app_url else ''}
+
+{f'# When testing is complete, [🛑 Delete Deployment|{terminate_url}]' if dockerfile_exists and app_url else ''}
+
+----
+
+_Report generated automatically by:_ 🧠 *External Repository Scanner Pipeline*
+* *Repository:* {repo_name}
+* *Dashboard:* [Grafana Pipeline Dashboard|{dashboard_url}]
+{f'* *Application URL:* [{app_url}|{app_url}]' if app_url else ''}
 """
     
     # Prepare the payload
