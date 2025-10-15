@@ -143,15 +143,27 @@ jobs:
             - name: environment
               value: "${{ github.event.inputs.environment || 'staging' }}"
             - name: sonarqube-url
-              value: "${{ secrets.SONARQUBE_URL }}"
+              value: "${{ secrets.SONARQUBE_URL || 'http://sonarqube:9000' }}"
+            - name: harbor-url
+              value: "${{ secrets.HARBOR_URL || 'harbor.yourcompany.com' }}"
+            - name: nexus-url
+              value: "${{ secrets.NEXUS_URL || 'http://nexus:8081' }}"
+            - name: reportportal-url
+              value: "${{ secrets.REPORTPORTAL_URL || 'http://reportportal:8080' }}"
+            - name: opensearch-url
+              value: "${{ secrets.OPENSEARCH_URL || 'http://opensearch:9200' }}"
+            - name: keycloak-url
+              value: "${{ secrets.KEYCLOAK_URL || 'http://keycloak:8080' }}"
+            - name: argocd-url
+              value: "${{ secrets.ARGOCD_URL || 'http://argocd-server:8080' }}"
             - name: defectdojo-url
-              value: "${{ secrets.DEFECTDOJO_URL }}"
+              value: "${{ secrets.DEFECTDOJO_URL || 'http://defectdojo:8080' }}"
             - name: dependency-track-url
-              value: "${{ secrets.DEPENDENCY_TRACK_URL }}"
+              value: "${{ secrets.DEPENDENCY_TRACK_URL || 'http://dependency-track:8080' }}"
             - name: vault-url
-              value: "${{ secrets.VAULT_URL }}"
+              value: "${{ secrets.VAULT_URL || 'http://vault:8200' }}"
             - name: prometheus-url
-              value: "${{ secrets.PROMETHEUS_URL }}"
+              value: "${{ secrets.PROMETHEUS_URL || 'http://prometheus:9090' }}"
             - name: jira-url
               value: "${{ secrets.JIRA_URL }}"
             - name: jira-project-key
