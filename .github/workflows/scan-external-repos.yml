@@ -407,19 +407,19 @@ jobs:
         echo "Code Quality Report" > /tmp/quality-results.txt
         echo "===================" >> /tmp/quality-results.txt
         
-        TODO_COUNT=$(grep -r "TODO\|FIXME" --include="*.py" --include="*.js" --include="*.java" --include="*.go" . 2>/dev/null | wc -l || echo "0")
+        TODO_COUNT=$(grep -r "TODO\|FIXME" --include="*.py" --include="*.js" --include="*.java" --include="*.go" --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=.git . 2>/dev/null | wc -l || echo "0")
         echo "TODO/FIXME comments: $TODO_COUNT" >> /tmp/quality-results.txt
         
-        DEBUG_COUNT=$(grep -r "console\.log\|print(\|var_dump\|dd(" --include="*.py" --include="*.js" --include="*.php" . 2>/dev/null | wc -l || echo "0")
+        DEBUG_COUNT=$(grep -r "console\.log\|print(\|var_dump\|dd(" --include="*.py" --include="*.js" --include="*.php" --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=.git . 2>/dev/null | wc -l || echo "0")
         echo "Debug statements: $DEBUG_COUNT" >> /tmp/quality-results.txt
         
-        LARGE_FILES=$(find . -type f -size +1M -not -path "*/\.*" 2>/dev/null | wc -l || echo "0")
+        LARGE_FILES=$(find . -type f -size +1M -not -path "*/\.*" -not -path "*/node_modules/*" -not -path "*/vendor/*" 2>/dev/null | wc -l || echo "0")
         echo "Large files (>1MB): $LARGE_FILES" >> /tmp/quality-results.txt
         
-        # Save actual large files with sizes
+        # Save actual large files with sizes (excluding node_modules and vendor)
         echo "" >> /tmp/quality-results.txt
         echo "Large Files Details:" >> /tmp/quality-results.txt
-        find . -type f -size +1M -not -path "*/\.*" -exec ls -lh {} \; 2>/dev/null | head -20 >> /tmp/quality-results.txt || echo "  No large files found" >> /tmp/quality-results.txt
+        find . -type f -size +1M -not -path "*/\.*" -not -path "*/node_modules/*" -not -path "*/vendor/*" -exec ls -lh {} \; 2>/dev/null | head -20 >> /tmp/quality-results.txt || echo "  No large files found" >> /tmp/quality-results.txt
         
         TOTAL_SUGGESTIONS=$((TODO_COUNT + DEBUG_COUNT + LARGE_FILES))
         echo "Total suggestions: $TOTAL_SUGGESTIONS" >> /tmp/quality-results.txt

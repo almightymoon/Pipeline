@@ -102,11 +102,11 @@ def collect_quality_metrics(repository):
     
     metrics = []
     
-    # Initialize with defaults (matching the Jira report)
+    # Initialize with zeros (will be populated from actual scan results)
     todo_count = 0
     debug_count = 0
-    large_files = 4  # From Jira: "4 large files found"
-    total_improvements = 4  # From Jira: "4 code quality improvements suggested"
+    large_files = 0
+    total_improvements = 0
     
     # Check for quality results file
     if os.path.exists('/tmp/quality-results.txt'):
@@ -173,12 +173,8 @@ def collect_test_metrics(repository):
         except:
             pass
     
-    # If no test results, use realistic values based on repository type
-    if tests_passed == 0 and tests_failed == 0:
-        # For Neuropilot-project (ML/AI project), use realistic test metrics
-        tests_passed = 23   # Realistic for ML project
-        tests_failed = 0    # No failures in current scan
-        coverage_percentage = 85.2  # Good coverage for ML project
+    # If no test results found, keep zeros (don't use fake data)
+    # The metrics will show 0, which accurately represents "no tests run"
     
     metrics.extend([
         f'tests_passed_total{{repository="{repository}"}} {tests_passed}',
