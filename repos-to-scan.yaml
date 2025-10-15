@@ -10,10 +10,10 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/almightymoon/docker-test-app-1 
-    name: docker-test-app-1
-    branch: main  
-    scan_type: full   
+  # - url: https://github.com/almightymoon/docker-test-app-1 
+  #   name: docker-test-app-1
+  #   branch: main  
+  #   scan_type: full   
 
   # - url: https://github.com/almightymoon/sample-docker-app.git
   #   name: sample-docker-app
@@ -21,10 +21,10 @@ repositories:
   #   scan_type: full   
   # # Testing updated Jira dashboard link   
 
-  # - url: https://github.com/almightymoon/dockerized-hello-world-app
-  #   name: dockerized-hello-world-app
-  #   branch: main 
-  #   scan_type: full       
+  - url: https://github.com/almightymoon/dockerized-hello-world-app
+    name: dockerized-hello-world-app
+    branch: main 
+    scan_type: full       
 
   # - url: https://github.com/almightymoon/qaicb
   #   name: qaicb
