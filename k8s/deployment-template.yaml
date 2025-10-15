@@ -43,17 +43,7 @@ spec:
               echo "🔄 Starting a simple HTTP server as fallback..."
               # Create a simple status page and serve it
               mkdir -p /tmp/web
-              cat > /tmp/web/index.html << 'EOF'
-              <!DOCTYPE html>
-              <html><head><title>Pipeline Deployment</title></head>
-              <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h1>🚀 Pipeline Deployment Active</h1>
-                <p>Repository: REPO_NAME_PLACEHOLDER</p>
-                <p>Pipeline Run: #RUN_NUMBER_PLACEHOLDER</p>
-                <p>Status: Application files found but entrypoint needs adjustment</p>
-                <p><a href="REPO_URL_PLACEHOLDER">View Repository</a></p>
-              </body></html>
-              EOF
+              echo '<!DOCTYPE html><html><head><title>Pipeline Deployment</title></head><body style="font-family: Arial; text-align: center; padding: 50px;"><h1>🚀 Pipeline Deployment Active</h1><p>Repository: REPO_NAME_PLACEHOLDER</p><p>Pipeline Run: #RUN_NUMBER_PLACEHOLDER</p><p>Status: Application files found but entrypoint needs adjustment</p><p><a href="REPO_URL_PLACEHOLDER">View Repository</a></p></body></html>' > /tmp/web/index.html
               cd /tmp/web && npx -y http-server -p 80
             fi
         ports:
