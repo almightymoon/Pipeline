@@ -1,434 +1,461 @@
-# 🚀 Enterprise ML/AI CI/CD Pipeline
+# 🚀 ML/AI Pipeline - Enterprise CI/CD Security Scanner
 
-A production-ready, enterprise-grade CI/CD pipeline for ML/AI projects with GitHub Actions, Kubernetes deployment, comprehensive monitoring, and Jira integration.
+A comprehensive, automated CI/CD pipeline for ML/AI projects with integrated security scanning, code quality analysis, and deployment automation.
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Configuration](#configuration)
+- [Services](#services)
+- [Usage](#usage)
+- [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
+
+---
 
 ## ✨ Features
 
-### 🔄 CI/CD Pipeline
-- **GitHub Actions Workflow**: Automated builds on every push
-- **Multi-Stage Pipeline**: Validation → Build → Security → Test → Deploy → Monitor
-- **Kubernetes Deployment**: Direct deployment to K3s cluster
-- **Docker Container Building**: Automated containerization
-- **Dataset Processing**: Process datasets from any repository! 📊
+### 🔒 Security Scanning
+- **Trivy** - Vulnerability scanning for containers and filesystems
+- **Secret Detection** - Finds API keys, passwords, and tokens
+- **SonarQube** - SAST (Static Application Security Testing)
+- **Dependency Analysis** - Checks for vulnerable dependencies
 
-### 🔒 Security & Quality
-- **Security Scanning**: Trivy vulnerability scanning
-- **Dependency Checking**: Automated dependency analysis
-- **Code Quality**: SonarQube integration (configurable)
-- **SBOM Generation**: Software Bill of Materials for compliance
+### 📊 Code Quality
+- **Quality Metrics** - TODO/FIXME comments, debug statements, large files
+- **Quality Score** - Automated scoring (0-100) based on code quality
+- **SonarQube Integration** - Detailed code quality analysis
+- **Best Practices** - Automated recommendations
 
-### 📊 Monitoring & Observability
-- **Prometheus**: Metrics collection and monitoring
-- **Grafana**: Beautiful dashboards and visualizations
-- **Repository-Specific Dashboards**: 🆕 Unique dashboard for each repository scanned
-- **Automated Dashboard Creation**: Auto-generates dashboards with real-time metrics
-- **Real-time Alerts**: Automated alerting system
-- **Pipeline Metrics**: Track build times, success rates, and more
+### 🚀 Deployment
+- **Docker** - Automated container building
+- **Kubernetes** - Automated deployment to K8s clusters
+- **NodePort Services** - External access to deployed applications
+- **Health Checks** - Automated application monitoring
 
-### 🎫 Integration
-- **Jira**: Automatic issue creation and tracking
-- **Slack**: Notification support (optional)
-- **Vault**: Secure secret management
-- **ArgoCD**: GitOps deployments
+### 📈 Monitoring & Reporting
+- **Grafana** - Real-time dashboards for each repository
+- **Prometheus** - Metrics collection and storage
+- **Jira Integration** - Automated issue creation with scan results
+- **GitHub Actions** - Complete CI/CD automation
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      GitHub Actions Pipeline                     │
-└─────────────────────────────────────────────────────────────────┘
-              │
-              ├─▶ 🔍 Validate Commit
-              ├─▶ 🏗️  Build & Package (Docker)
-              ├─▶ 🔒 Security Scan (Trivy + Dependencies)
-              ├─▶ 🧪 Run Tests (Pytest + Coverage)
-              ├─▶ 🚀 Deploy to Kubernetes
-              ├─▶ 📊 Send Metrics (Prometheus)
-              └─▶ 🎫 Update Jira & Notify
-
-                       ⬇️  Deploy to  ⬇️
-
-┌─────────────────────────────────────────────────────────────────┐
-│                    Kubernetes Cluster (K3s)                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-│  │ ArgoCD   │  │ Tekton   │  │ Vault    │  │ Gatekeeper│      │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘       │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                     │
-│  │Prometheus│  │ Grafana  │  │ ML Apps  │                     │
-│  └──────────┘  └──────────┘  └──────────┘                     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## 📋 Prerequisites
-
-### Required
-- **GitHub Account**: For CI/CD workflows
-- **Kubernetes Cluster**: K3s or similar (v1.24+)
-- **kubectl**: Configured to access your cluster
-- **Docker**: For local testing
-
-### Optional
-- **GitHub CLI** (`gh`): For easier secret management
-- **Jira Account**: For issue tracking integration
-- **Slack Workspace**: For notifications
+---
 
 ## 🚀 Quick Start
 
-> **💡 Process ANY repository (datasets, code, etc.):**
-> 1. Edit `repos-to-process.yaml` - add your repo URL
-> 2. Push to GitHub
-> 3. Pipeline auto-runs! ✨
-> 
-> See [SIMPLE_USAGE_GUIDE.md](SIMPLE_USAGE_GUIDE.md) for details!
+### Prerequisites
+
+- Docker installed
+- GitHub account with Actions enabled
+- (Optional) Kubernetes cluster for deployments
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourorg/pipeline.git
-cd pipeline
+git clone https://github.com/almightymoon/Pipeline.git
+cd Pipeline
 ```
 
-### 2. Set Up GitHub Secrets
+### 2. Set Up Services
 
-You need to configure the following secrets in your GitHub repository:
-
+#### Start SonarQube (Local)
 ```bash
-# Using GitHub CLI (recommended)
-gh auth login
-
-# Set Kubernetes access
-gh secret set KUBECONFIG --body "$(cat ~/.kube/config | base64)"
-
-# Set other secrets
-gh secret set HARBOR_USERNAME --body "admin"
-gh secret set HARBOR_PASSWORD --body "your-password"
-gh secret set SONARQUBE_URL --body "http://your-sonarqube:9000"
-gh secret set SONARQUBE_TOKEN --body "your-token"
-gh secret set VAULT_URL --body "http://your-vault:8200"
-gh secret set VAULT_TOKEN --body "your-token"
-gh secret set JIRA_URL --body "https://your-company.atlassian.net"
-gh secret set JIRA_PROJECT_KEY --body "ML"
-gh secret set PROMETHEUS_PUSHGATEWAY_URL --body "http://your-prometheus:9091"
+docker run -d \
+  --name sonarqube \
+  -p 30100:9000 \
+  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+  sonarqube:10.3-community
 ```
 
-**Or use the automated setup script:**
-
+#### Start Grafana (Local)
 ```bash
-./setup-github-secrets.sh
+docker run -d \
+  --name grafana \
+  -p 30102:3000 \
+  grafana/grafana:latest
 ```
 
-See [docs/GITHUB_SECRETS_VALUES.md](docs/GITHUB_SECRETS_VALUES.md) for detailed instructions.
+#### Start Prometheus (Local)
+```bash
+docker run -d \
+  --name prometheus \
+  -p 30090:9090 \
+  prom/prometheus:latest
+```
 
-### 3. Configure Your Pipeline
+### 3. Configure GitHub Secrets
 
-Edit `.github/workflows/basic-pipeline.yml` to customize:
+Go to **Settings → Secrets and variables → Actions** and add:
+
+```
+JIRA_URL=https://your-jira-instance.atlassian.net
+JIRA_EMAIL=your-email@example.com
+JIRA_API_TOKEN=your-jira-api-token
+JIRA_PROJECT_KEY=YOUR-PROJECT-KEY
+
+GRAFANA_URL=http://localhost:30102
+GRAFANA_USERNAME=admin
+GRAFANA_PASSWORD=admin
+
+SONARQUBE_URL=http://localhost:30100
+SONARQUBE_TOKEN=your-sonarqube-token
+```
+
+### 4. Configure Repositories to Scan
+
+Edit `repos-to-scan.yaml`:
 
 ```yaml
-env:
-  REGISTRY: your-harbor-registry.com
-  IMAGE_NAME: your-org/your-app
+repositories:
+  - name: my-project
+    url: https://github.com/username/my-project
+    branch: main
+    scan_type: full
 ```
 
-### 4. Push to Trigger Pipeline
+### 5. Push to Trigger Pipeline
 
 ```bash
-git add .
-git commit -m "Initial setup"
-git push origin main
+git add repos-to-scan.yaml
+git commit -m "Add repository to scan"
+git push
 ```
 
-The pipeline will automatically run! 🎉
+The pipeline will automatically:
+1. ✅ Scan the repository
+2. ✅ Run security analysis
+3. ✅ Generate Grafana dashboard
+4. ✅ Create Jira issue with results
+5. ✅ Deploy application (if Dockerfile exists)
 
-### 5. Monitor Your Pipeline
+---
 
-- **GitHub Actions**: `https://github.com/your-org/your-repo/actions`
-- **Grafana**: `http://your-server:30102` (admin/admin123)
-- **ArgoCD**: `http://your-server:32146` (admin/password)
-- **Jira**: Check your project for automated issues
+## 🏗️ Architecture
 
-## 📁 Project Structure
+### Pipeline Flow
 
 ```
-pipeline/
-├── .github/workflows/
-│   ├── basic-pipeline.yml          # Main CI/CD workflow
-│   └── dataset-pipeline.yml        # Dataset processing workflow ⭐NEW
-├── docs/                            # Documentation
-│   ├── COMPLETE_PIPELINE_GUIDE.md  # Comprehensive guide
-│   ├── DATASET_PROCESSING_GUIDE.md # Dataset processing ⭐NEW
-│   ├── USING_PIPELINE_WITH_OTHER_REPOS.md # Use with other repos ⭐NEW
-│   ├── GITHUB_SECRETS_VALUES.md    # Secret configuration
-│   ├── JIRA_SETUP_GUIDE.md         # Jira integration
-│   ├── DASHBOARDS_GUIDE.md         # Grafana dashboards
-│   └── CREDENTIALS_GUIDE.md        # Credentials management
-├── scripts/                         # Utility scripts ⭐NEW
-│   ├── validate_dataset.py         # Dataset validation
-│   └── process_dataset.py          # Dataset processing
-├── configs/                         # Configuration files
-│   ├── deepspeed.json              # DeepSpeed config
-│   ├── model-config.yaml           # Model settings
-│   └── dataset-transform.yaml      # Data processing
-├── k8s/                            # Kubernetes manifests
-│   ├── namespace.yaml              # Namespaces
-│   ├── gpu-operator.yaml           # GPU support
-│   ├── ml-training-job.yaml        # Training jobs
-│   └── triton-inference.yaml       # Inference server
-├── monitoring/                      # Monitoring configs
-│   ├── prometheus-rules.yaml       # Prometheus alerts
-│   └── grafana-dashboard.json      # Dashboards
-├── integrations/                    # Third-party integrations
-│   └── jira-config.yaml            # Jira configuration
-├── credentials/                     # Secret templates
-│   └── all-services-secrets.yaml   # All secrets template
-├── src/                            # Application source code
-│   └── ml_pipeline/
-│       ├── __init__.py
-│       └── main.py
-├── tests/                          # Test suites
-│   ├── test_basic.py              # Unit tests
-│   ├── integration/               # Integration tests
-│   └── performance/               # Load tests
-├── setup-github-secrets.sh        # Secret setup script
-├── setup-jira-integration.sh      # Jira setup script
-├── setup-with-credentials.sh      # Full setup script
-├── Dockerfile                      # Container definition
-├── requirements.txt                # Python dependencies
-├── QUICK_START.md                  # Quick reference ⭐NEW
-└── README.md                       # This file
+┌─────────────────┐
+│  GitHub Push    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Clone External  │
+│   Repository    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Security Scans  │
+│ • Trivy         │
+│ • Secrets       │
+│ • SonarQube     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Code Quality    │
+│ • TODO/FIXME    │
+│ • Debug Stmts   │
+│ • Large Files   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Build & Deploy  │
+│ • Docker Build  │
+│ • K8s Deploy    │
+│ • Service Expose│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Report & Monitor│
+│ • Grafana       │
+│ • Prometheus    │
+│ • Jira Issue    │
+└─────────────────┘
 ```
 
-## 🔧 Configuration
+### Components
 
-### Pipeline Stages
+| Component | Purpose | URL |
+|-----------|---------|-----|
+| **GitHub Actions** | CI/CD Orchestration | GitHub UI |
+| **SonarQube** | Code Quality Analysis | http://localhost:30100 |
+| **Grafana** | Dashboards & Visualization | http://localhost:30102 |
+| **Prometheus** | Metrics Storage | http://localhost:30090 |
+| **Jira** | Issue Tracking | Your Jira Instance |
+| **Trivy** | Security Scanning | Embedded in Pipeline |
 
-The pipeline consists of 7 stages:
+---
 
-1. **🔍 Validate Commit** (4s): Validates commit signature and metadata
-2. **🏗️ Build & Package** (~5min): Builds Docker images
-3. **🔒 Security Analysis** (10s): Runs Trivy vulnerability scans
-4. **🧪 Run Tests** (15s): Executes unit and integration tests
-5. **🚀 Deploy to Kubernetes** (8s): Deploys to your cluster
-6. **📊 Monitoring & Reporting** (3s): Sends metrics to Prometheus
-7. **🧹 Cleanup & Notifications** (3s): Cleans up and notifies stakeholders
+## ⚙️ Configuration
+
+### Repository Configuration
+
+Edit `repos-to-scan.yaml` to add repositories:
+
+```yaml
+repositories:
+  - name: project-name          # Display name
+    url: https://github.com/...  # Repository URL
+    branch: main                 # Branch to scan
+    scan_type: full             # Scan type: full, security, quality
+```
 
 ### Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `KUBECONFIG` | Base64 encoded kubeconfig | ✅ Yes | - |
-| `HARBOR_USERNAME` | Registry username | No | - |
-| `HARBOR_PASSWORD` | Registry password | No | - |
-| `SONARQUBE_URL` | SonarQube server URL | No | - |
-| `SONARQUBE_TOKEN` | SonarQube auth token | No | - |
-| `JIRA_URL` | Jira server URL | No | - |
-| `JIRA_PROJECT_KEY` | Jira project key | No | `ML` |
-| `PROMETHEUS_PUSHGATEWAY_URL` | Prometheus URL | No | - |
-| `VAULT_URL` | Vault server URL | No | - |
-| `VAULT_TOKEN` | Vault auth token | No | - |
-
-## 📊 Monitoring
-
-### Grafana Dashboards
-
-Access Grafana at `http://your-server:30102`:
-
-- **ML Pipeline Overview**: Pipeline execution metrics
-- **Test Results**: Test coverage and pass rates
-- **Build Performance**: Build times and success rates
-- **Infrastructure**: Resource usage and health
-
-Default credentials: `admin` / `admin123`
-
-### 🆕 Repository-Specific Dashboards
-
-**Each repository gets its own unique dashboard!**
-
-When you scan a repository, the system automatically:
-1. ✅ Creates a unique Grafana dashboard for that repository
-2. ✅ Populates it with real-time metrics from the pipeline run
-3. ✅ Creates a Jira ticket with a direct link to that dashboard
-
-**Quick Start:**
-```bash
-# 1. Configure your repository
-vim repos-to-scan.yaml
-
-# 2. Run your pipeline (scans the repository)
-
-# 3. Create dashboard and Jira ticket
-./create-repo-dashboard.sh
-```
-
-**Example Dashboards:**
-- `tensorflow-models` → `http://213.109.162.134:30102/d/e03ed124.../tensorflow-models`
-- `neuropilot-project` → `http://213.109.162.134:30102/d/abc123.../neuropilot-project`
-- `your-repo` → Automatically generated with unique URL
-
-**What You Get:**
-- 📊 Security vulnerabilities (Critical, High, Medium, Low)
-- 📝 Code quality metrics (TODO comments, debug statements)
-- 🧪 Test results (passed, failed, coverage)
-- 📁 Repository info (files scanned, size, scan time)
-
-**Documentation:**
-- 📖 [Quick Start Guide](QUICK_START_DASHBOARDS.md)
-- 📖 [Full Documentation](REPOSITORY_DASHBOARD_GUIDE.md)
-- 📖 [Live Demo](DASHBOARD_DEMO.md)
-- 📖 [System Overview](SYSTEM_OVERVIEW.md)
-
-### Prometheus Metrics
-
-The pipeline sends these metrics to Prometheus:
-
-```
-pipeline_run_total{status="success",branch="main"} 1
-pipeline_duration_seconds{branch="main"} 360
-pipeline_tests_passed{branch="main"} 41
-pipeline_tests_failed{branch="main"} 1
-```
-
-### Key Metrics
-
-- `pipeline_run_total`: Total pipeline runs
-- `pipeline_duration_seconds`: Pipeline execution time
-- `pipeline_tests_passed`: Number of tests passed
-- `pipeline_tests_failed`: Number of tests failed
-- `pipeline_build_size_bytes`: Docker image size
-
-## 🎫 Jira Integration
-
-### Setup
-
-1. Get your Jira API token: https://id.atlassian.com/manage-profile/security/api-tokens
-2. Run the setup script:
+Create `.env` file (optional):
 
 ```bash
-./setup-jira-integration.sh
+# Grafana
+GRAFANA_URL=http://localhost:30102
+GRAFANA_USERNAME=admin
+GRAFANA_PASSWORD=admin
+
+# SonarQube
+SONARQUBE_URL=http://localhost:30100
+SONARQUBE_TOKEN=your-token
+
+# Jira
+JIRA_URL=https://your-instance.atlassian.net
+JIRA_EMAIL=your-email@example.com
+JIRA_API_TOKEN=your-token
+JIRA_PROJECT_KEY=PROJECT
 ```
 
-3. The pipeline will automatically:
-   - Create issues when pipelines fail
-   - Update issues when fixed
-   - Track test failures
-   - Report metrics
+---
 
-See [docs/JIRA_SETUP_GUIDE.md](docs/JIRA_SETUP_GUIDE.md) for details.
+## 🌐 Services
 
-## 🔒 Security
+### SonarQube
 
-### Secret Management
+**Access:** http://localhost:30100
+**Default Credentials:** admin/admin
 
-All secrets are stored in:
-- **GitHub Secrets**: For CI/CD workflows
-- **Kubernetes Secrets**: For runtime access
-- **HashiCorp Vault**: For centralized secret management
+**Features:**
+- Code quality analysis
+- Security vulnerability detection
+- Code smells and bugs
+- Technical debt tracking
 
-### Security Scanning
+### Grafana
 
-Every build includes:
-- **Trivy**: Container vulnerability scanning
-- **Dependency Check**: Dependency vulnerability analysis
-- **SBOM**: Software Bill of Materials generation
+**Access:** http://localhost:30102
+**Default Credentials:** admin/admin
 
-### Best Practices
+**Features:**
+- Real-time dashboards per repository
+- Security metrics visualization
+- Quality score tracking
+- Deployment status
 
-- ✅ Never commit secrets to Git
-- ✅ Use Vault for secret rotation
-- ✅ Enable branch protection rules
-- ✅ Require signed commits
-- ✅ Regular security audits
+### Prometheus
 
-## 🐛 Troubleshooting
+**Access:** http://localhost:30090
 
-### Pipeline Failures
+**Features:**
+- Metrics collection
+- Time-series data storage
+- Query interface
+- Alerting (optional)
 
-**Issue**: `base64: invalid input`
+---
 
-**Solution**: Ensure KUBECONFIG secret is properly base64 encoded:
-```bash
-cat ~/.kube/config | base64 | gh secret set KUBECONFIG --body-file -
+## 📖 Usage
+
+### Scanning a Repository
+
+1. Add repository to `repos-to-scan.yaml`
+2. Commit and push changes
+3. Pipeline runs automatically
+4. Check results in:
+   - GitHub Actions logs
+   - Grafana dashboard
+   - Jira issue
+   - SonarQube report
+
+### Viewing Results
+
+#### Grafana Dashboard
+```
+http://localhost:30102
+→ Dashboards
+→ Pipeline Dashboard - {repository-name}
 ```
 
-**Issue**: `Kubernetes cluster not accessible`
-
-**Solution**: Check your kubeconfig points to the correct server IP, not localhost.
-
-**Issue**: `Docker build fails`
-
-**Solution**: Check Docker BuildX is enabled and you have sufficient disk space.
-
-### Kubernetes Connection
-
-```bash
-# Test kubectl access
-kubectl get nodes
-
-# Check pipeline pods
-kubectl get pods -n ml-pipeline
-
-# View pipeline logs
-kubectl logs -f <pod-name> -n ml-pipeline
+#### SonarQube Report
+```
+http://localhost:30100
+→ Projects
+→ {repository-name}
 ```
 
-### Common Commands
+#### Jira Issue
+Check your Jira project for automatically created issues with scan results.
 
-```bash
-# View workflow runs
-gh run list
+### Accessing Deployed Applications
 
-# Watch active run
-gh run watch
+If a Dockerfile is detected, the application is deployed to Kubernetes:
 
-# View run logs
-gh run view --log
-
-# Rerun failed job
-gh run rerun <run-id>
 ```
+http://{server-ip}:{node-port}
+```
+
+Node ports are assigned automatically (30000-32767 range).
+
+---
 
 ## 📚 Documentation
 
-- **[Complete Pipeline Guide](docs/COMPLETE_PIPELINE_GUIDE.md)**: Comprehensive guide
-- **[GitHub Secrets Setup](docs/GITHUB_SECRETS_VALUES.md)**: Secret configuration
-- **[Jira Integration](docs/JIRA_SETUP_GUIDE.md)**: Jira setup guide
-- **[Dashboards Guide](docs/DASHBOARDS_GUIDE.md)**: Grafana dashboards
-- **[Credentials Guide](docs/CREDENTIALS_GUIDE.md)**: Managing credentials
+### Core Documentation
 
-## 🎯 Workflow Status
+- **PIPELINE_FIXED_SUMMARY.md** - Pipeline fixes and current status
+- **SONARQUBE_AND_JIRA_IMPROVEMENTS.md** - SonarQube setup and Jira report improvements
 
-| Workflow | Status | Description |
-|----------|--------|-------------|
-| [Basic Pipeline](.github/workflows/basic-pipeline.yml) | [![CI](https://github.com/yourorg/pipeline/actions/workflows/basic-pipeline.yml/badge.svg)](https://github.com/yourorg/pipeline/actions/workflows/basic-pipeline.yml) | Main CI/CD workflow |
+### Additional Guides (in `docs/`)
+
+- **COMPLETE_PIPELINE_GUIDE.md** - Comprehensive pipeline documentation
+- **DASHBOARDS_GUIDE.md** - Grafana dashboard setup
+- **JIRA_SETUP_GUIDE.md** - Jira integration guide
+- **K3S_CLUSTER_SETUP.md** - Kubernetes cluster setup
+- **CREDENTIALS_GUIDE.md** - Secrets and credentials management
+
+---
+
+## 🔧 Troubleshooting
+
+### SonarQube Not Accessible
+
+**Problem:** "This site can't be reached" when accessing SonarQube
+
+**Solution:** SonarQube runs locally. Access from your local machine:
+```bash
+http://localhost:30100
+```
+
+If running on a remote server, use SSH tunnel:
+```bash
+ssh -L 30100:localhost:30100 user@server-ip
+```
+
+### Pipeline Fails
+
+**Check:**
+1. GitHub Secrets are configured correctly
+2. Services (SonarQube, Grafana, Prometheus) are running
+3. Repository URL in `repos-to-scan.yaml` is accessible
+4. GitHub Actions logs for detailed error messages
+
+### Grafana Dashboard Not Showing Data
+
+**Solution:**
+1. Check Prometheus is running: `docker ps | grep prometheus`
+2. Verify metrics are being pushed: Check pipeline logs
+3. Refresh Grafana dashboard
+4. Check dashboard time range (default: last 1 hour)
+
+### Jira Issue Not Created
+
+**Check:**
+1. `JIRA_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY` secrets are set
+2. Jira API token has correct permissions
+3. Project key exists in Jira
+4. Check pipeline logs for Jira API errors
+
+---
+
+## 🎯 Key Features
+
+### Automated Security Scanning
+- ✅ Trivy vulnerability scanning
+- ✅ Secret detection (API keys, passwords, tokens)
+- ✅ SonarQube SAST analysis
+- ✅ Dependency vulnerability checking
+
+### Code Quality Analysis
+- ✅ TODO/FIXME comment detection
+- ✅ Debug statement detection
+- ✅ Large file identification
+- ✅ Quality score calculation (0-100)
+
+### Deployment Automation
+- ✅ Docker image building
+- ✅ Kubernetes deployment
+- ✅ Service exposure via NodePort
+- ✅ Health check monitoring
+
+### Reporting & Monitoring
+- ✅ Grafana dashboards (one per repository)
+- ✅ Prometheus metrics collection
+- ✅ Jira issue creation with detailed results
+- ✅ GitHub Actions integration
+
+---
+
+## 📊 Metrics Collected
+
+### Security Metrics
+- Total vulnerabilities (Critical/High/Medium/Low)
+- Secrets detected (API Keys/Passwords/Tokens)
+- Security scan duration
+- Vulnerability trends
+
+### Quality Metrics
+- TODO/FIXME comments count
+- Debug statements count
+- Large files count (>1MB)
+- Quality score (0-100)
+- Code coverage (if tests exist)
+
+### Deployment Metrics
+- Build success/failure rate
+- Deployment status
+- Application health
+- Response time
+
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 📞 Support
-
-- **GitHub Issues**: [Open an issue](https://github.com/yourorg/pipeline/issues)
-- **Documentation**: Check the `docs/` directory
-- **Email**: ml-team@example.com
-
-## 🎉 Acknowledgments
-
-Built with:
-- GitHub Actions
-- Kubernetes (K3s)
-- Tekton Pipelines
-- ArgoCD
-- Prometheus & Grafana
-- HashiCorp Vault
-- Jira
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ---
 
-**Made with ❤️ for ML/AI Teams**
+## 📝 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 🆘 Support
+
+For issues, questions, or contributions:
+- **GitHub Issues:** https://github.com/almightymoon/Pipeline/issues
+- **Documentation:** See `docs/` folder
+- **Examples:** Check `repos-to-scan.yaml` for configuration examples
+
+---
+
+## 🎉 Quick Links
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **SonarQube** | http://localhost:30100 | Code quality analysis |
+| **Grafana** | http://localhost:30102 | Dashboards & metrics |
+| **Prometheus** | http://localhost:30090 | Metrics storage |
+| **GitHub Actions** | GitHub UI | Pipeline execution |
+
+---
+
+**Built with ❤️ for secure, high-quality ML/AI development**
