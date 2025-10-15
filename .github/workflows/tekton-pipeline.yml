@@ -172,6 +172,15 @@ jobs:
             - name: source
               persistentVolumeClaim:
                 claimName: pipeline-source-pvc
+            - name: secrets
+              secret:
+                secretName: pipeline-secrets
+            - name: artifacts
+              persistentVolumeClaim:
+                claimName: pipeline-artifacts-pvc
+            - name: attestations
+              persistentVolumeClaim:
+                claimName: pipeline-attestations-pvc
             - name: docker-config
               secret:
                 secretName: docker-config-secret
@@ -190,9 +199,6 @@ jobs:
             - name: jira-token
               secret:
                 secretName: jira-token-secret
-            - name: attestations
-              persistentVolumeClaim:
-                claimName: pipeline-attestations-pvc
         EOF
         
         # Apply PipelineRun
