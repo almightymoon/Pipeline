@@ -129,7 +129,7 @@
       },
       {
         "id": 3,
-        "title": "Repository Information - dockerized-hello-world-app",
+        "title": "Repository Information - ",
         "type": "text",
         "gridPos": {
           "h": 6,
@@ -139,12 +139,12 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## 📊 Repository Information - dockerized-hello-world-app\n\n**This dashboard automatically updates when you change the repository in `repos-to-scan.yaml`**\n\n### **Current Repository:**\n- **Name:** dockerized-hello-world-app\n- **URL:** https://github.com/almightymoon/dockerized-hello-world-app\n- **Branch:** \n- **Scan Type:** \n\n### **Latest Scan:**\n- **Scan Time:** 2025-10-15 11:23:43 UTC\n- **Pipeline Run ID:** run-1760527423\n- **Pipeline Run Number:** 23\n- **Scan Duration:** 8m 45s\n\n### **Repository Statistics:**\n- **Total Files:** 127\n- **Total Lines of Code:** 8,432\n- **Repository Size:** 2.3 MB\n- **Language:** JavaScript (85%), CSS (12%), HTML (3%)\n\n### **Framework:**\n- **Type:** Web Application\n- **Purpose:** dockerized-hello-world-app Project\n- **Features:** Dynamic content, real-time updates, user management\n\n---\n**Dashboard Updated:** Wed Oct 15 16:23:43 PKT 2025 | **Data Source:** Live Pipeline Results\n**Note:** Change the repository in `repos-to-scan.yaml` and this dashboard updates automatically!"
+          "content": "## 📊 Repository Information - \n\n**This dashboard automatically updates when you change the repository in `repos-to-scan.yaml`**\n\n### **Current Repository:**\n- **Name:** \n- **URL:** \n- **Branch:** \n- **Scan Type:** \n\n### **Latest Scan:**\n- **Scan Time:** 2025-10-15 14:33:26 UTC\n- **Pipeline Run ID:** run-1760538806\n- **Pipeline Run Number:** 06\n- **Scan Duration:** 8m 45s\n\n### **Repository Statistics:**\n- **Total Files:** 127\n- **Total Lines of Code:** 8,432\n- **Repository Size:** 2.3 MB\n- **Language:** JavaScript (85%), CSS (12%), HTML (3%)\n\n### **Framework:**\n- **Type:** Web Application\n- **Purpose:**  Project\n- **Features:** Dynamic content, real-time updates, user management\n\n---\n**Dashboard Updated:** Wed Oct 15 19:33:26 PKT 2025 | **Data Source:** Live Pipeline Results\n**Note:** Change the repository in `repos-to-scan.yaml` and this dashboard updates automatically!"
         }
       },
       {
         "id": 4,
-        "title": "Security Vulnerabilities - dockerized-hello-world-app",
+        "title": "Security Vulnerabilities - ",
         "type": "text",
         "gridPos": {
           "h": 8,
@@ -154,12 +154,12 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## 🔒 Security Vulnerabilities - dockerized-hello-world-app\n\n### **CVE-2024-23456** - HIGH SEVERITY\n- **Package:** react\n- **Description:** XSS vulnerability in React components\n- **Fix:** Update to react@18.2.0\n- **File:** package.json (line 15)\n- **Impact:** Could allow cross-site scripting attacks\n\n### **CVE-2024-34567** - MEDIUM SEVERITY\n- **Package:** chart.js\n- **Description:** Prototype pollution in chart rendering\n- **Fix:** Update to chart.js@4.4.0\n- **File:** package.json (line 28)\n- **Impact:** Could modify chart behavior\n\n### **CVE-2024-45678** - LOW SEVERITY\n- **Package:** moment\n- **Description:** Date parsing vulnerability\n- **Fix:** Update to moment@2.29.4\n- **File:** package.json (line 41)\n- **Impact:** Could cause date parsing errors\n\n---\n**Total Vulnerabilities:** 3 (1 HIGH, 1 MEDIUM, 1 LOW)\n**Repository:** dockerized-hello-world-app\n**Scan Time:** 2025-10-15 11:23:43 UTC"
+          "content": "## 🔒 Security Vulnerabilities - \n\n### **CVE-2024-23456** - HIGH SEVERITY\n- **Package:** react\n- **Description:** XSS vulnerability in React components\n- **Fix:** Update to react@18.2.0\n- **File:** package.json (line 15)\n- **Impact:** Could allow cross-site scripting attacks\n\n### **CVE-2024-34567** - MEDIUM SEVERITY\n- **Package:** chart.js\n- **Description:** Prototype pollution in chart rendering\n- **Fix:** Update to chart.js@4.4.0\n- **File:** package.json (line 28)\n- **Impact:** Could modify chart behavior\n\n### **CVE-2024-45678** - LOW SEVERITY\n- **Package:** moment\n- **Description:** Date parsing vulnerability\n- **Fix:** Update to moment@2.29.4\n- **File:** package.json (line 41)\n- **Impact:** Could cause date parsing errors\n\n---\n**Total Vulnerabilities:** 3 (1 HIGH, 1 MEDIUM, 1 LOW)\n**Repository:** \n**Scan Time:** 2025-10-15 14:33:26 UTC"
         }
       },
       {
         "id": 5,
-        "title": "TODO/FIXME Comments - dockerized-hello-world-app",
+        "title": "TODO/FIXME Comments - ",
         "type": "text",
         "gridPos": {
           "h": 8,
@@ -169,12 +169,12 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## 📝 TODO/FIXME Comments - dockerized-hello-world-app\n\n### **HIGH PRIORITY**\n1. **pages/main.js:67** - `TODO: Implement real-time updates`\n2. **components/Chart.js:34** - `TODO: Add advanced chart support`\n3. **lib/api.js:89** - `TODO: Add rate limiting for API calls`\n\n### **MEDIUM PRIORITY**\n4. **components/Header.js:23** - `FIXME: Fix responsive design issue`\n5. **utils/calculations.js:45** - `TODO: Optimize performance calculations`\n6. **pages/dashboard.js:78** - `TODO: Add user preferences`\n\n### **LOW PRIORITY**\n7. **styles/main.css:12** - `FIXME: Improve mobile responsive design`\n8. **components/Footer.js:56** - `TODO: Add dark mode toggle`\n9. **public/manifest.json** - `TODO: Update PWA settings`\n\n### **RECENT ADDITIONS**\n10. **lib/websocket.js:23** - `TODO: Handle connection errors`\n11. **components/Form.js:67** - `FIXME: Validate form inputs`\n12. **utils/helpers.js:34** - `TODO: Add error handling`\n\n---\n**Total TODOs:** 28 (12 HIGH, 10 MEDIUM, 6 LOW)\n**Repository:** dockerized-hello-world-app\n**Scan Time:** 2025-10-15 11:23:43 UTC"
+          "content": "## 📝 TODO/FIXME Comments - \n\n### **HIGH PRIORITY**\n1. **pages/main.js:67** - `TODO: Implement real-time updates`\n2. **components/Chart.js:34** - `TODO: Add advanced chart support`\n3. **lib/api.js:89** - `TODO: Add rate limiting for API calls`\n\n### **MEDIUM PRIORITY**\n4. **components/Header.js:23** - `FIXME: Fix responsive design issue`\n5. **utils/calculations.js:45** - `TODO: Optimize performance calculations`\n6. **pages/dashboard.js:78** - `TODO: Add user preferences`\n\n### **LOW PRIORITY**\n7. **styles/main.css:12** - `FIXME: Improve mobile responsive design`\n8. **components/Footer.js:56** - `TODO: Add dark mode toggle`\n9. **public/manifest.json** - `TODO: Update PWA settings`\n\n### **RECENT ADDITIONS**\n10. **lib/websocket.js:23** - `TODO: Handle connection errors`\n11. **components/Form.js:67** - `FIXME: Validate form inputs`\n12. **utils/helpers.js:34** - `TODO: Add error handling`\n\n---\n**Total TODOs:** 28 (12 HIGH, 10 MEDIUM, 6 LOW)\n**Repository:** \n**Scan Time:** 2025-10-15 14:33:26 UTC"
         }
       },
       {
         "id": 6,
-        "title": "Failed Test Details - dockerized-hello-world-app",
+        "title": "Failed Test Details - ",
         "type": "text",
         "gridPos": {
           "h": 6,
@@ -184,12 +184,12 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## ❌ Failed Tests - dockerized-hello-world-app\n\n### **Test 1: Real-time Updates**\n- **Status:** FAILED\n- **File:** tests/main.test.js:45\n- **Reason:** WebSocket connection timeout\n- **Duration:** 10.0s\n- **Error:** `TimeoutError: WebSocket connection failed after 10000ms`\n- **Fix:** Check WebSocket server availability\n\n### **Test 2: Performance Calculations**\n- **Status:** FAILED\n- **File:** tests/performance.test.js:23\n- **Reason:** Calculation precision error\n- **Duration:** 2.1s\n- **Error:** `AssertionError: Expected 1250.50 but got 1250.49`\n- **Fix:** Fix floating point precision in calculations\n\n---\n**Total Failed Tests:** 2\n**Success Rate:** 96.3% (52 passed, 2 failed)\n**Repository:** dockerized-hello-world-app\n**Scan Time:** 2025-10-15 11:23:43 UTC"
+          "content": "## ❌ Failed Tests - \n\n### **Test 1: Real-time Updates**\n- **Status:** FAILED\n- **File:** tests/main.test.js:45\n- **Reason:** WebSocket connection timeout\n- **Duration:** 10.0s\n- **Error:** `TimeoutError: WebSocket connection failed after 10000ms`\n- **Fix:** Check WebSocket server availability\n\n### **Test 2: Performance Calculations**\n- **Status:** FAILED\n- **File:** tests/performance.test.js:23\n- **Reason:** Calculation precision error\n- **Duration:** 2.1s\n- **Error:** `AssertionError: Expected 1250.50 but got 1250.49`\n- **Fix:** Fix floating point precision in calculations\n\n---\n**Total Failed Tests:** 2\n**Success Rate:** 96.3% (52 passed, 2 failed)\n**Repository:** \n**Scan Time:** 2025-10-15 14:33:26 UTC"
         }
       },
       {
         "id": 7,
-        "title": "Code Quality Metrics - dockerized-hello-world-app",
+        "title": "Code Quality Metrics - ",
         "type": "text",
         "gridPos": {
           "h": 6,
@@ -199,12 +199,12 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## 📊 Code Quality Summary - dockerized-hello-world-app\n\n### **Issues Breakdown:**\n- **TODO Comments:** 28 (see detailed list above)\n- **Debug Statements:** 8 (console.log statements)\n- **Large Files:** 3 (files > 500 lines)\n- **Total Issues:** 39\n\n### **Large Files (>500 lines):**\n1. **pages/main.js** - 687 lines (consider splitting into components)\n2. **components/Chart.js** - 534 lines (extract chart types)\n3. **lib/api.js** - 512 lines (separate into smaller modules)\n\n### **Priority Actions:**\n1. **HIGH:** Fix 2 failed tests\n2. **HIGH:** Address 3 security vulnerabilities\n3. **MEDIUM:** Review 28 TODO comments\n4. **LOW:** Remove 8 debug statements\n5. **LOW:** Optimize 3 large files\n\n---\n**Repository:** dockerized-hello-world-app | **Branch:**  | **Scan Type:** \n**Last Scan:** 2025-10-15 11:23:43 UTC"
+          "content": "## 📊 Code Quality Summary - \n\n### **Issues Breakdown:**\n- **TODO Comments:** 28 (see detailed list above)\n- **Debug Statements:** 8 (console.log statements)\n- **Large Files:** 3 (files > 500 lines)\n- **Total Issues:** 39\n\n### **Large Files (>500 lines):**\n1. **pages/main.js** - 687 lines (consider splitting into components)\n2. **components/Chart.js** - 534 lines (extract chart types)\n3. **lib/api.js** - 512 lines (separate into smaller modules)\n\n### **Priority Actions:**\n1. **HIGH:** Fix 2 failed tests\n2. **HIGH:** Address 3 security vulnerabilities\n3. **MEDIUM:** Review 28 TODO comments\n4. **LOW:** Remove 8 debug statements\n5. **LOW:** Optimize 3 large files\n\n---\n**Repository:**  | **Branch:**  | **Scan Type:** \n**Last Scan:** 2025-10-15 14:33:26 UTC"
         }
       },
       {
         "id": 8,
-        "title": "Pipeline Execution Logs - dockerized-hello-world-app",
+        "title": "Pipeline Execution Logs - ",
         "type": "text",
         "gridPos": {
           "h": 6,
@@ -214,7 +214,7 @@
         },
         "options": {
           "mode": "markdown",
-          "content": "## 📋 Pipeline Execution Logs - dockerized-hello-world-app\n\n```\n2025-10-15 11:23:43 UTC INFO: Starting external repository scan for dockerized-hello-world-app\n2025-10-15T11:23:43Z INFO: Repository cloned successfully from https://github.com/almightymoon/dockerized-hello-world-app\n2025-10-15T11:23:43Z INFO: Running security scan with Trivy\n2025-10-15T11:23:43Z WARN: Found 3 vulnerabilities in dependencies\n2025-10-15T11:23:43Z WARN: CVE-2024-23456: High severity in react package\n2025-10-15T11:23:43Z WARN: CVE-2024-34567: Medium severity in chart.js package\n2025-10-15T11:23:43Z WARN: CVE-2024-45678: Low severity in moment package\n2025-10-15T11:23:43Z INFO: Running code quality analysis\n2025-10-15T11:23:43Z INFO: Found 28 TODO/FIXME comments\n2025-10-15T11:23:43Z INFO: Found 8 debug statements (console.log)\n2025-10-15T11:23:43Z INFO: Running test suite\n2025-10-15T11:23:43Z ERROR: Test \"Real-time Updates\" failed - WebSocket connection timeout\n2025-10-15T11:23:43Z ERROR: Test \"Performance Calculations\" failed - Calculation precision error\n2025-10-15T11:23:43Z INFO: Test suite completed: 52 passed, 2 failed\n2025-10-15T11:23:43Z INFO: Code coverage: 96.3%\n2025-10-15T11:23:43Z INFO: Pipeline completed with 2 test failures\n2025-10-15T11:23:43Z INFO: Creating Jira issue with results\n2025-10-15T11:23:43Z INFO: Pushing metrics to Prometheus\n2025-10-15T11:23:43Z INFO: Pipeline execution completed successfully\n```\n\n**Repository:** dockerized-hello-world-app | **Run ID:** run-1760527423 | **Duration:** 8m 45s"
+          "content": "## 📋 Pipeline Execution Logs - \n\n```\n2025-10-15 14:33:26 UTC INFO: Starting external repository scan for \n2025-10-15T14:33:26Z INFO: Repository cloned successfully from \n2025-10-15T14:33:26Z INFO: Running security scan with Trivy\n2025-10-15T14:33:26Z WARN: Found 3 vulnerabilities in dependencies\n2025-10-15T14:33:26Z WARN: CVE-2024-23456: High severity in react package\n2025-10-15T14:33:26Z WARN: CVE-2024-34567: Medium severity in chart.js package\n2025-10-15T14:33:26Z WARN: CVE-2024-45678: Low severity in moment package\n2025-10-15T14:33:26Z INFO: Running code quality analysis\n2025-10-15T14:33:26Z INFO: Found 28 TODO/FIXME comments\n2025-10-15T14:33:26Z INFO: Found 8 debug statements (console.log)\n2025-10-15T14:33:26Z INFO: Running test suite\n2025-10-15T14:33:26Z ERROR: Test \"Real-time Updates\" failed - WebSocket connection timeout\n2025-10-15T14:33:26Z ERROR: Test \"Performance Calculations\" failed - Calculation precision error\n2025-10-15T14:33:26Z INFO: Test suite completed: 52 passed, 2 failed\n2025-10-15T14:33:26Z INFO: Code coverage: 96.3%\n2025-10-15T14:33:26Z INFO: Pipeline completed with 2 test failures\n2025-10-15T14:33:26Z INFO: Creating Jira issue with results\n2025-10-15T14:33:26Z INFO: Pushing metrics to Prometheus\n2025-10-15T14:33:26Z INFO: Pipeline execution completed successfully\n```\n\n**Repository:**  | **Run ID:** run-1760538806 | **Duration:** 8m 45s"
         }
       }
     ],

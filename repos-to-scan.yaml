@@ -29,7 +29,7 @@ repositories:
   - url: https://github.com/almightymoon/qaicb
     name: qaicb
     branch: main 
-    scan_type: full   
+    scan_type: full     
 
 
 # Scan types: 

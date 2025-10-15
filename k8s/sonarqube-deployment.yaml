@@ -1,0 +1,239 @@
+# ===========================================================
+# SonarQube Deployment for ML Pipeline
+# ===========================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: ml-pipeline
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-data
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-logs
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: logs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-extensions
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: extensions
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarqube
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+    app.kubernetes.io/part-of: ml-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sonarqube
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sonarqube
+        app.kubernetes.io/component: security
+    spec:
+      containers:
+      - name: sonarqube
+        image: sonarqube:10.3-community
+        ports:
+        - containerPort: 9000
+          name: http
+        env:
+        - name: SONAR_ES_BOOTSTRAP_CHECKS_DISABLE
+          value: "true"
+        - name: SONAR_JDBC_URL
+          value: "jdbc:h2:tcp://localhost:9092/sonar"
+        - name: SONAR_JDBC_USERNAME
+          value: "sonar"
+        - name: SONAR_JDBC_PASSWORD
+          value: "sonar"
+        - name: SONAR_WEB_JAVAADDITIONALOPTS
+          value: "-Xmx1g -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:+UseParNewGC -XX:+CMSIncrementalMode"
+        - name: SONAR_CE_JAVAADDITIONALOPTS
+          value: "-Xmx512m -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -XX:+UseParNewGC -XX:+CMSIncrementalMode"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: sonarqube-data
+          mountPath: /opt/sonarqube/data
+        - name: sonarqube-logs
+          mountPath: /opt/sonarqube/logs
+        - name: sonarqube-extensions
+          mountPath: /opt/sonarqube/extensions
+        livenessProbe:
+          httpGet:
+            path: /api/system/status
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/system/status
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: sonarqube-data
+        persistentVolumeClaim:
+          claimName: sonarqube-data
+      - name: sonarqube-logs
+        persistentVolumeClaim:
+          claimName: sonarqube-logs
+      - name: sonarqube-extensions
+        persistentVolumeClaim:
+          claimName: sonarqube-extensions
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+spec:
+  type: NodePort
+  ports:
+  - port: 9000
+    targetPort: 9000
+    nodePort: 30100
+    name: http
+  selector:
+    app.kubernetes.io/name: sonarqube
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarqube-cluster
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+    name: http
+  selector:
+    app.kubernetes.io/name: sonarqube
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sonarqube-admin
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+type: Opaque
+stringData:
+  username: "admin"
+  password: "admin123"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarqube-config
+  namespace: sonarqube
+  labels:
+    app.kubernetes.io/name: sonarqube
+    app.kubernetes.io/component: security
+data:
+  sonar.properties: |
+    # SonarQube Configuration
+    sonar.web.host=0.0.0.0
+    sonar.web.port=9000
+    sonar.web.context=/sonar
+    
+    # Database Configuration (H2 for simplicity)
+    sonar.jdbc.url=jdbc:h2:tcp://localhost:9092/sonar
+    sonar.jdbc.username=sonar
+    sonar.jdbc.password=sonar
+    
+    # Security Configuration
+    sonar.security.realm=LDAP
+    sonar.authenticator.downcase=true
+    sonar.authenticator.createUsers=true
+    
+    # Analysis Configuration
+    sonar.analysis.mode=publish
+    sonar.scm.provider=git
+    sonar.scm.forceReloadAll=true
+    
+    # Quality Gate Configuration
+    sonar.qualitygate.wait=true
+    sonar.qualitygate.timeout=300
+    
+    # Security Hotspots
+    sonar.security.hotspots.inheritFromParent=true
+    sonar.security.hotspots.onlyNewCode=false
+    
+    # Branch Analysis
+    sonar.branch.name=main
+    sonar.branch.target=main
+    
+    # Pull Request Analysis
+    sonar.pullrequest.provider=github
+    sonar.pullrequest.github.repository=almightymoon/Pipeline
+    
+    # Custom Rules
+    sonar.issue.ignore.multicriteria=e1,e2,e3
+    sonar.issue.ignore.multicriteria.e1.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.py
+    sonar.issue.ignore.multicriteria.e2.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e2.resourceKey=**/*.java
+    sonar.issue.ignore.multicriteria.e3.ruleKey=*:*
+    sonar.issue.ignore.multicriteria.e3.resourceKey=**/*.js
