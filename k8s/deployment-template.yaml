@@ -19,6 +19,9 @@ spec:
       - name: REPO_NAME_PLACEHOLDER
         image: IMAGE_NAME_PLACEHOLDER
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
         command: ["/bin/sh", "-c"]
         args:
           - |
@@ -31,12 +34,39 @@ spec:
               cd /usr/local/app && node server.js
             elif [ -f "/usr/local/app/result/server.js" ]; then
               echo "✅ Found server.js in /usr/local/app/result/"
-              echo "ℹ️ This is the example-voting-app which requires a database"
-              echo "ℹ️ Starting informational web server instead..."
-              # Create an informational page about the example-voting-app
-              mkdir -p /tmp/web
-              echo '<!DOCTYPE html><html><head><title>Example Voting App - Pipeline Deployment</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;min-height:100vh}.container{max-width:800px;margin:0 auto;background:rgba(255,255,255,0.1);padding:30px;border-radius:15px;backdrop-filter:blur(10px)}h1{color:#ffd700;text-align:center}.app-info{background:rgba(0,0,0,0.3);padding:20px;border-radius:10px;margin:20px 0}.status{background:#28a745;padding:10px;border-radius:5px;margin:10px 0}.warning{background:#ffc107;color:#000;padding:10px;border-radius:5px;margin:10px 0}.links{margin:20px 0}.links a{color:#ffd700;text-decoration:none;margin:10px;padding:10px 20px;background:rgba(255,255,255,0.2);border-radius:5px;display:inline-block}.links a:hover{background:rgba(255,255,255,0.3)}</style></head><body><div class="container"><h1>🗳️ Example Voting App</h1><div class="status">✅ Successfully Deployed via Pipeline</div><div class="app-info"><h3>📋 Application Details</h3><p><strong>Repository:</strong> example-voting-app</p><p><strong>Pipeline Run:</strong> #RUN_NUMBER_PLACEHOLDER</p><p><strong>Status:</strong> Deployed but requires database setup</p></div><div class="warning"><h4>⚠️ Application Requirements</h4><p>This is a multi-service application that requires:</p><ul><li>PostgreSQL database</li><li>Redis cache</li><li>Multiple microservices (vote, result, worker)</li></ul><p>The application files are successfully deployed but need the full stack to be functional.</p></div><div class="app-info"><h3>🔍 What is the Example Voting App?</h3><p>The example-voting-app is a microservices-based voting application with:</p><ul><li><strong>Vote Service:</strong> Python Flask app for casting votes</li><li><strong>Result Service:</strong> Node.js app for displaying results</li><li><strong>Worker Service:</strong> Java app for processing votes</li><li><strong>Database:</strong> PostgreSQL for storing votes</li><li><strong>Cache:</strong> Redis for session management</li></ul></div><div class="links"><a href="REPO_URL_PLACEHOLDER" target="_blank">📁 View Repository</a><a href="http://213.109.162.134:30102" target="_blank">📊 Grafana Dashboard</a><a href="https://github.com/almightymoon/Pipeline/actions" target="_blank">⚙️ Pipeline Logs</a></div><div class="app-info"><p><strong>Deployment Status:</strong> ✅ Container running | ⚠️ Database required for full functionality</p><p><strong>Next Steps:</strong> To run the full application, deploy with PostgreSQL and Redis services.</p></div></div></body></html>' > /tmp/web/index.html
-              cd /tmp/web && npx -y http-server -p 80
+              echo "🚀 Starting example-voting-app with database setup..."
+              
+              # Set up environment variables for the app
+              export POSTGRES_HOST=localhost
+              export POSTGRES_DB=postgres
+              export POSTGRES_USER=postgres
+              export POSTGRES_PASSWORD=password
+              export REDIS_HOST=localhost
+              export REDIS_PORT=6379
+              
+              # Install and start PostgreSQL
+              echo "📦 Installing PostgreSQL..."
+              apt-get update -qq && apt-get install -y postgresql postgresql-contrib
+              
+              # Start PostgreSQL service
+              service postgresql start
+              
+              # Create database and user
+              sudo -u postgres psql -c "CREATE DATABASE postgres;"
+              sudo -u postgres psql -c "CREATE USER postgres WITH PASSWORD 'password';"
+              sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;"
+              
+              # Install and start Redis
+              echo "📦 Installing Redis..."
+              apt-get install -y redis-server
+              service redis-server start
+              
+              # Wait for services to be ready
+              sleep 5
+              
+              # Start the application
+              echo "🎯 Starting example-voting-app..."
+              cd /usr/local/app/result && node server.js
             elif [ -f "/usr/local/app/vote/app.py" ]; then
               echo "✅ Found app.py in /usr/local/app/vote/"
               cd /usr/local/app/vote && python3 app.py
