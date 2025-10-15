@@ -12,7 +12,7 @@ repositories:
   # Add your repositories below:
   - url: https://github.com/almightymoon/docker-test-app-1 
     name: docker-test-app-1
-    branch: main
+    branch: main  
     scan_type: full 
 
   # - url: https://github.com/almightymoon/sample-docker-app.git
