@@ -1076,14 +1076,31 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 • ⚙️ [Pipeline Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 {f'• 🚀 [Running Application]({app_url})' if app_url else ''}
 
+*📋 SCAN INFORMATION:*
+• **Repository Scanned:** {repo_name}
+• **Repository URL:** {repo_url}
+• **Branch:** {repo_branch}
+• **Scan Type:** {scan_type}
+• **Pipeline Run:** #{github_run_number}
+• **Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+*🔗 SCAN REPORTS & TOOLS:*
+• **📊 Grafana Dashboard:** [View Real-Time Metrics]({dashboard_url})
+• **🔍 SonarQube Analysis:** [View Code Quality Report](http://213.109.162.134:30100/dashboard?id={repo_name})
+• **🛡️ Trivy Security Scan:** [Download Full Report](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+• **📈 Prometheus Metrics:** [View Pipeline Metrics](http://213.109.162.134:30090/graph?g0.expr=pipeline_scan_duration_seconds{{repo="{repo_name}"}})
+• **📝 Pipeline Logs:** [View Complete Logs](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+
 *Security Scan Results:*
 • Status: {vulnerabilities_found}
 • Issues Found: {security_issues}
 • Scan Completed: ✅
+• **🔗 View Detailed Trivy Report:** [Download JSON](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
 
 {get_detailed_vulnerability_list()}
 
 *Code Quality Analysis - Detailed Breakdown:*
+• **🔗 View SonarQube Report:** [Open SonarQube](http://213.109.162.134:30100/dashboard?id={repo_name})
 
 {get_quality_analysis()}
 
@@ -1092,14 +1109,17 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 
 *Scan Metrics:*
 • {get_scan_metrics()}
+• **🔗 View All Metrics:** [Prometheus Dashboard](http://213.109.162.134:30090)
 
 *Next Steps:*
-1. Review the dedicated dashboard at {dashboard_url}
-{f'2. Test the running application at {app_url}' if app_url else '2. (No application deployed - no Dockerfile found)'}
-3. Check security findings in pipeline logs
-4. Address any critical vulnerabilities found
-5. Implement code quality improvements in *{repo_name}*
-{f'6. Terminate deployment when no longer needed: [🛑 DELETE]({terminate_url})' if dockerfile_exists and app_url else '6. Update scanned repository if security issues are discovered'}
+1. Review the dedicated Grafana dashboard at {dashboard_url}
+2. Check SonarQube for detailed code quality analysis: [Open SonarQube](http://213.109.162.134:30100/dashboard?id={repo_name})
+3. Download Trivy security scan artifacts from [GitHub Actions](https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id})
+{f'4. Test the running application at {app_url}' if app_url else '4. (No application deployed - no Dockerfile found)'}
+5. Review Prometheus metrics: [View Metrics](http://213.109.162.134:30090)
+6. Address any critical vulnerabilities found
+7. Implement code quality improvements in *{repo_name}*
+{f'8. Terminate deployment when no longer needed: [🛑 DELETE]({terminate_url})' if dockerfile_exists and app_url else '8. Update scanned repository if security issues are discovered'}
 
 This issue was automatically created by the External Repository Scanner Pipeline
 Scanned Repository: {repo_name} | URL: {repo_url}

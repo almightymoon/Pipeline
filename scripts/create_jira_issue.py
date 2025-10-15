@@ -319,9 +319,12 @@ def get_detailed_vulnerability_list():
                                     )
                     
                     if vulnerability_details:
-                        return "Detailed Vulnerability List:\n" + "\n".join(vulnerability_details[:10]) + ("\n• ... (and more)" if len(vulnerability_details) > 10 else "")
+                        result = f"Detailed Vulnerability List:\n*(Data source: {trivy_file})*\n" + "\n".join(vulnerability_details[:10])
+                        if len(vulnerability_details) > 10:
+                            result += f"\n• ... and {len(vulnerability_details) - 10} more vulnerabilities"
+                        return result
                     else:
-                        return "Detailed Vulnerability List:\n• No vulnerabilities found"
+                        return f"Detailed Vulnerability List:\n*(Data source: {trivy_file})*\n• No vulnerabilities found in scan"
                         
                 except Exception as e:
                     return "Detailed Vulnerability List:\n• Could not parse vulnerability details"
@@ -402,9 +405,9 @@ def get_quality_analysis():
                     analysis_lines.append(f"• **Total improvements suggested: {total}**")
                 
                 if analysis_lines:
-                    return "\n".join(analysis_lines)
+                    return f"*(Data source: {quality_file})*\n" + "\n".join(analysis_lines)
                 else:
-                    return "• No quality analysis data available - check pipeline logs"
+                    return f"*(Data source: {quality_file})*\n• No quality analysis data available - check pipeline logs"
         
         return "• Quality analysis not available"
             
