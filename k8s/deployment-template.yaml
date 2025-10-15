@@ -19,6 +19,7 @@ spec:
       containers:
       - name: REPO_NAME_PLACEHOLDER
         image: IMAGE_NAME_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
         - containerPort: 8080

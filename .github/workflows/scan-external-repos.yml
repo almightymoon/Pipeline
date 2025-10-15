@@ -771,7 +771,36 @@ jobs:
         echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "dockerfile_path=$DOCKERFILE_PATH" >> $GITHUB_OUTPUT
         
+        # Save Docker image to tar file for K8s import
+        echo "💾 Saving Docker image to tar file..."
+        docker save "$FULL_IMAGE_NAME" -o /tmp/docker-image.tar
+        
         echo "✅ Docker image built successfully: $FULL_IMAGE_NAME"
+    
+    - name: Transfer and Load Docker Image to K3s
+      if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
+      run: |
+        echo "========================================="
+        echo "Transferring Docker Image to VPS"
+        echo "========================================="
+        
+        # Install sshpass if not available
+        sudo apt-get update && sudo apt-get install -y sshpass
+        
+        # Transfer Docker image to VPS
+        echo "📤 Uploading Docker image to VPS..."
+        sshpass -p '${{ secrets.VPS_PASSWORD }}' scp -o StrictHostKeyChecking=no /tmp/docker-image.tar ubuntu@213.109.162.134:/tmp/docker-image.tar
+        
+        # Import image into K3s
+        echo "📥 Importing Docker image into K3s..."
+        sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 << 'EOF'
+          sudo k3s ctr images import /tmp/docker-image.tar
+          rm -f /tmp/docker-image.tar
+          echo "✅ Image imported successfully"
+          sudo k3s ctr images list | grep pipeline-registry || echo "Warning: Image not found in list"
+        EOF
+        
+        echo "✅ Docker image loaded into K3s cluster"
     
     - name: Deploy to Kubernetes
       if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
