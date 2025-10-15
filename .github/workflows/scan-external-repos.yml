@@ -880,7 +880,9 @@ jobs:
         sed -i "s|IMAGE_NAME_PLACEHOLDER|${{ steps.docker_build.outputs.image_name }}|g" /tmp/deployment.yaml
         sed -i "s|REPO_URL_PLACEHOLDER|${{ steps.read_config.outputs.repo_url }}|g" /tmp/deployment.yaml
         sed -i "s|SERVICE_NAME_PLACEHOLDER|$SERVICE_NAME|g" /tmp/deployment.yaml
-        sed -i "s|NODE_PORT_PLACEHOLDER|300${{ github.run_number }}|g" /tmp/deployment.yaml
+        # Generate valid NodePort (30000-32767 range)
+        NODE_PORT=$((30000 + (${{ github.run_number }} % 2768)))
+        sed -i "s|NODE_PORT_PLACEHOLDER|$NODE_PORT|g" /tmp/deployment.yaml
         sed -i "s|INGRESS_NAME_PLACEHOLDER|${{ steps.read_config.outputs.repo_name }}-ingress|g" /tmp/deployment.yaml
         sed -i "s|HOST_NAME_PLACEHOLDER|${{ steps.read_config.outputs.repo_name }}.pipeline.local|g" /tmp/deployment.yaml
         
