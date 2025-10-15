@@ -10,15 +10,15 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  # - url: https://github.com/tensorflow/models
-  #   name: tensorflow-models
-  #   branch: master
-  #   scan_type: full 
+  - url: https://github.com/almightymoon/docker-test-app-1.git
+    name: docker-test-app-1
+    branch: master
+    scan_type: full 
 
-  - url: https://github.com/almightymoon/sample-docker-app.git
-    name: sample-docker-app
-    branch: main   # Changed from master to main   
-    scan_type: full   
+  # - url: https://github.com/almightymoon/sample-docker-app.git
+  #   name: sample-docker-app
+  #   branch: main   # Changed from master to main   
+  #   scan_type: full   
   # # Testing updated Jira dashboard link   
 
   # - url: https://github.com/almightymoon/dockerized-hello-world-app
