@@ -1,14 +1,20 @@
 name: Enterprise ML Pipeline - Tekton Trigger
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '.gitignore'
-  pull_request:
-    branches: [ main ]
+  # Disabled until Kubernetes cluster is properly configured with:
+  # - Valid kubeconfig
+  # - PersistentVolumeClaims (pipeline-source-pvc, pipeline-artifacts-pvc, pipeline-attestations-pvc)
+  # - Secrets (pipeline-secrets, docker-config-secret, sonar-token-secret, etc.)
+  # - Infrastructure services (Keycloak, Vault, etc.)
+  # 
+  # push:
+  #   branches: [ main, develop ]
+  #   paths-ignore:
+  #     - 'docs/**'
+  #     - '*.md'
+  #     - '.gitignore'
+  # pull_request:
+  #   branches: [ main ]
   workflow_dispatch:
     inputs:
       environment:
