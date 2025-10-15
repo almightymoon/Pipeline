@@ -869,24 +869,55 @@ jobs:
         # Create namespace if it doesn't exist
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
         
-        # Delete old deployment if it exists (to free up resources and avoid conflicts)
-        echo "🗑️  Checking for existing deployment..."
-        if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-          echo "📌 Found existing deployment, terminating..."
-          kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --wait=true --timeout=60s
-          echo "✅ Old deployment terminated"
+        # Clean up ALL previous deployments and services in the namespace
+        echo "🗑️  Cleaning up all previous applications in namespace: $NAMESPACE"
+        
+        # Get all deployments in the namespace
+        EXISTING_DEPLOYMENTS=$(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -n "$EXISTING_DEPLOYMENTS" ]; then
+          echo "📌 Found existing deployments: $EXISTING_DEPLOYMENTS"
+          echo "🧹 Terminating all existing deployments..."
+          for deployment in $EXISTING_DEPLOYMENTS; do
+            echo "  - Deleting deployment: $deployment"
+            kubectl delete deployment "$deployment" -n "$NAMESPACE" --wait=true --timeout=60s
+          done
+          echo "✅ All deployments terminated"
         else
-          echo "ℹ️  No existing deployment found"
+          echo "ℹ️  No existing deployments found"
         fi
         
-        # Delete old service if it exists (to free up NodePort)
-        if kubectl get service "$SERVICE_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-          echo "📌 Found existing service, deleting..."
-          kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE" --wait=true --timeout=30s
-          echo "✅ Old service deleted"
+        # Get all services in the namespace (excluding kubernetes default services)
+        EXISTING_SERVICES=$(kubectl get services -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -n "$EXISTING_SERVICES" ]; then
+          echo "📌 Found existing services: $EXISTING_SERVICES"
+          echo "🧹 Deleting all existing services..."
+          for service in $EXISTING_SERVICES; do
+            echo "  - Deleting service: $service"
+            kubectl delete service "$service" -n "$NAMESPACE" --wait=true --timeout=30s
+          done
+          echo "✅ All services deleted"
         else
-          echo "ℹ️  No existing service found"
+          echo "ℹ️  No existing services found"
         fi
+        
+        # Also clean up any ingresses
+        EXISTING_INGRESSES=$(kubectl get ingresses -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -n "$EXISTING_INGRESSES" ]; then
+          echo "📌 Found existing ingresses: $EXISTING_INGRESSES"
+          echo "🧹 Deleting all existing ingresses..."
+          for ingress in $EXISTING_INGRESSES; do
+            echo "  - Deleting ingress: $ingress"
+            kubectl delete ingress "$ingress" -n "$NAMESPACE" --wait=true --timeout=30s
+          done
+          echo "✅ All ingresses deleted"
+        else
+          echo "ℹ️  No existing ingresses found"
+        fi
+        
+        echo "✅ Namespace cleaned - ready for new deployment"
         
         # Copy deployment template and replace placeholders
         cp k8s/deployment-template.yaml /tmp/deployment.yaml
