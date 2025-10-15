@@ -10,7 +10,7 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  - url: https://github.com/almightymoon/docker-test-app-1
+  - url: https://github.com/almightymoon/docker-test-app-1 
     name: docker-test-app-1
     branch: main
     scan_type: full 
