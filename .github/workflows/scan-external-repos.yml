@@ -794,10 +794,10 @@ jobs:
         # Import image into K3s
         echo "📥 Importing Docker image into K3s..."
         sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 << 'EOF'
-          sudo k3s ctr images import /tmp/docker-image.tar
+          echo '${{ secrets.VPS_PASSWORD }}' | sudo -S k3s ctr images import /tmp/docker-image.tar
           rm -f /tmp/docker-image.tar
           echo "✅ Image imported successfully"
-          sudo k3s ctr images list | grep pipeline-registry || echo "Warning: Image not found in list"
+          echo '${{ secrets.VPS_PASSWORD }}' | sudo -S k3s ctr images list | grep pipeline-registry || echo "Warning: Image not found in list"
         EOF
         
         echo "✅ Docker image loaded into K3s cluster"
