@@ -168,9 +168,9 @@ spec:
             </html>
             HTML
             
-            # Start a simple HTTP server on port 80
+            # Start a simple HTTP server on port 80 using Node.js
             cd /tmp/web
-            python3 -m http.server 80
+            npx -y http-server -p 80
         ports:
         - containerPort: 3000
         - containerPort: 8080
