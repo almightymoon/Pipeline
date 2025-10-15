@@ -204,6 +204,9 @@ jobs:
             SONARQUBE_URL="http://213.109.162.134:30100"
           fi
           
+          # Always use external IP for GitHub Actions
+          SONARQUBE_URL="http://213.109.162.134:30100"
+          
           echo "Testing SonarQube connectivity to: $SONARQUBE_URL"
           if curl -s --connect-timeout 10 "$SONARQUBE_URL" > /dev/null; then
             echo "✅ SonarQube server is accessible"
@@ -259,10 +262,28 @@ jobs:
         grep -r -i "token\s*=\|access_token\|secret_key" --include="*.env*" --include="*.config*" . 2>/dev/null | head -20 || echo "  No tokens found"
         
         # Save secret scan results
-        if [ -f "secrets-found.txt" ]; then
-          cp secrets-found.txt /tmp/secrets-found.txt
+        echo "Secret Detection Results:" > /tmp/secrets-found.txt
+        echo "========================" >> /tmp/secrets-found.txt
+        
+        # Check for API keys
+        API_KEYS=$(grep -r -i "api[_\-]key\|apikey" --include="*.env*" --include="*.config*" --include="*.json" --include="*.yaml" --include="*.yml" . 2>/dev/null | wc -l || echo "0")
+        echo "API Keys found: $API_KEYS" >> /tmp/secrets-found.txt
+        
+        # Check for passwords
+        PASSWORDS=$(grep -r -i "password\s*=\|pwd\s*=" --include="*.env*" --include="*.config*" --include="*.py" --include="*.js" . 2>/dev/null | wc -l || echo "0")
+        echo "Hardcoded passwords found: $PASSWORDS" >> /tmp/secrets-found.txt
+        
+        # Check for tokens
+        TOKENS=$(grep -r -i "token\s*=\|access_token\|secret_key" --include="*.env*" --include="*.config*" . 2>/dev/null | wc -l || echo "0")
+        echo "Tokens found: $TOKENS" >> /tmp/secrets-found.txt
+        
+        TOTAL_SECRETS=$((API_KEYS + PASSWORDS + TOKENS))
+        echo "Total secrets found: $TOTAL_SECRETS" >> /tmp/secrets-found.txt
+        
+        if [ $TOTAL_SECRETS -gt 0 ]; then
+          echo "SECRETS DETECTED - IMMEDIATE ACTION REQUIRED" >> /tmp/secrets-found.txt
         else
-          echo "No secrets found" > /tmp/secrets-found.txt
+          echo "No secrets found" >> /tmp/secrets-found.txt
         fi
     
     # ==========================================

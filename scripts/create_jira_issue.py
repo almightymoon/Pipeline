@@ -329,18 +329,28 @@ def get_detailed_vulnerability_list():
                 except Exception as e:
                     return "Detailed Vulnerability List:\n• Could not parse vulnerability details"
         
-        # If no Trivy results, check for other security scan results
-        if os.path.exists('/tmp/secrets-found.txt'):
-            try:
-                with open('/tmp/secrets-found.txt', 'r') as f:
-                    secrets_content = f.read().strip()
-                
-                if secrets_content and "No secrets found" not in secrets_content:
-                    return "Detailed Vulnerability List:\n• Potential secrets detected (check pipeline logs for details)"
-                else:
-                    return "Detailed Vulnerability List:\n• No secrets found"
-            except:
-                pass
+               # If no Trivy results, check for other security scan results
+               if os.path.exists('/tmp/secrets-found.txt'):
+                   try:
+                       with open('/tmp/secrets-found.txt', 'r') as f:
+                           secrets_content = f.read().strip()
+                       
+                       if secrets_content and "No secrets found" not in secrets_content and "Total secrets found: 0" not in secrets_content:
+                           # Parse secret detection results
+                           lines = secrets_content.split('\n')
+                           secret_details = []
+                           for line in lines:
+                               if 'found:' in line and 'Total' not in line:
+                                   secret_details.append(f"• {line.strip()}")
+                           
+                           if secret_details:
+                               return f"Detailed Vulnerability List:\n*(Data source: /tmp/secrets-found.txt)*\n" + "\n".join(secret_details)
+                           else:
+                               return "Detailed Vulnerability List:\n• Potential secrets detected (check pipeline logs for details)"
+                       else:
+                           return "Detailed Vulnerability List:\n• No secrets found"
+                   except:
+                       pass
         
         return "Detailed Vulnerability List:\n• No vulnerability scan data available"
         
