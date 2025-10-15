@@ -619,7 +619,14 @@ jobs:
         # Save Trivy results
         if [ -f "trivy-results.json" ]; then
           cp trivy-results.json /tmp/scan-results/
+          cp trivy-results.json /tmp/scan-results/trivy-fs-results.json
           echo "✅ Trivy results saved"
+        fi
+        
+        # Also check for trivy-fs-results.json
+        if [ -f "trivy-fs-results.json" ]; then
+          cp trivy-fs-results.json /tmp/scan-results/
+          echo "✅ Trivy FS results saved"
         fi
         
         # Save quality results

@@ -210,10 +210,24 @@ def get_security_issues_summary():
 def get_quality_suggestions():
     """Get code quality suggestions from scan results"""
     try:
-        if not os.path.exists('/tmp/quality-results.txt'):
+        # Look for quality results in multiple locations
+        quality_files = [
+            '/tmp/quality-results.txt',
+            '/tmp/scan-results/quality-results.txt',
+            'quality-results.txt',
+            'scan-results/quality-results.txt'
+        ]
+        
+        quality_file = None
+        for qf in quality_files:
+            if os.path.exists(qf):
+                quality_file = qf
+                break
+        
+        if not quality_file:
             return None
             
-        with open('/tmp/quality-results.txt', 'r') as f:
+        with open(quality_file, 'r') as f:
             content = f.read()
             
         # Parse the quality results
@@ -262,10 +276,23 @@ def get_detailed_vulnerability_list():
     try:
         vulnerability_details = []
         
-        # Check Trivy results
-        trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+        # Check Trivy results - look in multiple locations
+        trivy_files = [
+            'trivy-results.json',
+            'trivy-fs-results.json', 
+            '/tmp/trivy-results.json',
+            '/tmp/trivy-fs-results.json',
+            '/tmp/scan-results/trivy-results.json',
+            '/tmp/scan-results/trivy-fs-results.json',
+            'scan-results/trivy-results.json',
+            'scan-results/trivy-fs-results.json'
+        ]
+        
+        print(f"🔍 Looking for Trivy results in: {trivy_files}")
+        
         for trivy_file in trivy_files:
             if os.path.exists(trivy_file):
+                print(f"✅ Found Trivy results at: {trivy_file}")
                 try:
                     with open(trivy_file, 'r') as f:
                         trivy_data = json.load(f)
@@ -321,10 +348,18 @@ def get_quality_analysis():
     """Get detailed quality analysis for Jira description"""
     try:
         # Check multiple locations for quality results
-        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
+        quality_files = [
+            '/tmp/quality-results.txt',
+            '/tmp/scan-results/quality-results.txt',
+            'quality-results.txt',
+            'scan-results/quality-results.txt'
+        ]
+        
+        print(f"🔍 Looking for quality results in: {quality_files}")
         
         for quality_file in quality_files:
             if os.path.exists(quality_file):
+                print(f"✅ Found quality results at: {quality_file}")
                 with open(quality_file, 'r') as f:
                     content = f.read()
                     
@@ -380,7 +415,12 @@ def get_priority_actions():
     """Get priority actions based on quality analysis"""
     try:
         # Check multiple locations for quality results
-        quality_files = ['/tmp/quality-results.txt', 'quality-results.txt', '/tmp/scan-results/quality-results.txt']
+        quality_files = [
+            '/tmp/quality-results.txt',
+            '/tmp/scan-results/quality-results.txt',
+            'quality-results.txt',
+            'scan-results/quality-results.txt'
+        ]
         
         for quality_file in quality_files:
             if os.path.exists(quality_file):
