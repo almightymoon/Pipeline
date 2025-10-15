@@ -5,7 +5,6 @@ metadata:
   namespace: NAMESPACE_PLACEHOLDER
   labels:
     app: REPO_NAME_PLACEHOLDER
-    pipeline-run: "RUN_NUMBER_PLACEHOLDER"
 spec:
   replicas: 1
   selector:
@@ -20,157 +19,6 @@ spec:
       - name: REPO_NAME_PLACEHOLDER
         image: IMAGE_NAME_PLACEHOLDER
         imagePullPolicy: IfNotPresent
-        command: ["/bin/sh", "-c"]
-        args:
-          - |
-            # Create a deployment success page
-            mkdir -p /tmp/web
-            cat > /tmp/web/index.html << 'HTML'
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>🚀 Pipeline Deployment - REPO_NAME_PLACEHOLDER</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        min-height: 100vh;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                    }
-                    .container {
-                        background: rgba(255,255,255,0.15);
-                        border-radius: 20px;
-                        padding: 50px;
-                        max-width: 900px;
-                        backdrop-filter: blur(20px);
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-                        border: 1px solid rgba(255,255,255,0.2);
-                    }
-                    h1 {
-                        font-size: 3.5em;
-                        margin-bottom: 10px;
-                        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-                    }
-                    .badge {
-                        display: inline-block;
-                        background: #28a745;
-                        padding: 8px 20px;
-                        border-radius: 25px;
-                        font-weight: bold;
-                        margin: 20px 0;
-                        box-shadow: 0 4px 15px rgba(40,167,69,0.4);
-                    }
-                    .info-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                        gap: 20px;
-                        margin: 30px 0;
-                    }
-                    .info-card {
-                        background: rgba(0,0,0,0.3);
-                        padding: 25px;
-                        border-radius: 15px;
-                        text-align: left;
-                        border: 1px solid rgba(255,255,255,0.1);
-                    }
-                    .info-card h3 {
-                        margin-bottom: 15px;
-                        font-size: 1.3em;
-                        color: #ffd700;
-                    }
-                    .info-card p {
-                        margin: 10px 0;
-                        line-height: 1.6;
-                    }
-                    .info-card strong {
-                        color: #ffd700;
-                    }
-                    a {
-                        color: #ffd700;
-                        text-decoration: none;
-                        transition: all 0.3s;
-                    }
-                    a:hover {
-                        color: #fff;
-                        text-shadow: 0 0 10px #ffd700;
-                    }
-                    hr {
-                        border: none;
-                        height: 1px;
-                        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-                        margin: 30px 0;
-                    }
-                    .footer {
-                        text-align: center;
-                        margin-top: 30px;
-                        opacity: 0.8;
-                    }
-                    .status-indicator {
-                        display: inline-block;
-                        width: 12px;
-                        height: 12px;
-                        background: #28a745;
-                        border-radius: 50%;
-                        animation: pulse 2s infinite;
-                        margin-right: 5px;
-                    }
-                    @keyframes pulse {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: 0.5; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🚀 Deployment Successful!</h1>
-                    <p class="badge"><span class="status-indicator"></span>✅ LIVE & RUNNING</p>
-                    
-                    <div class="info-grid">
-                        <div class="info-card">
-                            <h3>📋 Application Details</h3>
-                            <p><strong>Name:</strong> REPO_NAME_PLACEHOLDER</p>
-                            <p><strong>Repository:</strong><br><a href="REPO_URL_PLACEHOLDER" target="_blank">View on GitHub →</a></p>
-                            <p><strong>Pipeline Run:</strong> #RUN_NUMBER_PLACEHOLDER</p>
-                        </div>
-                        
-                        <div class="info-card">
-                            <h3>☸️ Kubernetes Info</h3>
-                            <p><strong>Namespace:</strong> pipeline-apps</p>
-                            <p><strong>Service:</strong> REPO_NAME_PLACEHOLDER-service</p>
-                            <p><strong>Deployment:</strong> REPO_NAME_PLACEHOLDER-deployment</p>
-                            <p><strong>Status:</strong> <span class="status-indicator"></span>Running</p>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card" style="margin: 20px 0;">
-                        <h3>🔗 Quick Actions</h3>
-                        <p>📊 <a href="http://213.109.162.134:30102" target="_blank">View Grafana Dashboard →</a></p>
-                        <p>🎫 <a href="https://github.com/almightymoon/Pipeline/actions" target="_blank">View Pipeline Logs →</a></p>
-                        <p>🛑 <a href="https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml" target="_blank">Terminate Deployment →</a></p>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div class="footer">
-                        <p>✨ <strong>Deployed via Enterprise CI/CD Pipeline</strong></p>
-                        <p><small>K3s v1.33.5 | VPS: 213.109.162.134 | Automated Docker Build & Deploy</small></p>
-                        <p><small>🔒 Scanned | 🏗️ Built | 🚀 Deployed | 📊 Monitored</small></p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            HTML
-            
-            # Start a simple HTTP server on port 80 using Node.js
-            cd /tmp/web
-            npx -y http-server -p 80
         ports:
         - containerPort: 3000
         - containerPort: 8080
@@ -194,7 +42,7 @@ spec:
   type: NodePort
   ports:
   - port: 80
-    targetPort: 80
+    targetPort: 3000
     nodePort: NODE_PORT_PLACEHOLDER
   selector:
     app: REPO_NAME_PLACEHOLDER
@@ -208,7 +56,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: HOST_NAME_PLACEHOLDER
+  - host: APP_HOST_PLACEHOLDER
     http:
       paths:
       - path: /
