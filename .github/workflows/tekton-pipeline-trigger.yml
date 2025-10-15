@@ -1,527 +1,530 @@
-name: Enterprise ML Pipeline - Tekton Trigger
+# "
+# # name: Enterprise ML Pipeline - Tekton Trigger
 
-on:
-  # ⚠️ WORKFLOW DISABLED - DO NOT ENABLE WITHOUT PROPER INFRASTRUCTURE ⚠️
-  #
-  # This workflow requires a fully configured Kubernetes cluster with:
-  # - Valid kubeconfig
-  # - PersistentVolumeClaims (pipeline-source-pvc, pipeline-artifacts-pvc, pipeline-attestations-pvc)
-  # - Secrets (pipeline-secrets, docker-config-secret, sonar-token-secret, etc.)
-  # - Infrastructure services (Keycloak, Vault, Harbor, Nexus, etc.)
-  #
-  # Until these are configured, use the "Working ML Pipeline" workflow instead.
-  #
-  # To re-enable this workflow, replace 'workflow_call' with 'workflow_dispatch' and uncomment push/PR triggers
-  workflow_call:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
-      image_tag:
-        description: 'Image tag'
-        required: true
-        default: 'latest'
+# # on:
+# #   # ⚠️ WORKFLOW DISABLED - DO NOT ENABLE WITHOUT PROPER INFRASTRUCTURE ⚠️
+# #   #
+# #   # This workflow requires a fully configured Kubernetes cluster with:
+# #   # - Valid kubeconfig
+# #   # - PersistentVolumeClaims (pipeline-source-pvc, pipeline-artifacts-pvc, pipeline-attestations-pvc)
+# #   # - Secrets (pipeline-secrets, docker-config-secret, sonar-token-secret, etc.)
+# #   # - Infrastructure services (Keycloak, Vault, Harbor, Nexus, etc.)
+# #   #
+# #   # Until these are configured, use the "Working ML Pipeline" workflow instead.
+# #   #
+# #   # To re-enable this workflow, replace 'workflow_call' with 'workflow_dispatch' and uncomment push/PR triggers
+# #   workflow_call:
+# #     inputs:
+# #       environment:
+# #         description: 'Target environment'
+# #         required: true
+# #         default: 'staging'
+# #         type: choice
+# #         options:
+# #           - staging
+# #           - production
+# #       image_tag:
+# #         description: 'Image tag'
+# #         required: true
+# #         default: 'latest'
 
-env:
-  REGISTRY: harbor.yourcompany.com
-  IMAGE_NAME: almightymoon/pipeline
-  NAMESPACE: ml-pipeline
+# # env:
+# #   REGISTRY: harbor.yourcompany.com
+# #   IMAGE_NAME: almightymoon/pipeline
+# #   NAMESPACE: ml-pipeline
 
-jobs:
-  # ==========================================
-  # 1. PREPARE AND VALIDATE
-  # ==========================================
-  prepare:
-    name: Prepare Pipeline Execution
-    runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ steps.prepare.outputs.image-tag }}
-      environment: ${{ steps.prepare.outputs.environment }}
-      git-sha: ${{ steps.prepare.outputs.git-sha }}
-      pipeline-run-name: ${{ steps.prepare.outputs.pipeline-run-name }}
+# # jobs:
+# #   # ==========================================
+# #   # 1. PREPARE AND VALIDATE
+# #   # ==========================================
+# #   prepare:
+# #     name: Prepare Pipeline Execution
+# #     runs-on: ubuntu-latest
+# #     outputs:
+# #       image-tag: ${{ steps.prepare.outputs.image-tag }}
+# #       environment: ${{ steps.prepare.outputs.environment }}
+# #       git-sha: ${{ steps.prepare.outputs.git-sha }}
+# #       pipeline-run-name: ${{ steps.prepare.outputs.pipeline-run-name }}
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+# #     steps:
+# #     - name: Checkout Code
+# #       uses: actions/checkout@v4
+# #       with:
+# #         fetch-depth: 0
     
-    - name: Prepare Pipeline Parameters
-      id: prepare
-      run: |
-        # Generate image tag
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
-          ENVIRONMENT="${{ github.event.inputs.environment }}"
-        elif [ "${{ github.event_name }}" = "pull_request" ]; then
-          IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
-          ENVIRONMENT="staging"
-        else
-          IMAGE_TAG="${{ github.sha }}"
-          ENVIRONMENT="staging"
-        fi
+# #     - name: Prepare Pipeline Parameters
+# #       id: prepare
+# #       run: |
+# #         # Generate image tag
+# #         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+# #           IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+# #           ENVIRONMENT="${{ github.event.inputs.environment }}"
+# #         elif [ "${{ github.event_name }}" = "pull_request" ]; then
+# #           IMAGE_TAG="pr-${{ github.event.number }}-${{ github.sha }}"
+# #           ENVIRONMENT="staging"
+# #         else
+# #           IMAGE_TAG="${{ github.sha }}"
+# #           ENVIRONMENT="staging"
+# #         fi
         
-        # Generate pipeline run name
-        PIPELINE_RUN_NAME="ml-pipeline-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
+# #         # Generate pipeline run name
+# #         PIPELINE_RUN_NAME="ml-pipeline-$(date +%Y%m%d-%H%M%S)-${{ github.run_number }}"
         
-        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-        echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
-        echo "git-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
-        echo "pipeline-run-name=$PIPELINE_RUN_NAME" >> $GITHUB_OUTPUT
+# #         echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+# #         echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+# #         echo "git-sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+# #         echo "pipeline-run-name=$PIPELINE_RUN_NAME" >> $GITHUB_OUTPUT
         
-        echo "🚀 Pipeline Parameters:"
-        echo "  Image Tag: $IMAGE_TAG"
-        echo "  Environment: $ENVIRONMENT"
-        echo "  Git SHA: ${{ github.sha }}"
-        echo "  Pipeline Run: $PIPELINE_RUN_NAME"
+# #         echo "🚀 Pipeline Parameters:"
+# #         echo "  Image Tag: $IMAGE_TAG"
+# #         echo "  Environment: $ENVIRONMENT"
+# #         echo "  Git SHA: ${{ github.sha }}"
+# #         echo "  Pipeline Run: $PIPELINE_RUN_NAME"
 
-  # ==========================================
-  # 2. TRIGGER TEKTON PIPELINE
-  # ==========================================
-  trigger-tekton-pipeline:
-    name: Trigger Tekton Pipeline
-    runs-on: ubuntu-latest
-    needs: prepare
-    if: always() && needs.prepare.result == 'success'
+# #   # ==========================================
+# #   # 2. TRIGGER TEKTON PIPELINE
+# #   # ==========================================
+# #   trigger-tekton-pipeline:
+# #     name: Trigger Tekton Pipeline
+# #     runs-on: ubuntu-latest
+# #     needs: prepare
+# #     if: always() && needs.prepare.result == 'success'
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+# #     steps:
+# #     - name: Checkout Code
+# #       uses: actions/checkout@v4
     
-    - name: Setup Kubectl
-      uses: azure/setup-kubectl@v4
-      with:
-        version: 'latest'
+# #     - name: Setup Kubectl
+# #       uses: azure/setup-kubectl@v4
+# #       with:
+# #         version: 'latest'
     
-    - name: Configure Kubernetes Access
-      run: |
-        echo "Configuring Kubernetes access..."
-        if [ -n "${{ secrets.KUBECONFIG }}" ]; then
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
-          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
-          echo "✅ Kubernetes access configured"
-        else
-          echo "❌ KUBECONFIG secret not set"
-          exit 1
-        fi
+# #     - name: Configure Kubernetes Access
+# #       run: |
+# #         echo "Configuring Kubernetes access..."
+# #         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+# #           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+# #           echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+# #           echo "✅ Kubernetes access configured"
+# #         else
+# #           echo "❌ KUBECONFIG secret not set"
+# #           exit 1
+# #         fi
     
-    - name: Create Tekton PipelineRun
-      run: |
-        echo "🚀 Creating Tekton PipelineRun..."
+# #     - name: Create Tekton PipelineRun
+# #       run: |
+# #         echo "🚀 Creating Tekton PipelineRun..."
         
-        # Create PipelineRun manifest
-        cat > pipeline-run.yaml << EOF
-        apiVersion: tekton.dev/v1beta1
-        kind: PipelineRun
-        metadata:
-          name: ${{ needs.prepare.outputs.pipeline-run-name }}
-          namespace: ${{ env.NAMESPACE }}
-          labels:
-            app.kubernetes.io/name: ml-pipeline
-            app.kubernetes.io/component: pipeline-run
-            github.run-id: "${{ github.run_id }}"
-            github.run-number: "${{ github.run_number }}"
-            github.sha: "${{ needs.prepare.outputs.git-sha }}"
-        spec:
-          pipelineRef:
-            name: ml-pipeline-enterprise
-          params:
-            - name: git-url
-              value: "${{ github.server_url }}/${{ github.repository }}"
-            - name: git-revision
-              value: "${{ github.ref_name }}"
-            - name: image-name
-              value: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-            - name: image-tag
-              value: "${{ needs.prepare.outputs.image-tag }}"
-            - name: environment
-              value: "${{ needs.prepare.outputs.environment }}"
-            - name: sonarqube-url
-              value: "${{ secrets.SONARQUBE_URL }}"
-            - name: harbor-url
-              value: "${{ env.REGISTRY }}"
-            - name: vault-url
-              value: "${{ secrets.VAULT_URL }}"
-            - name: defectdojo-url
-              value: "${{ secrets.DEFECTDOJO_URL }}"
-            - name: dependency-track-url
-              value: "${{ secrets.DEPENDENCY_TRACK_URL }}"
-            - name: nexus-url
-              value: "${{ secrets.NEXUS_URL }}"
-            - name: reportportal-url
-              value: "${{ secrets.REPORTPORTAL_URL }}"
-            - name: prometheus-url
-              value: "${{ secrets.PROMETHEUS_URL }}"
-            - name: opensearch-url
-              value: "${{ secrets.OPENSEARCH_URL }}"
-            - name: keycloak-url
-              value: "${{ secrets.KEYCLOAK_URL }}"
-            - name: argocd-url
-              value: "${{ secrets.ARGOCD_URL }}"
-          workspaces:
-            - name: source
-              persistentVolumeClaim:
-                claimName: pipeline-source-pvc
-            - name: secrets
-              secret:
-                secretName: pipeline-secrets
-            - name: artifacts
-              persistentVolumeClaim:
-                claimName: pipeline-artifacts-pvc
-            - name: attestations
-              persistentVolumeClaim:
-                claimName: pipeline-attestations-pvc
-          serviceAccountName: tekton-pipeline-sa
-          timeout: 2h
-        EOF
+# #         # Create PipelineRun manifest
+# #         cat > pipeline-run.yaml << EOF
+# #         apiVersion: tekton.dev/v1beta1
+# #         kind: PipelineRun
+# #         metadata:
+# #           name: ${{ needs.prepare.outputs.pipeline-run-name }}
+# #           namespace: ${{ env.NAMESPACE }}
+# #           labels:
+# #             app.kubernetes.io/name: ml-pipeline
+# #             app.kubernetes.io/component: pipeline-run
+# #             github.run-id: "${{ github.run_id }}"
+# #             github.run-number: "${{ github.run_number }}"
+# #             github.sha: "${{ needs.prepare.outputs.git-sha }}"
+# #         spec:
+# #           pipelineRef:
+# #             name: ml-pipeline-enterprise
+# #           params:
+# #             - name: git-url
+# #               value: "${{ github.server_url }}/${{ github.repository }}"
+# #             - name: git-revision
+# #               value: "${{ github.ref_name }}"
+# #             - name: image-name
+# #               value: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+# #             - name: image-tag
+# #               value: "${{ needs.prepare.outputs.image-tag }}"
+# #             - name: environment
+# #               value: "${{ needs.prepare.outputs.environment }}"
+# #             - name: sonarqube-url
+# #               value: "${{ secrets.SONARQUBE_URL }}"
+# #             - name: harbor-url
+# #               value: "${{ env.REGISTRY }}"
+# #             - name: vault-url
+# #               value: "${{ secrets.VAULT_URL }}"
+# #             - name: defectdojo-url
+# #               value: "${{ secrets.DEFECTDOJO_URL }}"
+# #             - name: dependency-track-url
+# #               value: "${{ secrets.DEPENDENCY_TRACK_URL }}"
+# #             - name: nexus-url
+# #               value: "${{ secrets.NEXUS_URL }}"
+# #             - name: reportportal-url
+# #               value: "${{ secrets.REPORTPORTAL_URL }}"
+# #             - name: prometheus-url
+# #               value: "${{ secrets.PROMETHEUS_URL }}"
+# #             - name: opensearch-url
+# #               value: "${{ secrets.OPENSEARCH_URL }}"
+# #             - name: keycloak-url
+# #               value: "${{ secrets.KEYCLOAK_URL }}"
+# #             - name: argocd-url
+# #               value: "${{ secrets.ARGOCD_URL }}"
+# #           workspaces:
+# #             - name: source
+# #               persistentVolumeClaim:
+# #                 claimName: pipeline-source-pvc
+# #             - name: secrets
+# #               secret:
+# #                 secretName: pipeline-secrets
+# #             - name: artifacts
+# #               persistentVolumeClaim:
+# #                 claimName: pipeline-artifacts-pvc
+# #             - name: attestations
+# #               persistentVolumeClaim:
+# #                 claimName: pipeline-attestations-pvc
+# #           serviceAccountName: tekton-pipeline-sa
+# #           timeout: 2h
+# #         EOF
         
-        # Apply PipelineRun
-        kubectl apply -f pipeline-run.yaml
+# #         # Apply PipelineRun
+# #         kubectl apply -f pipeline-run.yaml
         
-        echo "✅ Tekton PipelineRun created: ${{ needs.prepare.outputs.pipeline-run-name }}"
+# #         echo "✅ Tekton PipelineRun created: ${{ needs.prepare.outputs.pipeline-run-name }}"
     
-    - name: Wait for PipelineRun to Start
-      run: |
-        echo "⏳ Waiting for PipelineRun to start..."
+# #     - name: Wait for PipelineRun to Start
+# #       run: |
+# #         echo "⏳ Waiting for PipelineRun to start..."
         
-        # Wait for PipelineRun to be created and start
-        kubectl wait --for=condition=Succeeded --timeout=30s \
-          pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} || true
+# #         # Wait for PipelineRun to be created and start
+# #         kubectl wait --for=condition=Succeeded --timeout=30s \
+# #           pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} || true
         
-        # Get PipelineRun status
-        kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o yaml
+# #         # Get PipelineRun status
+# #         kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o yaml
         
-        echo "✅ PipelineRun started successfully"
+# #         echo "✅ PipelineRun started successfully"
 
-  # ==========================================
-  # 3. MONITOR PIPELINE EXECUTION
-  # ==========================================
-  monitor-pipeline:
-    name: Monitor Pipeline Execution
-    runs-on: ubuntu-latest
-    needs: [prepare, trigger-tekton-pipeline]
-    if: always() && needs.trigger-tekton-pipeline.result == 'success'
+# #   # ==========================================
+# #   # 3. MONITOR PIPELINE EXECUTION
+# #   # ==========================================
+# #   monitor-pipeline:
+# #     name: Monitor Pipeline Execution
+# #     runs-on: ubuntu-latest
+# #     needs: [prepare, trigger-tekton-pipeline]
+# #     if: always() && needs.trigger-tekton-pipeline.result == 'success'
     
-    steps:
-    - name: Setup Kubectl
-      uses: azure/setup-kubectl@v4
-      with:
-        version: 'latest'
+# #     steps:
+# #     - name: Setup Kubectl
+# #       uses: azure/setup-kubectl@v4
+# #       with:
+# #         version: 'latest'
     
-    - name: Configure Kubernetes Access
-      run: |
-        if [ -z "${{ secrets.KUBECONFIG }}" ]; then
-          echo "⚠️ KUBECONFIG secret not set - skipping Tekton pipeline execution"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #     - name: Configure Kubernetes Access
+# #       run: |
+# #         if [ -z "${{ secrets.KUBECONFIG }}" ]; then
+# #           echo "⚠️ KUBECONFIG secret not set - skipping Tekton pipeline execution"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+# #         echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
         
-        # Validate kubeconfig
-        if [ ! -s "$HOME/kubeconfig" ]; then
-          echo "❌ Invalid or empty kubeconfig"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #         # Validate kubeconfig
+# #         if [ ! -s "$HOME/kubeconfig" ]; then
+# #           echo "❌ Invalid or empty kubeconfig"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+# #         echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
         
-        # Test cluster connection
-        if ! kubectl cluster-info &> /dev/null; then
-          echo "❌ Cannot connect to cluster - skipping Tekton pipeline"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #         # Test cluster connection
+# #         if ! kubectl cluster-info &> /dev/null; then
+# #           echo "❌ Cannot connect to cluster - skipping Tekton pipeline"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "✅ Successfully connected to cluster"
+# #         echo "✅ Successfully connected to cluster"
     
-    - name: Monitor PipelineRun Status
-      if: env.TEKTON_SKIP != 'true'
-      run: |
-        echo "📊 Monitoring PipelineRun execution..."
+# #     - name: Monitor PipelineRun Status
+# #       if: env.TEKTON_SKIP != 'true'
+# #       run: |
+# #         echo "📊 Monitoring PipelineRun execution..."
         
-        # Function to check PipelineRun status
-        check_pipeline_status() {
-          local status=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-            -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
-          echo "$status"
-        }
+# #         # Function to check PipelineRun status
+# #         check_pipeline_status() {
+# #           local status=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #             -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+# #           echo "$status"
+# #         }
         
-        # Monitor for up to 2 hours
-        MAX_WAIT=7200  # 2 hours in seconds
-        WAIT_TIME=0
-        INTERVAL=30    # Check every 30 seconds
+# #         # Monitor for up to 2 hours
+# #         MAX_WAIT=7200  # 2 hours in seconds
+# #         WAIT_TIME=0
+# #         INTERVAL=30    # Check every 30 seconds
         
-        while [ $WAIT_TIME -lt $MAX_WAIT ]; do
-          STATUS=$(check_pipeline_status)
+# #         while [ $WAIT_TIME -lt $MAX_WAIT ]; do
+# #           STATUS=$(check_pipeline_status)
           
-          case $STATUS in
-            "True")
-              echo "✅ PipelineRun completed successfully!"
-              kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-                -n ${{ env.NAMESPACE }} -o yaml
-              exit 0
-              ;;
-            "False")
-              echo "❌ PipelineRun failed!"
-              kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-                -n ${{ env.NAMESPACE }} -o yaml
-              kubectl describe pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-                -n ${{ env.NAMESPACE }}
-              exit 1
-              ;;
-            "Unknown")
-              echo "⏳ PipelineRun status unknown, waiting..."
-              ;;
-            *)
-              echo "⏳ PipelineRun in progress... (Status: $STATUS)"
-              ;;
-          esac
+# #           case $STATUS in
+# #             "True")
+# #               echo "✅ PipelineRun completed successfully!"
+# #               kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #                 -n ${{ env.NAMESPACE }} -o yaml
+# #               exit 0
+# #               ;;
+# #             "False")
+# #               echo "❌ PipelineRun failed!"
+# #               kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #                 -n ${{ env.NAMESPACE }} -o yaml
+# #               kubectl describe pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #                 -n ${{ env.NAMESPACE }}
+# #               exit 1
+# #               ;;
+# #             "Unknown")
+# #               echo "⏳ PipelineRun status unknown, waiting..."
+# #               ;;
+# #             *)
+# #               echo "⏳ PipelineRun in progress... (Status: $STATUS)"
+# #               ;;
+# #           esac
           
-          sleep $INTERVAL
-          WAIT_TIME=$((WAIT_TIME + INTERVAL))
-        done
+# #           sleep $INTERVAL
+# #           WAIT_TIME=$((WAIT_TIME + INTERVAL))
+# #         done
         
-        echo "⏰ PipelineRun monitoring timeout reached"
-        kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o yaml
-        exit 1
+# #         echo "⏰ PipelineRun monitoring timeout reached"
+# #         kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o yaml
+# #         exit 1
 
-  # ==========================================
-  # 4. COLLECT RESULTS AND NOTIFY
-  # ==========================================
-  collect-results:
-    name: Collect Results and Notify
-    runs-on: ubuntu-latest
-    needs: [prepare, trigger-tekton-pipeline, monitor-pipeline]
-    if: always()
+# #   # ==========================================
+# #   # 4. COLLECT RESULTS AND NOTIFY
+# #   # ==========================================
+# #   collect-results:
+# #     name: Collect Results and Notify
+# #     runs-on: ubuntu-latest
+# #     needs: [prepare, trigger-tekton-pipeline, monitor-pipeline]
+# #     if: always()
     
-    steps:
-    - name: Setup Kubectl
-      uses: azure/setup-kubectl@v4
-      with:
-        version: 'latest'
+# #     steps:
+# #     - name: Setup Kubectl
+# #       uses: azure/setup-kubectl@v4
+# #       with:
+# #         version: 'latest'
     
-    - name: Configure Kubernetes Access
-      run: |
-        if [ -z "${{ secrets.KUBECONFIG }}" ]; then
-          echo "⚠️ KUBECONFIG secret not set - skipping Tekton pipeline execution"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #     - name: Configure Kubernetes Access
+# #       run: |
+# #         if [ -z "${{ secrets.KUBECONFIG }}" ]; then
+# #           echo "⚠️ KUBECONFIG secret not set - skipping Tekton pipeline execution"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+# #         echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
         
-        # Validate kubeconfig
-        if [ ! -s "$HOME/kubeconfig" ]; then
-          echo "❌ Invalid or empty kubeconfig"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #         # Validate kubeconfig
+# #         if [ ! -s "$HOME/kubeconfig" ]; then
+# #           echo "❌ Invalid or empty kubeconfig"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+# #         echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
         
-        # Test cluster connection
-        if ! kubectl cluster-info &> /dev/null; then
-          echo "❌ Cannot connect to cluster - skipping Tekton pipeline"
-          echo "TEKTON_SKIP=true" >> $GITHUB_ENV
-          exit 0
-        fi
+# #         # Test cluster connection
+# #         if ! kubectl cluster-info &> /dev/null; then
+# #           echo "❌ Cannot connect to cluster - skipping Tekton pipeline"
+# #           echo "TEKTON_SKIP=true" >> $GITHUB_ENV
+# #           exit 0
+# #         fi
         
-        echo "✅ Successfully connected to cluster"
+# #         echo "✅ Successfully connected to cluster"
     
-    - name: Collect Pipeline Results
-      if: env.TEKTON_SKIP != 'true'
-      run: |
-        echo "📋 Collecting pipeline results..."
+# #     - name: Collect Pipeline Results
+# #       if: env.TEKTON_SKIP != 'true'
+# #       run: |
+# #         echo "📋 Collecting pipeline results..."
         
-        # Get PipelineRun details
-        kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o json > pipeline-run-results.json
+# #         # Get PipelineRun details
+# #         kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o json > pipeline-run-results.json
         
-        # Get TaskRun details
-        kubectl get taskruns -l tekton.dev/pipelineRun=${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o json > task-run-results.json
+# #         # Get TaskRun details
+# #         kubectl get taskruns -l tekton.dev/pipelineRun=${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o json > task-run-results.json
         
-        # Get logs from failed tasks (if any)
-        FAILED_TASKS=$(kubectl get taskruns -l tekton.dev/pipelineRun=${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o jsonpath='{.items[?(@.status.conditions[0].status=="False")].metadata.name}')
+# #         # Get logs from failed tasks (if any)
+# #         FAILED_TASKS=$(kubectl get taskruns -l tekton.dev/pipelineRun=${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o jsonpath='{.items[?(@.status.conditions[0].status=="False")].metadata.name}')
         
-        if [ -n "$FAILED_TASKS" ]; then
-          echo "❌ Failed tasks found: $FAILED_TASKS"
-          for task in $FAILED_TASKS; do
-            echo "📝 Logs for failed task: $task"
-            kubectl logs -l tekton.dev/taskRun=$task -n ${{ env.NAMESPACE }} --tail=100 || true
-          done
-        fi
+# #         if [ -n "$FAILED_TASKS" ]; then
+# #           echo "❌ Failed tasks found: $FAILED_TASKS"
+# #           for task in $FAILED_TASKS; do
+# #             echo "📝 Logs for failed task: $task"
+# #             kubectl logs -l tekton.dev/taskRun=$task -n ${{ env.NAMESPACE }} --tail=100 || true
+# #           done
+# #         fi
         
-        echo "✅ Results collected"
+# #         echo "✅ Results collected"
     
-    - name: Update Jira Issue
-      if: always()
-      env:
-        JIRA_URL: ${{ secrets.JIRA_URL }}
-        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-      run: |
-        echo "🎫 Updating Jira issue with pipeline results..."
+# #     - name: Update Jira Issue
+# #       if: always()
+# #       env:
+# #         JIRA_URL: ${{ secrets.JIRA_URL }}
+# #         JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+# #         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+# #         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+# #       run: |
+# #         echo "🎫 Updating Jira issue with pipeline results..."
         
-        # Get pipeline status (fallback if cluster not accessible)
-        PIPELINE_STATUS="Unknown"
-        if kubectl cluster-info &> /dev/null; then
-          PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-            -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
-        else
-          echo "⚠️ Cluster not accessible, using fallback status"
-          PIPELINE_STATUS="Unknown"
-        fi
+# #         # Get pipeline status (fallback if cluster not accessible)
+# #         PIPELINE_STATUS="Unknown"
+# #         if kubectl cluster-info &> /dev/null; then
+# #           PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #             -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+# #         else
+# #           echo "⚠️ Cluster not accessible, using fallback status"
+# #           PIPELINE_STATUS="Unknown"
+# #         fi
         
-        if [ "$PIPELINE_STATUS" = "True" ]; then
-          STATUS_EMOJI="✅"
-          STATUS_TEXT="SUCCESS"
-          DESCRIPTION="Pipeline completed successfully!"
-        elif [ "$PIPELINE_STATUS" = "False" ]; then
-          STATUS_EMOJI="❌"
-          STATUS_TEXT="FAILED"
-          DESCRIPTION="Pipeline failed. Check logs for details."
-        else
-          STATUS_EMOJI="⏳"
-          STATUS_TEXT="IN PROGRESS"
-          DESCRIPTION="Pipeline is still running or status unknown."
-        fi
+# #         if [ "$PIPELINE_STATUS" = "True" ]; then
+# #           STATUS_EMOJI="✅"
+# #           STATUS_TEXT="SUCCESS"
+# #           DESCRIPTION="Pipeline completed successfully!"
+# #         elif [ "$PIPELINE_STATUS" = "False" ]; then
+# #           STATUS_EMOJI="❌"
+# #           STATUS_TEXT="FAILED"
+# #           DESCRIPTION="Pipeline failed. Check logs for details."
+# #         else
+# #           STATUS_EMOJI="⏳"
+# #           STATUS_TEXT="IN PROGRESS"
+# #           DESCRIPTION="Pipeline is still running or status unknown."
+# #         fi
         
-        # Create Jira issue update (if Jira is configured)
-        if [ -n "$JIRA_API_TOKEN" ]; then
-          pip install requests
-          python3 -c "
-        import requests
-        import json
-        import os
+# #         # Create Jira issue update (if Jira is configured)
+# #         if [ -n "$JIRA_API_TOKEN" ]; then
+# #           pip install requests
+# #           python3 -c "
+# #         import requests
+# #         import json
+# #         import os
         
-        # Jira credentials
-        jira_url = os.getenv('JIRA_URL')
-        jira_email = os.getenv('JIRA_EMAIL')
-        jira_token = os.getenv('JIRA_API_TOKEN')
-        jira_project = os.getenv('JIRA_PROJECT_KEY')
+# #         # Jira credentials
+# #         jira_url = os.getenv('JIRA_URL')
+# #         jira_email = os.getenv('JIRA_EMAIL')
+# #         jira_token = os.getenv('JIRA_API_TOKEN')
+# #         jira_project = os.getenv('JIRA_PROJECT_KEY')
         
-        if all([jira_url, jira_email, jira_token, jira_project]):
-            # Create issue
-            issue_data = {
-                'fields': {
-                    'project': {'key': jira_project},
-                    'summary': f'$STATUS_EMOJI Pipeline $STATUS_TEXT: ${{ needs.prepare.outputs.pipeline-run-name }}',
-                    'description': f'''Pipeline execution completed with status: $STATUS_TEXT
+# #         if all([jira_url, jira_email, jira_token, jira_project]):
+# #             # Create issue
+# #             issue_data = {
+# #                 'fields': {
+# #                     'project': {'key': jira_project},
+# #                     'summary': f'$STATUS_EMOJI Pipeline $STATUS_TEXT: ${{ needs.prepare.outputs.pipeline-run-name }}',
+# #                     'description': f'''Pipeline execution completed with status: $STATUS_TEXT
                     
-                    **Pipeline Details:**
-                    - Run Name: ${{ needs.prepare.outputs.pipeline-run-name }}
-                    - Git SHA: ${{ needs.prepare.outputs.git-sha }}
-                    - Image Tag: ${{ needs.prepare.outputs.image-tag }}
-                    - Environment: ${{ needs.prepare.outputs.environment }}
-                    - GitHub Run: ${{ github.run_id }}
+# #                     **Pipeline Details:**
+# #                     - Run Name: ${{ needs.prepare.outputs.pipeline-run-name }}
+# #                     - Git SHA: ${{ needs.prepare.outputs.git-sha }}
+# #                     - Image Tag: ${{ needs.prepare.outputs.image-tag }}
+# #                     - Environment: ${{ needs.prepare.outputs.environment }}
+# #                     - GitHub Run: ${{ github.run_id }}
                     
-                    **Status:** $DESCRIPTION
+# #                     **Status:** $DESCRIPTION
                     
-                    **Tekton PipelineRun:** ${{ needs.prepare.outputs.pipeline-run-name }}
-                    ''',
-                    'issuetype': {'name': 'Task'},
-                    'priority': {'name': 'Medium'},
-                    'labels': ['pipeline', 'tekton', 'ml-pipeline']
-                }
-            }
+# #                     **Tekton PipelineRun:** ${{ needs.prepare.outputs.pipeline-run-name }}
+# #                     ''',
+# #                     'issuetype': {'name': 'Task'},
+# #                     'priority': {'name': 'Medium'},
+# #                     'labels': ['pipeline', 'tekton', 'ml-pipeline']
+# #                 }
+# #             }
             
-            response = requests.post(
-                f'{jira_url}/rest/api/2/issue',
-                headers={
-                    'Authorization': f'Basic {requests.auth._basic_auth_str(jira_email, jira_token)}',
-                    'Content-Type': 'application/json'
-                },
-                json=issue_data
-            )
+# #             response = requests.post(
+# #                 f'{jira_url}/rest/api/2/issue',
+# #                 headers={
+# #                     'Authorization': f'Basic {requests.auth._basic_auth_str(jira_email, jira_token)}',
+# #                     'Content-Type': 'application/json'
+# #                 },
+# #                 json=issue_data
+# #             )
             
-            if response.status_code == 201:
-                issue_key = response.json()['key']
-                print(f'✅ Jira issue created: {issue_key}')
-            else:
-                print(f'❌ Failed to create Jira issue: {response.status_code}')
-        else:
-            print('⚠️ Jira credentials not configured, skipping Jira update')
-        "
-        fi
+# #             if response.status_code == 201:
+# #                 issue_key = response.json()['key']
+# #                 print(f'✅ Jira issue created: {issue_key}')
+# #             else:
+# #                 print(f'❌ Failed to create Jira issue: {response.status_code}')
+# #         else:
+# #             print('⚠️ Jira credentials not configured, skipping Jira update')
+# #         "
+# #         fi
     
-    - name: Send Slack Notification
-      if: always()
-      run: |
-        echo "📢 Sending Slack notification..."
+# #     - name: Send Slack Notification
+# #       if: always()
+# #       run: |
+# #         echo "📢 Sending Slack notification..."
         
-        # Get pipeline status
-        PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+# #         # Get pipeline status
+# #         PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+# #           -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
         
-        if [ "$PIPELINE_STATUS" = "True" ]; then
-          COLOR="good"
-          STATUS_TEXT="✅ SUCCESS"
-        elif [ "$PIPELINE_STATUS" = "False" ]; then
-          COLOR="danger"
-          STATUS_TEXT="❌ FAILED"
-        else
-          COLOR="warning"
-          STATUS_TEXT="⏳ IN PROGRESS"
-        fi
+# #         if [ "$PIPELINE_STATUS" = "True" ]; then
+# #           COLOR="good"
+# #           STATUS_TEXT="✅ SUCCESS"
+# #         elif [ "$PIPELINE_STATUS" = "False" ]; then
+# #           COLOR="danger"
+# #           STATUS_TEXT="❌ FAILED"
+# #         else
+# #           COLOR="warning"
+# #           STATUS_TEXT="⏳ IN PROGRESS"
+# #         fi
         
-        # Send Slack notification (if webhook is configured)
-        if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-          curl -X POST -H 'Content-type: application/json' \
-            --data "{
-              \"attachments\": [{
-                \"color\": \"$COLOR\",
-                \"title\": \"ML Pipeline $STATUS_TEXT\",
-                \"text\": \"Pipeline: ${{ needs.prepare.outputs.pipeline-run-name }}\nGit SHA: ${{ needs.prepare.outputs.git-sha }}\nEnvironment: ${{ needs.prepare.outputs.environment }}\nImage Tag: ${{ needs.prepare.outputs.image-tag }}\",
-                \"footer\": \"GitHub Actions\",
-                \"ts\": $(date +%s)
-              }]
-            }" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
-        fi
+# #         # Send Slack notification (if webhook is configured)
+# #         if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+# #           curl -X POST -H 'Content-type: application/json' \
+# #             --data "{
+# #               \"attachments\": [{
+# #                 \"color\": \"$COLOR\",
+# #                 \"title\": \"ML Pipeline $STATUS_TEXT\",
+# #                 \"text\": \"Pipeline: ${{ needs.prepare.outputs.pipeline-run-name }}\nGit SHA: ${{ needs.prepare.outputs.git-sha }}\nEnvironment: ${{ needs.prepare.outputs.environment }}\nImage Tag: ${{ needs.prepare.outputs.image-tag }}\",
+# #                 \"footer\": \"GitHub Actions\",
+# #                 \"ts\": $(date +%s)
+# #               }]
+# #             }" \
+# #             ${{ secrets.SLACK_WEBHOOK_URL }}
+# #         fi
     
-    - name: Skip Tekton Pipeline (Fallback)
-      if: env.TEKTON_SKIP == 'true'
-      run: |
-        echo "⚠️ Tekton pipeline skipped due to missing/invalid kubeconfig"
-        echo "📋 Running fallback pipeline validation..."
+# #     - name: Skip Tekton Pipeline (Fallback)
+# #       if: env.TEKTON_SKIP == 'true'
+# #       run: |
+# #         echo "⚠️ Tekton pipeline skipped due to missing/invalid kubeconfig"
+# #         echo "📋 Running fallback pipeline validation..."
         
-        # Create a mock pipeline result
-        cat > pipeline-run-results.json << EOF
-        {
-          "status": "skipped",
-          "reason": "kubeconfig_not_available",
-          "message": "Tekton pipeline execution skipped - kubeconfig not available",
-          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-          "fallback_validation": {
-            "code_quality": "manual_review_required",
-            "security_scan": "manual_review_required",
-            "build_status": "not_executed"
-          }
-        }
-        EOF
+# #         # Create a mock pipeline result
+# #         cat > pipeline-run-results.json << EOF
+# #         {
+# #           "status": "skipped",
+# #           "reason": "kubeconfig_not_available",
+# #           "message": "Tekton pipeline execution skipped - kubeconfig not available",
+# #           "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+# #           "fallback_validation": {
+# #             "code_quality": "manual_review_required",
+# #             "security_scan": "manual_review_required",
+# #             "build_status": "not_executed"
+# #           }
+# #         }
+# #         EOF
         
-        echo "✅ Fallback validation completed"
-        echo "📄 Results saved to pipeline-run-results.json"
+# #         echo "✅ Fallback validation completed"
+# #         echo "📄 Results saved to pipeline-run-results.json"
     
-    - name: Upload Results Artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: tekton-pipeline-results
-        path: |
-          pipeline-run-results.json
-          task-run-results.json
-        retention-days: 30
+# #     - name: Upload Results Artifact
+# #       if: always()
+# #       uses: actions/upload-artifact@v4
+# #       with:
+# #         name: tekton-pipeline-results
+# #         path: |
+# #           pipeline-run-results.json
+# #           task-run-results.json
+# #         retention-days: 30
+
+# "
