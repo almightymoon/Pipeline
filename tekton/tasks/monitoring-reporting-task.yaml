@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: monitoring-reporting-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: monitoring-reporting-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Generate monitoring reports and metrics"
+  params:
+    - name: prometheus-url
+      type: string
+      description: "Prometheus server URL"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+    - name: attestations
+      description: "Attestations workspace"
+  steps:
+    - name: monitoring-reporting
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        echo "Generating monitoring reports..."
+        echo "Prometheus URL: $(params.prometheus-url)"
+        echo "✅ Monitoring reports generated"
+      workingDir: $(workspaces.artifacts.path)

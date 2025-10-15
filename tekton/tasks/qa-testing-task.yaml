@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: qa-testing-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: qa-testing-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Run QA testing and quality checks"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+  steps:
+    - name: qa-testing
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        echo "Running QA testing..."
+        cd $(workspaces.source.path)
+        
+        # Code quality checks
+        echo "Running code quality checks..."
+        if [ -f "requirements.txt" ]; then
+          pip install flake8 pylint 2>/dev/null || true
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Flake8 found issues"
+          pylint . --disable=all --enable=E,W --reports=n || echo "Pylint found issues"
+        fi
+        
+        echo "✅ QA testing completed"

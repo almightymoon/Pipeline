@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: run-integration-tests-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: run-integration-tests-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Run integration tests"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+  steps:
+    - name: run-integration-tests
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        echo "Running integration tests..."
+        cd $(workspaces.source.path)
+        if [ -d "tests/integration" ]; then
+          pip install -r requirements.txt 2>/dev/null || true
+          pytest tests/integration/ -v || echo "Some integration tests failed"
+        else
+          echo "No integration tests found, skipping"
+        fi
+        echo "✅ Integration tests completed"

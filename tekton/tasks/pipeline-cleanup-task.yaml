@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: pipeline-cleanup-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: pipeline-cleanup-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Final pipeline cleanup"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+  steps:
+    - name: pipeline-cleanup
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        echo "Performing final pipeline cleanup..."
+        echo "✅ Pipeline cleanup completed"
+      workingDir: $(workspaces.artifacts.path)

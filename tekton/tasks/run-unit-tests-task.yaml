@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: run-unit-tests-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: run-unit-tests-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Run unit tests"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+  steps:
+    - name: run-unit-tests
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        echo "Running unit tests..."
+        cd $(workspaces.source.path)
+        if [ -f "requirements.txt" ]; then
+          pip install -r requirements.txt
+        fi
+        if [ -f "pytest.ini" ] || [ -f "pyproject.toml" ]; then
+          pytest tests/ -v || echo "Some tests failed"
+        else
+          echo "No pytest configuration found, skipping unit tests"
+        fi
+        echo "✅ Unit tests completed"

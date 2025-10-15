@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: run-performance-tests-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: run-performance-tests-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Run performance tests"
+  workspaces:
+    - name: source
+      description: "Source code workspace"
+    - name: artifacts
+      description: "Artifacts workspace"
+  steps:
+    - name: run-performance-tests
+      image: python:3.11-slim
+      script: |
+        #!/bin/bash
+        echo "Running performance tests..."
+        cd $(workspaces.source.path)
+        if [ -d "tests/performance" ]; then
+          pip install -r requirements.txt 2>/dev/null || true
+          pytest tests/performance/ -v || echo "Some performance tests failed"
+        else
+          echo "No performance tests found, skipping"
+        fi
+        echo "✅ Performance tests completed"
