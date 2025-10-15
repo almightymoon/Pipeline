@@ -409,7 +409,7 @@ def get_quality_analysis():
                 else:
                     return f"*(Data source: {quality_file})*\n• No quality analysis data available - check pipeline logs"
         
-        return "• Quality analysis not available"
+        return "• Quality analysis not available (SonarQube server may be unreachable)"
             
     except Exception as e:
         return "• Quality analysis error (check logs for details)"

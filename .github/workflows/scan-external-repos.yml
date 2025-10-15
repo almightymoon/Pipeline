@@ -198,6 +198,21 @@ jobs:
         if [ -n "${{ secrets.SONARQUBE_TOKEN }}" ]; then
           echo "SonarQube token found, running analysis..."
           
+          # Test SonarQube server connectivity
+          SONARQUBE_URL="${{ secrets.SONARQUBE_URL }}"
+          if [[ ! "$SONARQUBE_URL" =~ ^https?:// ]]; then
+            SONARQUBE_URL="http://213.109.162.134:30100"
+          fi
+          
+          echo "Testing SonarQube connectivity to: $SONARQUBE_URL"
+          if curl -s --connect-timeout 10 "$SONARQUBE_URL" > /dev/null; then
+            echo "✅ SonarQube server is accessible"
+          else
+            echo "❌ SonarQube server is not accessible at $SONARQUBE_URL"
+            echo "⚠️ Skipping SonarQube analysis - server unreachable"
+            exit 0
+          fi
+          
           # Install SonarScanner
           wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
           unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
@@ -208,8 +223,16 @@ jobs:
           echo "sonar.projectName=${{ steps.read_config.outputs.repo_name }}" >> sonar-project.properties
           echo "sonar.projectVersion=1.0" >> sonar-project.properties
           echo "sonar.sources=." >> sonar-project.properties
-          echo "sonar.host.url=${{ secrets.SONARQUBE_URL }}" >> sonar-project.properties
+          
+          # Set SonarQube URL with proper scheme
+          SONARQUBE_URL="${{ secrets.SONARQUBE_URL }}"
+          if [[ ! "$SONARQUBE_URL" =~ ^https?:// ]]; then
+            SONARQUBE_URL="http://213.109.162.134:30100"
+          fi
+          echo "sonar.host.url=$SONARQUBE_URL" >> sonar-project.properties
           echo "sonar.login=${{ secrets.SONARQUBE_TOKEN }}" >> sonar-project.properties
+          
+          echo "Using SonarQube URL: $SONARQUBE_URL"
           
           # Run SonarQube analysis
           sonar-scanner -Dsonar.projectKey=${{ steps.read_config.outputs.repo_name }} || echo "SonarQube analysis completed"
