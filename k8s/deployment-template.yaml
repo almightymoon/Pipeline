@@ -25,7 +25,7 @@ spec:
             # Try to find and run the application
             echo "🔍 Looking for application entrypoint..."
             
-            # Check common locations for server.js or main application files
+            # Check common locations for different application types
             if [ -f "/usr/local/app/server.js" ]; then
               echo "✅ Found server.js in /usr/local/app/"
               cd /usr/local/app && node server.js
@@ -36,6 +36,28 @@ spec:
             elif [ -f "/usr/local/app/vote/app.py" ]; then
               echo "✅ Found app.py in /usr/local/app/vote/"
               cd /usr/local/app/vote && python3 app.py
+            elif [ -f "/app/package.json" ]; then
+              echo "✅ Found package.json in /app/ - This is a Node.js application"
+              cd /app
+              if [ -f "package.json" ] && grep -q "next" package.json; then
+                echo "🚀 Starting Next.js application..."
+                npm start
+              elif [ -f "package.json" ] && grep -q "start" package.json; then
+                echo "🚀 Starting Node.js application..."
+                npm start
+              else
+                echo "🚀 Starting Node.js application with node..."
+                node server.js || node index.js || node app.js
+              fi
+            elif [ -f "/app/app.py" ]; then
+              echo "✅ Found app.py in /app/ - This is a Python application"
+              cd /app && python3 app.py
+            elif [ -f "/app/main.py" ]; then
+              echo "✅ Found main.py in /app/ - This is a Python application"
+              cd /app && python3 main.py
+            elif [ -f "/app/app.jar" ]; then
+              echo "✅ Found app.jar in /app/ - This is a Java application"
+              cd /app && java -jar app.jar
             else
               echo "⚠️ No standard application found, listing directory contents:"
               find /usr/local/app -name "*.js" -o -name "*.py" -o -name "*.jar" | head -10
