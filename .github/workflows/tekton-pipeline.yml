@@ -101,9 +101,6 @@ jobs:
         # Apply Tekton Pipeline
         kubectl apply -f tekton/pipeline.yaml -n ${{ env.TEKTON_NAMESPACE }}
         
-        # Apply Tekton PipelineRun
-        kubectl apply -f tekton/pipeline-run.yaml -n ${{ env.TEKTON_NAMESPACE }}
-        
         echo "✅ Tekton resources deployed"
     
     - name: Create PipelineRun
