@@ -1,15 +1,13 @@
 name: Enterprise ML Pipeline - Tekton Trigger
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths-ignore:
-      - 'repos-to-scan.yaml'
-      - 'docs/**'
-      - '*.md'
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+  # ⚠️ WORKFLOW DISABLED - DO NOT ENABLE WITHOUT PROPER INFRASTRUCTURE ⚠️
+  #
+  # This workflow requires a fully configured Kubernetes cluster.
+  # Use the "Working ML Pipeline" workflow instead.
+  #
+  # To re-enable: replace 'workflow_call' with 'workflow_dispatch' and uncomment push/PR triggers
+  workflow_call:
     inputs:
       environment:
         description: 'Target environment'
