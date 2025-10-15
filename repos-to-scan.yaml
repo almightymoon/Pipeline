@@ -21,8 +21,8 @@ repositories:
   #   scan_type: full  
   # # Testing updated Jira dashboard link   
 
-  - url: https://github.com/dockersamples/example-voting-app
-    name: example-voting-app
+  - url: https://github.com/dockersamples/helloworld-demo-node
+    name: helloworld-demo-node
     branch: main 
     scan_type: full         
 
