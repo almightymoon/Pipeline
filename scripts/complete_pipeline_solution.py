@@ -674,6 +674,50 @@ def get_code_quality_issues_list_for_dashboard(metrics):
     except Exception as e:
         return f"## ❌ Error Retrieving Quality Issues\n\n{str(e)[:100]}"
 
+def get_sonarqube_recommendations(metrics):
+    """Generate SonarQube recommendations based on metrics"""
+    try:
+        recommendations = []
+        
+        # Check TODO/FIXME comments
+        if metrics['quality']['todo_comments'] > 0:
+            recommendations.append(f"1. **Address TODO/FIXME Comments** - {metrics['quality']['todo_comments']} items found")
+            recommendations.append(f"   - Convert TODO items to proper issue tracking tickets")
+            recommendations.append(f"   - Complete or remove FIXME markers")
+            recommendations.append(f"   - Document any intentional technical debt")
+        
+        # Check debug statements
+        if metrics['quality']['debug_statements'] > 0:
+            recommendations.append(f"2. **Remove Debug Statements** - {metrics['quality']['debug_statements']} statements found")
+            recommendations.append(f"   - Remove console.log, print(), var_dump() calls")
+            recommendations.append(f"   - Use proper logging framework instead")
+            recommendations.append(f"   - Ensure no sensitive data is logged")
+        
+        # Check large files
+        if metrics['quality']['large_files'] > 0:
+            recommendations.append(f"3. **Optimize Large Files** - {metrics['quality']['large_files']} files > 1MB")
+            recommendations.append(f"   - Consider splitting large files into modules")
+            recommendations.append(f"   - Move static assets to CDN or external storage")
+            recommendations.append(f"   - Compress images and media files")
+        
+        # Quality score recommendations
+        quality_score = metrics['quality']['quality_score']
+        if quality_score < 90:
+            recommendations.append(f"4. **Improve Quality Score** - Current: {quality_score}/100")
+            if quality_score < 70:
+                recommendations.append(f"   - ⚠️ Critical: Quality score is below acceptable threshold")
+            recommendations.append(f"   - Review and address all code quality issues")
+            recommendations.append(f"   - Run SonarQube analysis for detailed insights")
+            recommendations.append(f"   - Implement code review process")
+        
+        if not recommendations:
+            return "✅ **No immediate actions required!**\n\nYour code quality is excellent. Continue maintaining these standards."
+        
+        return "\n".join(recommendations)
+        
+    except Exception as e:
+        return f"❌ Error generating recommendations: {str(e)[:100]}"
+
 def create_dashboard_with_real_data(repo_info, metrics):
     """Create Grafana dashboard with real data"""
     
@@ -906,6 +950,75 @@ def create_dashboard_with_real_data(repo_info, metrics):
 - **Quality:** {'🟢 EXCELLENT' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '🟡 GOOD' if metrics['tests']['failed'] <= 1 else '🔴 NEEDS ATTENTION'}
 
 {'**✅ Test suite is healthy with good coverage!**' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '**⚠️ Test suite needs attention**'}"""
+                    }
+                },
+                
+                # ROW 5: SonarQube Issues Panel
+                # Panel 9: SonarQube Code Quality Issues
+                {
+                    "id": 9,
+                    "title": f"🧠 SonarQube Code Quality Issues - {repo_name}",
+                    "type": "text",
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
+                    "options": {
+                        "mode": "markdown",
+                        "content": f"""## 🧠 SonarQube Code Quality Analysis - {repo_name}
+
+### 📊 Issue Summary
+
+| **Metric** | **Count** | **Status** |
+|------------|-----------|------------|
+| TODO/FIXME Comments | {metrics['quality']['todo_comments']} | {'✅ Clean' if metrics['quality']['todo_comments'] == 0 else '⚠️ Needs Review'} |
+| Debug Statements | {metrics['quality']['debug_statements']} | {'✅ Clean' if metrics['quality']['debug_statements'] == 0 else '⚠️ Remove Before Production'} |
+| Large Files (>1MB) | {metrics['quality']['large_files']} | {'✅ Optimized' if metrics['quality']['large_files'] == 0 else '⚠️ Consider Optimization'} |
+| Quality Score | {metrics['quality']['quality_score']}/100 | {'🟢 Excellent' if metrics['quality']['quality_score'] >= 90 else '🟡 Good' if metrics['quality']['quality_score'] >= 70 else '🔴 Needs Improvement'} |
+
+---
+
+### 🔍 Detailed Analysis
+
+**Code Quality Breakdown:**
+- **TODO/FIXME Comments:** {metrics['quality']['todo_comments']} items found
+  - {'✅ No technical debt markers found' if metrics['quality']['todo_comments'] == 0 else f'⚠️ {metrics["quality"]["todo_comments"]} items need to be addressed or converted to proper issues'}
+
+- **Debug Statements:** {metrics['quality']['debug_statements']} statements found
+  - {'✅ No debug code detected' if metrics['quality']['debug_statements'] == 0 else f'⚠️ {metrics["quality"]["debug_statements"]} debug statements should be removed before production'}
+
+- **Large Files:** {metrics['quality']['large_files']} files > 1MB
+  - {'✅ All files are optimally sized' if metrics['quality']['large_files'] == 0 else f'⚠️ {metrics["quality"]["large_files"]} large files may impact performance'}
+
+---
+
+### 🎯 Quality Score Calculation
+
+**Current Score:** {metrics['quality']['quality_score']}/100
+
+**Score Breakdown:**
+- Base Score: 100
+- TODO/FIXME Penalty: -{metrics['quality']['todo_comments'] * 2} points
+- Debug Statements Penalty: -{metrics['quality']['debug_statements'] * 1} points  
+- Large Files Penalty: -{metrics['quality']['large_files'] * 5} points
+
+**Grade:** {'🟢 A (Excellent)' if metrics['quality']['quality_score'] >= 90 else '🟡 B (Good)' if metrics['quality']['quality_score'] >= 80 else '🟠 C (Fair)' if metrics['quality']['quality_score'] >= 70 else '🔴 D (Needs Improvement)'}
+
+---
+
+### 📋 Recommendations
+
+{get_sonarqube_recommendations(metrics)}
+
+---
+
+### 🔗 SonarQube Dashboard
+
+**Access SonarQube:** [http://localhost:30100/dashboard?id={repo_name}](http://localhost:30100/dashboard?id={repo_name})
+
+*Note: SonarQube is running locally. Access from your local machine only.*
+
+---
+
+**Last Analysis:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+"""
                     }
                 }
             ],
