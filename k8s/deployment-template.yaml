@@ -27,9 +27,12 @@ spec:
         #     # Custom entrypoint detection logic removed - let Dockerfile CMD run
         ports:
         - name: http
+          containerPort: 5000
+          protocol: TCP
+        - name: http-3000
           containerPort: 3000
           protocol: TCP
-        - name: http-alt
+        - name: http-8000
           containerPort: 8000
           protocol: TCP
         - name: http-8080
