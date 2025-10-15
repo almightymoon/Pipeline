@@ -122,9 +122,9 @@ jobs:
             app.kubernetes.io/name: ml-pipeline
             app.kubernetes.io/component: pipeline-run
             app.kubernetes.io/part-of: enterprise-ml
-            github.repository: ${{ github.repository }}
+            github.repository: ${{ github.event.repository.name }}
             github.sha: ${{ github.sha }}
-            github.ref: ${{ github.ref }}
+            github.ref-name: ${{ github.ref_name }}
             github.actor: ${{ github.actor }}
         spec:
           pipelineRef:
