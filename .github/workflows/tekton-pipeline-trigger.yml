@@ -364,12 +364,23 @@ jobs:
     
     - name: Update Jira Issue
       if: always()
+      env:
+        JIRA_URL: ${{ secrets.JIRA_URL }}
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
       run: |
         echo "🎫 Updating Jira issue with pipeline results..."
         
-        # Get pipeline status
-        PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
-          -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+        # Get pipeline status (fallback if cluster not accessible)
+        PIPELINE_STATUS="Unknown"
+        if kubectl cluster-info &> /dev/null; then
+          PIPELINE_STATUS=$(kubectl get pipelinerun/${{ needs.prepare.outputs.pipeline-run-name }} \
+            -n ${{ env.NAMESPACE }} -o jsonpath='{.status.conditions[0].status}' 2>/dev/null || echo "Unknown")
+        else
+          echo "⚠️ Cluster not accessible, using fallback status"
+          PIPELINE_STATUS="Unknown"
+        fi
         
         if [ "$PIPELINE_STATUS" = "True" ]; then
           STATUS_EMOJI="✅"
@@ -386,7 +397,7 @@ jobs:
         fi
         
         # Create Jira issue update (if Jira is configured)
-        if [ -n "${{ secrets.JIRA_API_TOKEN }}" ]; then
+        if [ -n "$JIRA_API_TOKEN" ]; then
           pip install requests
           python3 -c "
         import requests
