@@ -236,6 +236,17 @@ jobs:
           echo "sonar.token=${{ secrets.SONARQUBE_TOKEN }}" >> sonar-project.properties
           
           echo "Using SonarQube URL: $SONARQUBE_URL"
+          echo "SonarQube token: ${{ secrets.SONARQUBE_TOKEN }}"
+          
+          # Test SonarQube connectivity first
+          echo "Testing SonarQube connectivity..."
+          if curl -s -u "${{ secrets.SONARQUBE_TOKEN }}:" "$SONARQUBE_URL/api/authentication/validate" | grep -q "valid"; then
+            echo "✅ SonarQube authentication successful"
+          else
+            echo "❌ SonarQube authentication failed"
+            echo "Token preview: ${SONARQUBE_TOKEN:0:10}..."
+            exit 1
+          fi
           
           # Run SonarQube analysis
           sonar-scanner \
@@ -750,6 +761,8 @@ jobs:
         else
           echo "⚠️ No Dockerfile found in root or common subdirectories"
           echo "Searched: Dockerfile, Dockerfile.torchserve, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
+          echo "🔍 Debug: All files with 'docker' in name:"
+          find . -name "*docker*" -type f 2>/dev/null || echo "No docker files found"
         fi
         
         if [ -n "$DOCKERFILE_PATH" ]; then
