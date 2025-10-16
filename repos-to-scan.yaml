@@ -31,8 +31,8 @@ repositories:
   #   branch: main  
   #   scan_type: full      
 
-      url: https://github.com/almightymoon/qaicb
-      name: qaicb
+      url: https://github.com/almightymoon/qaicb.git
+      name: my-qaicb-repo
       branch: main  
       scan_type: full      
 
