@@ -9,10 +9,10 @@ echo ""
 
 # Step 1: Verify and update SonarQube token
 echo "1. 🔑 SONARQUBE TOKEN FIX"
-echo "   Current token: squ_9d85833108e82df82f9dc53a7d946b709242dfe6"
+echo "   Current token: squ_99a80b319cd42d6d8d669a580e24ee148d4ce005"
 echo "   Testing token validity..."
 
-if curl -s -u "squ_9d85833108e82df82f9dc53a7d946b709242dfe6:" http://213.109.162.134:30100/api/authentication/validate | grep -q "valid"; then
+if curl -s -u "squ_99a80b319cd42d6d8d669a580e24ee148d4ce005:" http://213.109.162.134:30100/api/authentication/validate | grep -q "valid"; then
     echo "   ✅ Token is valid"
 else
     echo "   ❌ Token is invalid, generating new one..."

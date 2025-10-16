@@ -23,7 +23,7 @@ gh auth login
 gh secret set HARBOR_USERNAME --body "admin"
 gh secret set HARBOR_PASSWORD --body "password"
 gh secret set SONARQUBE_URL --body "http://213.109.162.134:30100"
-gh secret set SONARQUBE_TOKEN --body "squ_9d85833108e82df82f9dc53a7d946b709242dfe6"
+gh secret set SONARQUBE_TOKEN --body "squ_99a80b319cd42d6d8d669a580e24ee148d4ce005"
 gh secret set SONARQUBE_ORG --body "default-organization"
 gh secret set VAULT_URL --body "http://213.109.162.134:8200"
 gh secret set VAULT_TOKEN --body "sample-vault-token"
@@ -48,7 +48,7 @@ Go to your repository → **Settings** → **Secrets and variables** → **Actio
 | `HARBOR_USERNAME` | `admin` |
 | `HARBOR_PASSWORD` | `password` |
 | `SONARQUBE_URL` | `http://213.109.162.134:30100` |
-| `SONARQUBE_TOKEN` | `sqa_0e2b69f31a838ecd2a4576b94f5928eecfab37c5` |
+| `SONARQUBE_TOKEN` | `squ_99a80b319cd42d6d8d669a580e24ee148d4ce005` |
 | `SONARQUBE_ORG` | `default-organization` |
 | `KUBECONFIG` | *(see KUBECONFIG section below)* |
 | `VAULT_URL` | `http://213.109.162.134:8200` |

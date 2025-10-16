@@ -9,7 +9,7 @@ echo ""
 
 # Update SonarQube token
 echo "1. Updating SonarQube token..."
-if gh secret set SONARQUBE_TOKEN --repo almightymoon/Pipeline --body "squ_9d85833108e82df82f9dc53a7d946b709242dfe6" 2>/dev/null; then
+if gh secret set SONARQUBE_TOKEN --repo almightymoon/Pipeline --body "squ_99a80b319cd42d6d8d669a580e24ee148d4ce005" 2>/dev/null; then
     echo "   ✅ SonarQube token updated successfully"
 else
     echo "   ❌ Failed to update token. Please update manually:"
