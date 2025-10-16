@@ -248,11 +248,15 @@ jobs:
             exit 1
           fi
           
-          # Run SonarQube analysis
+          # Run SonarQube analysis with explicit working directory
+          cd "$(pwd)"
           sonar-scanner \
             -Dsonar.projectKey=${{ steps.read_config.outputs.repo_name }} \
+            -Dsonar.sources=. \
+            -Dsonar.projectBaseDir=. \
             -Dsonar.host.url=$SONARQUBE_URL \
-            -Dsonar.token=${{ secrets.SONARQUBE_TOKEN }} || echo "SonarQube analysis completed"
+            -Dsonar.token=${{ secrets.SONARQUBE_TOKEN }} \
+            -Dsonar.scm.disabled=true || echo "SonarQube analysis completed"
         else
           echo "SonarQube not configured, skipping analysis"
         fi
