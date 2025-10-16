@@ -732,19 +732,26 @@ jobs:
         ls -la
         echo "📁 Looking for Dockerfiles recursively:"
         find . -name "Dockerfile*" -type f | head -10
+        find . -name "DOCKERFILE*" -type f | head -10
         echo ""
         
         # Check for Dockerfile in root or common subdirectories
         DOCKERFILE_PATH=""
         
-        # Check root directory first
+        # Check root directory first (case insensitive)
         if [ -f "Dockerfile" ]; then
           DOCKERFILE_PATH="Dockerfile"
           echo "✅ Dockerfile found in root directory"
+        elif [ -f "DOCKERFILE" ]; then
+          DOCKERFILE_PATH="DOCKERFILE"
+          echo "✅ DOCKERFILE found in root directory"
         # Check for Dockerfile.torchserve (seen in qaicb repo)
         elif [ -f "Dockerfile.torchserve" ]; then
           DOCKERFILE_PATH="Dockerfile.torchserve"
           echo "✅ Dockerfile.torchserve found in root directory"
+        elif [ -f "DOCKERFILE.torchserve" ]; then
+          DOCKERFILE_PATH="DOCKERFILE.torchserve"
+          echo "✅ DOCKERFILE.torchserve found in root directory"
         # Check common subdirectories for Dockerfiles
         elif [ -f "result/Dockerfile" ]; then
           DOCKERFILE_PATH="result/Dockerfile"
@@ -760,7 +767,7 @@ jobs:
           echo "✅ Dockerfile found in seed-data/Dockerfile"
         else
           echo "⚠️ No Dockerfile found in root or common subdirectories"
-          echo "Searched: Dockerfile, Dockerfile.torchserve, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
+          echo "Searched: Dockerfile, DOCKERFILE, Dockerfile.torchserve, DOCKERFILE.torchserve, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
           echo "🔍 Debug: All files with 'docker' in name:"
           find . -name "*docker*" -type f 2>/dev/null || echo "No docker files found"
         fi
