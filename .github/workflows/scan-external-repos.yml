@@ -730,6 +730,10 @@ jobs:
         if [ -f "Dockerfile" ]; then
           DOCKERFILE_PATH="Dockerfile"
           echo "✅ Dockerfile found in root directory"
+        # Check for Dockerfile.torchserve (seen in qaicb repo)
+        elif [ -f "Dockerfile.torchserve" ]; then
+          DOCKERFILE_PATH="Dockerfile.torchserve"
+          echo "✅ Dockerfile.torchserve found in root directory"
         # Check common subdirectories for Dockerfiles
         elif [ -f "result/Dockerfile" ]; then
           DOCKERFILE_PATH="result/Dockerfile"
@@ -745,7 +749,7 @@ jobs:
           echo "✅ Dockerfile found in seed-data/Dockerfile"
         else
           echo "⚠️ No Dockerfile found in root or common subdirectories"
-          echo "Searched: Dockerfile, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
+          echo "Searched: Dockerfile, Dockerfile.torchserve, result/Dockerfile, vote/Dockerfile, worker/Dockerfile, seed-data/Dockerfile"
         fi
         
         if [ -n "$DOCKERFILE_PATH" ]; then
