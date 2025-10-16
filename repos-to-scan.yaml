@@ -26,8 +26,8 @@ repositories:
   #   branch: main 
   #   scan_type: full        
 
-  - url: https://github.com/hamadkmehsud/qaicb.git 
-    name: qaicb
+  - url: https://github.com/hamadkmehsud/qaicb
+    name: qaicb 
     branch: main 
     scan_type: full      
 
