@@ -15,7 +15,7 @@ from datetime import datetime
 
 # Configuration
 # Configuration - Use environment variables for URLs
-GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://localhost:30102')
+GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://213.109.162.134:30102')
 # Security: Use environment variables instead of hardcoded credentials
 GRAFANA_USER = os.environ.get('GRAFANA_USERNAME', 'admin')
 GRAFANA_PASS = os.environ.get('GRAFANA_PASSWORD')
@@ -1011,9 +1011,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
 
 ### 🔗 SonarQube Dashboard
 
-**Access SonarQube:** [http://localhost:30100/dashboard?id={repo_name}](http://localhost:30100/dashboard?id={repo_name})
-
-*Note: SonarQube is running locally. Access from your local machine only.*
+**Access SonarQube:** [http://213.109.162.134:30100/dashboard?id={repo_name}](http://213.109.162.134:30100/dashboard?id={repo_name})
 
 ---
 
@@ -1250,7 +1248,7 @@ h3. ⚙️ Pipeline Details
 *Pipeline Links:*
 * [🔗 View Logs|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
 * [📊 Pipeline Dashboard (Grafana)|{dashboard_url}]
-* [📈 Prometheus Metrics|http://localhost:30090/graph?g0.expr=pipeline_scan_duration_seconds{{repo="{repo_name}"}}]
+* [📈 Prometheus Metrics|http://213.109.162.134:30090/graph?g0.expr=pipeline_scan_duration_seconds{{repo="{repo_name}"}}]
 
 ----
 
@@ -1274,7 +1272,7 @@ h3. 🛡️ Security Scan Summary
 
 *Security Tools:*
 * [🔍 Trivy Full Report (JSON)|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
-* [🧠 SonarQube Code Quality Report|http://localhost:30100/dashboard?id={repo_name}] _(Note: SonarQube running locally)_
+* [🧠 SonarQube Code Quality Report|http://213.109.162.134:30100/dashboard?id={repo_name}]
 * [📊 Grafana Real-Time Dashboard|{dashboard_url}]
 
 ----
@@ -1290,7 +1288,7 @@ h3. 🧮 Code Quality Breakdown
 {quality_details}
 
 *Quality Reports:*
-* [🔗 View SonarQube Dashboard|http://localhost:30100/dashboard?id={repo_name}] _(Local access only)_
+* [🔗 View SonarQube Dashboard|http://213.109.162.134:30100/dashboard?id={repo_name}]
 * [🧾 Full Logs|https://github.com/almightymoon/Pipeline/actions/runs/{github_run_id}]
 
 ----

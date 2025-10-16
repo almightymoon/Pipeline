@@ -9,7 +9,7 @@
 # ===========================================================
 
 # Grafana Configuration
-export GRAFANA_URL="http://your-server:30102"
+export GRAFANA_URL="http://213.109.162.134:30102"
 export GRAFANA_USERNAME="admin"
 export GRAFANA_PASSWORD="your-secure-grafana-password"
 
@@ -25,7 +25,7 @@ export HARBOR_USERNAME="admin"
 export HARBOR_PASSWORD="your-secure-harbor-password"
 
 # SonarQube Configuration
-export SONARQUBE_URL="http://your-server:9000"
+export SONARQUBE_URL="http://213.109.162.134:30100"
 export SONARQUBE_TOKEN="your-sonarqube-token"
 
 # Jira Configuration
@@ -43,8 +43,8 @@ export VAULT_URL="http://your-server:8200"
 export VAULT_TOKEN="your-vault-token"
 
 # Prometheus Configuration
-export PROMETHEUS_URL="http://your-server:9090"
-export PROMETHEUS_PUSHGATEWAY_URL="http://your-server:9091"
+export PROMETHEUS_URL="http://213.109.162.134:30090"
+export PROMETHEUS_PUSHGATEWAY_URL="http://213.109.162.134:9091"
 
 # ===========================================================
 # OPTIONAL ENVIRONMENT VARIABLES

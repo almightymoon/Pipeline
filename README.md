@@ -97,11 +97,11 @@ JIRA_EMAIL=your-email@example.com
 JIRA_API_TOKEN=your-jira-api-token
 JIRA_PROJECT_KEY=YOUR-PROJECT-KEY
 
-GRAFANA_URL=http://localhost:30102
+GRAFANA_URL=http://213.109.162.134:30102
 GRAFANA_USERNAME=admin
 GRAFANA_PASSWORD=admin
 
-SONARQUBE_URL=http://localhost:30100
+SONARQUBE_URL=http://213.109.162.134:30100
 SONARQUBE_TOKEN=your-sonarqube-token
 ```
 
@@ -187,9 +187,9 @@ The pipeline will automatically:
 | Component | Purpose | URL |
 |-----------|---------|-----|
 | **GitHub Actions** | CI/CD Orchestration | GitHub UI |
-| **SonarQube** | Code Quality Analysis | http://localhost:30100 |
-| **Grafana** | Dashboards & Visualization | http://localhost:30102 |
-| **Prometheus** | Metrics Storage | http://localhost:30090 |
+| **SonarQube** | Code Quality Analysis | http://213.109.162.134:30100 |
+| **Grafana** | Dashboards & Visualization | http://213.109.162.134:30102 |
+| **Prometheus** | Metrics Storage | http://213.109.162.134:30090 |
 | **Jira** | Issue Tracking | Your Jira Instance |
 | **Trivy** | Security Scanning | Embedded in Pipeline |
 
@@ -215,12 +215,12 @@ Create `.env` file (optional):
 
 ```bash
 # Grafana
-GRAFANA_URL=http://localhost:30102
+GRAFANA_URL=http://213.109.162.134:30102
 GRAFANA_USERNAME=admin
 GRAFANA_PASSWORD=admin
 
 # SonarQube
-SONARQUBE_URL=http://localhost:30100
+SONARQUBE_URL=http://213.109.162.134:30100
 SONARQUBE_TOKEN=your-token
 
 # Jira
@@ -236,7 +236,7 @@ JIRA_PROJECT_KEY=PROJECT
 
 ### SonarQube
 
-**Access:** http://localhost:30100
+**Access:** http://213.109.162.134:30100
 **Default Credentials:** admin/admin
 
 **Features:**
@@ -247,7 +247,7 @@ JIRA_PROJECT_KEY=PROJECT
 
 ### Grafana
 
-**Access:** http://localhost:30102
+**Access:** http://213.109.162.134:30102
 **Default Credentials:** admin/admin
 
 **Features:**
@@ -258,7 +258,7 @@ JIRA_PROJECT_KEY=PROJECT
 
 ### Prometheus
 
-**Access:** http://localhost:30090
+**Access:** http://213.109.162.134:30090
 
 **Features:**
 - Metrics collection
@@ -285,14 +285,14 @@ JIRA_PROJECT_KEY=PROJECT
 
 #### Grafana Dashboard
 ```
-http://localhost:30102
+http://213.109.162.134:30102
 → Dashboards
 → Pipeline Dashboard - {repository-name}
 ```
 
 #### SonarQube Report
 ```
-http://localhost:30100
+http://213.109.162.134:30100
 → Projects
 → {repository-name}
 ```
@@ -335,14 +335,9 @@ Node ports are assigned automatically (30000-32767 range).
 
 **Problem:** "This site can't be reached" when accessing SonarQube
 
-**Solution:** SonarQube runs locally. Access from your local machine:
+**Solution:** SonarQube is accessible at:
 ```bash
-http://localhost:30100
-```
-
-If running on a remote server, use SSH tunnel:
-```bash
-ssh -L 30100:localhost:30100 user@server-ip
+http://213.109.162.134:30100
 ```
 
 ### Pipeline Fails
@@ -451,9 +446,9 @@ For issues, questions, or contributions:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| **SonarQube** | http://localhost:30100 | Code quality analysis |
-| **Grafana** | http://localhost:30102 | Dashboards & metrics |
-| **Prometheus** | http://localhost:30090 | Metrics storage |
+| **SonarQube** | http://213.109.162.134:30100 | Code quality analysis |
+| **Grafana** | http://213.109.162.134:30102 | Dashboards & metrics |
+| **Prometheus** | http://213.109.162.134:30090 | Metrics storage |
 | **GitHub Actions** | GitHub UI | Pipeline execution |
 
 ---
