@@ -233,12 +233,15 @@ jobs:
             SONARQUBE_URL="http://213.109.162.134:30100"
           fi
           echo "sonar.host.url=$SONARQUBE_URL" >> sonar-project.properties
-          echo "sonar.login=${{ secrets.SONARQUBE_TOKEN }}" >> sonar-project.properties
+          echo "sonar.token=${{ secrets.SONARQUBE_TOKEN }}" >> sonar-project.properties
           
           echo "Using SonarQube URL: $SONARQUBE_URL"
           
           # Run SonarQube analysis
-          sonar-scanner -Dsonar.projectKey=${{ steps.read_config.outputs.repo_name }} || echo "SonarQube analysis completed"
+          sonar-scanner \
+            -Dsonar.projectKey=${{ steps.read_config.outputs.repo_name }} \
+            -Dsonar.host.url=$SONARQUBE_URL \
+            -Dsonar.token=${{ secrets.SONARQUBE_TOKEN }} || echo "SonarQube analysis completed"
         else
           echo "SonarQube not configured, skipping analysis"
         fi

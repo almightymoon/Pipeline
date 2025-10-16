@@ -44,7 +44,7 @@ export VAULT_TOKEN="your-vault-token"
 
 # Prometheus Configuration
 export PROMETHEUS_URL="http://213.109.162.134:30090"
-export PROMETHEUS_PUSHGATEWAY_URL="http://213.109.162.134:9091"
+export PROMETHEUS_PUSHGATEWAY_URL="http://213.109.162.134:30091"
 
 # ===========================================================
 # OPTIONAL ENVIRONMENT VARIABLES

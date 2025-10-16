@@ -22,14 +22,14 @@ gh auth login
 # Set all secrets with your actual values
 gh secret set HARBOR_USERNAME --body "admin"
 gh secret set HARBOR_PASSWORD --body "password"
-gh secret set SONARQUBE_URL --body "http://213.109.162.134:9000"
-gh secret set SONARQUBE_TOKEN --body "admin"
+gh secret set SONARQUBE_URL --body "http://213.109.162.134:30100"
+gh secret set SONARQUBE_TOKEN --body "sqa_0e2b69f31a838ecd2a4576b94f5928eecfab37c5"
 gh secret set SONARQUBE_ORG --body "default-organization"
 gh secret set VAULT_URL --body "http://213.109.162.134:8200"
 gh secret set VAULT_TOKEN --body "sample-vault-token"
 gh secret set JIRA_URL --body "https://faniqueprimus.atlassian.net"
 gh secret set JIRA_PROJECT_KEY --body "KAN"
-gh secret set PROMETHEUS_PUSHGATEWAY_URL --body "http://213.109.162.134:9091"
+gh secret set PROMETHEUS_PUSHGATEWAY_URL --body "http://213.109.162.134:30091"
 
 # Get Kubernetes config from your server
 KUBECONFIG_BASE64=$(sshpass -p 'qwert1234' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'kubectl config view --raw --minify | base64 -w 0')
@@ -47,15 +47,15 @@ Go to your repository → **Settings** → **Secrets and variables** → **Actio
 |-------------|-------|
 | `HARBOR_USERNAME` | `admin` |
 | `HARBOR_PASSWORD` | `password` |
-| `SONARQUBE_URL` | `http://213.109.162.134:9000` |
-| `SONARQUBE_TOKEN` | `admin` |
+| `SONARQUBE_URL` | `http://213.109.162.134:30100` |
+| `SONARQUBE_TOKEN` | `sqa_0e2b69f31a838ecd2a4576b94f5928eecfab37c5` |
 | `SONARQUBE_ORG` | `default-organization` |
 | `KUBECONFIG` | *(see KUBECONFIG section below)* |
 | `VAULT_URL` | `http://213.109.162.134:8200` |
 | `VAULT_TOKEN` | `sample-vault-token` |
 | `JIRA_URL` | `https://faniqueprimus.atlassian.net` |
 | `JIRA_PROJECT_KEY` | `KAN` |
-| `PROMETHEUS_PUSHGATEWAY_URL` | `http://213.109.162.134:9091` |
+| `PROMETHEUS_PUSHGATEWAY_URL` | `http://213.109.162.134:30091` |
 | `SLACK_WEBHOOK_URL` | *(optional)* |
 
 ---
@@ -81,12 +81,13 @@ Copy the output and use it as the `KUBECONFIG` secret value.
 - **ArgoCD:** http://213.109.162.134:32146 (admin/AcfOP4fSGVt-4AAg)
 - **Jira:** https://faniqueprimus.atlassian.net/browse/KAN
 - **Harbor:** http://213.109.162.134 (admin/password)
-- **SonarQube:** http://213.109.162.134:9000 (admin/admin)
+- **SonarQube:** http://213.109.162.134:30100 (admin/1234)
 - **Vault:** http://213.109.162.134:8200
 
 ### **🔐 Default Credentials:**
 - **Harbor:** admin / password
-- **SonarQube:** admin / admin
+- **SonarQube:** admin / 1234
+- **SonarQube Token:** sqa_0e2b69f31a838ecd2a4576b94f5928eecfab37c5
 - **Grafana:** admin / admin123
 - **ArgoCD:** admin / AcfOP4fSGVt-4AAg
 - **Vault:** sample-vault-token
