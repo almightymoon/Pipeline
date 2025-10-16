@@ -47,7 +47,7 @@ echo ""
 # Set SonarQube secrets
 echo "📊 Setting SonarQube secrets..."
 gh secret set SONARQUBE_URL --repo "$REPO" --body "http://213.109.162.134:30100"
-gh secret set SONARQUBE_TOKEN --repo "$REPO" --body "squ_99a80b319cd42d6d8d669a580e24ee148d4ce005"
+gh secret set SONARQUBE_TOKEN --repo "$REPO" --body "sqa_5d9aed525cdd3421964d6475f57a725da8fccdb1"
 gh secret set SONARQUBE_ORG --repo "$REPO" --body "default-organization"
 echo "   ✅ SonarQube configured"
 
