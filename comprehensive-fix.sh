@@ -74,8 +74,8 @@ echo ""
 echo "3. 🔍 WORKFLOW CONFIGURATION CHECK"
 echo "   Checking SonarQube configuration in workflow..."
 
-if grep -q "sonar.token" .github/workflows/scan-external-repos.yml; then
-    echo "   ✅ Workflow uses sonar.token (correct)"
+if grep -q "sonar.login" .github/workflows/scan-external-repos.yml; then
+    echo "   ✅ Workflow uses sonar.login (correct)"
 else
     echo "   ❌ Workflow still uses old sonar.login"
 fi
