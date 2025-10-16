@@ -88,6 +88,10 @@ spec:
           value: "-Xmx1g -XX:+UseG1GC"
         - name: SONAR_CE_JAVAADDITIONALOPTS
           value: "-Xmx512m -XX:+UseG1GC"
+        - name: SONAR_SEARCH_JAVAADDITIONALOPTS
+          value: "-Xmx512m -Xms512m"
+        - name: SONAR_CLUSTER_SEARCH_HOSTS
+          value: "localhost"
         resources:
           requests:
             memory: "2Gi"

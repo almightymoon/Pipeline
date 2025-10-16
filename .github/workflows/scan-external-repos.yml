@@ -660,15 +660,19 @@ jobs:
         echo "Total Lines: $TOTAL_LINES" >> /tmp/scan-metrics.txt
         echo "Repository Size: $REPO_SIZE" >> /tmp/scan-metrics.txt
     
-    - name: Push Metrics to Prometheus
+    - name: Push Enhanced Metrics to Prometheus
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
         pip install requests
-        python scripts/push_metrics_to_prometheus.py
+        python scripts/enhanced_prometheus_pusher.py
       env:
         PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+        SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
+        SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
         REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
         REPO_URL: ${{ steps.read_config.outputs.repo_url }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
     
     - name: Save Scan Results for Dashboard
       if: steps.read_config.outputs.has_repos == 'true'
