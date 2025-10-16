@@ -31,10 +31,10 @@ repositories:
   #   branch: main  
   #   scan_type: full      
 
-      url: https://github.com/almightymoon/qaicb
-      name: my-qaicb-repo
-      branch: main   
-      scan_type: full      
+  - url: https://github.com/almightymoon/qaicb
+    name: my-qaicb-repo
+    branch: main   
+    scan_type: full      
 
 # Scan types: 
 # - full: Complete pipeline (build, test, security scan, deploy simulation)
