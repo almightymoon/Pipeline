@@ -13,6 +13,7 @@ spec:
     - name: sonarqube-url
       type: string
       description: "SonarQube server URL"
+      default: ""
     - name: defectdojo-url
       type: string
       description: "DefectDojo server URL"
@@ -43,7 +44,7 @@ spec:
         echo "🔍 Running SonarQube analysis..."
         
         # Get SonarQube credentials
-        SONAR_TOKEN=$(cat /workspace/secrets/sonarqube-token)
+        SONARQUBE_TOKEN=$(cat /workspace/secrets/sonarqube-token)
         
         # Create sonar-project.properties
         cat > /workspace/source/sonar-project.properties << EOF
@@ -53,7 +54,7 @@ spec:
         sonar.sources=src,scripts
         sonar.tests=tests
         sonar.host.url=$(params.sonarqube-url)
-        sonar.login=$SONAR_TOKEN
+        sonar.token=${SONARQUBE_TOKEN}
         sonar.python.coverage.reportPaths=coverage.xml
         sonar.exclusions=**/*.pyc,**/__pycache__/**,**/node_modules/**,**/target/**
         EOF
@@ -62,7 +63,7 @@ spec:
         sonar-scanner \
           -Dsonar.projectKey=ml-pipeline-$(date +%s) \
           -Dsonar.host.url=$(params.sonarqube-url) \
-          -Dsonar.login=$SONAR_TOKEN
+          -Dsonar.token=$SONARQUBE_TOKEN
         
         # Wait for analysis to complete
         sleep 30
