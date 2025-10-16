@@ -666,7 +666,7 @@ jobs:
         pip install requests
         python scripts/enhanced_prometheus_pusher.py
       env:
-        PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
+        PROMETHEUS_PUSHGATEWAY_URL: http://213.109.162.134:30091
         SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
         SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
         REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
