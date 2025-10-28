@@ -14,7 +14,7 @@ images:
   
   - image: docker.io/arthurjones/getting-started:latest
     name: my-app
-    namespace: production
+    namespace: production 
     port: 3000
     node_port: 30081
     replicas: 1

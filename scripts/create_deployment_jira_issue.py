@@ -70,11 +70,17 @@ def format_jira_description(images, endpoints, vps_ip, namespace):
         endpoint_url = f"http://{vps_ip}:{node_port}" if node_port != 'N/A' else "N/A"
         # Compute deployment identifiers
         deployment_name = f"{friendly_name}-deployment"
-        # Use GitHub Actions UI workflow dispatch
+        # Use webhook server for automatic termination (run webhook server on VPS)
+        # Option 1: Direct webhook (requires webhook server running)
         terminate_url = (
-            f"https://github.com/almightymoon/Pipeline/actions/workflows/auto-terminate-deployment.yml"
+            f"http://213.109.162.134:5000/terminate"
             f"?repository={friendly_name}&deployment={deployment_name}&namespace={namespace}"
         )
+        # Option 2: GitHub Actions UI (manual click required)
+        # terminate_url = (
+        #     f"https://github.com/almightymoon/Pipeline/actions/workflows/auto-terminate-deployment.yml"
+        #     f"?repository={friendly_name}&deployment={deployment_name}&namespace={namespace}"
+        # )
         
         description += f"""
 *{idx}. {friendly_name}*
