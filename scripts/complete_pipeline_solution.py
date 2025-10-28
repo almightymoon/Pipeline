@@ -1110,6 +1110,10 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     namespace = os.environ.get('NAMESPACE', '')
     node_port = os.environ.get('NODE_PORT', '')
     
+    # Get Docker Hub image information
+    dockerhub_image = os.environ.get('DOCKERHUB_IMAGE', '')
+    dockerhub_image_latest = os.environ.get('DOCKERHUB_IMAGE_LATEST', '')
+    
     # Get real scan results
     from create_jira_issue import get_detailed_vulnerability_list, get_quality_analysis, get_priority_actions, get_scan_metrics, get_security_issues_summary, get_scan_status
     
@@ -1121,6 +1125,22 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     if dockerfile_exists and app_url:
         terminate_url = f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml?repository={repo_name}&deployment={deployment_name}&namespace={namespace}"
         
+        # Add Docker Hub info if available
+        dockerhub_info = ""
+        if dockerhub_image:
+            dockerhub_url = ""
+            if '/' in dockerhub_image:
+                try:
+                    parts = dockerhub_image.replace('docker.io/', '').split(':')[0]
+                    dockerhub_url = f"https://hub.docker.com/r/{parts}"
+                except:
+                    pass
+            
+            dockerhub_info = f"""
+||Docker Hub Image|`{dockerhub_image}`|
+||Docker Hub (Latest)|`{dockerhub_image_latest or 'N/A'}`|
+{f"||DockerHub URL|[🐳 View on Docker Hub|{dockerhub_url}]|" if dockerhub_url else ''}"""
+        
         deployment_section = f"""||Field||Value||
 |Docker Build|✅ Completed (Dockerfile detected)|
 |Kubernetes Deployment|✅ Successful|
@@ -1128,7 +1148,7 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
 |Namespace|{namespace}|
 |Service|{service_name}|
 |Node Port|{node_port}|
-|Access URL|[🌐 Running Application|{app_url}]|
+|Access URL|[🌐 Running Application|{app_url}]|{dockerhub_info}
 
 *Deployment Controls:*
 * 🟢 Status: Running and Accessible

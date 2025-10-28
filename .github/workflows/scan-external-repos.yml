@@ -871,6 +871,38 @@ jobs:
         
         echo "✅ Docker image built successfully: $FULL_IMAGE_NAME"
     
+    - name: Push Docker Image to Docker Hub
+      id: push_dockerhub
+      if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo "========================================="
+        echo "Pushing Docker Image to Docker Hub"
+        echo "========================================="
+        
+        # Login to Docker Hub
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        
+        # Tag and push the image
+        DOCKERHUB_IMAGE="docker.io/$DOCKER_USERNAME/${{ steps.read_config.outputs.repo_name }}:${{ github.run_number }}"
+        docker tag ${{ steps.docker_build.outputs.image_name }} "$DOCKERHUB_IMAGE"
+        
+        echo "📤 Pushing to Docker Hub: $DOCKERHUB_IMAGE"
+        docker push "$DOCKERHUB_IMAGE"
+        
+        # Also push with 'latest' tag
+        DOCKERHUB_IMAGE_LATEST="docker.io/$DOCKER_USERNAME/${{ steps.read_config.outputs.repo_name }}:latest"
+        docker tag ${{ steps.docker_build.outputs.image_name }} "$DOCKERHUB_IMAGE_LATEST"
+        docker push "$DOCKERHUB_IMAGE_LATEST"
+        
+        echo "dockerhub_image=$DOCKERHUB_IMAGE" >> $GITHUB_OUTPUT
+        echo "dockerhub_image_latest=$DOCKERHUB_IMAGE_LATEST" >> $GITHUB_OUTPUT
+        
+        echo "✅ Docker Hub Image: $DOCKERHUB_IMAGE"
+        echo "✅ Docker Hub Image (latest): $DOCKERHUB_IMAGE_LATEST"
+    
     - name: Transfer and Load Docker Image to K3s
       if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
       run: |
@@ -1112,6 +1144,9 @@ jobs:
         APP_URL: ${{ steps.k8s_deploy.outputs.app_url }}
         INTERNAL_URL: ${{ steps.k8s_deploy.outputs.internal_url }}
         NODE_PORT: ${{ steps.k8s_deploy.outputs.node_port }}
+        # Docker Hub image info
+        DOCKERHUB_IMAGE: ${{ steps.push_dockerhub.outputs.dockerhub_image }}
+        DOCKERHUB_IMAGE_LATEST: ${{ steps.push_dockerhub.outputs.dockerhub_image_latest }}
         # Grafana credentials
         GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
         GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
