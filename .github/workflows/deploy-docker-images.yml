@@ -248,8 +248,8 @@ jobs:
         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
         CONFIG_PATH: images-to-deploy.yaml
-        VPS_IP: ${VPS_IP}
-        NAMESPACE: ${TARGET_NAMESPACE}
+        VPS_IP: ${{ env.VPS_IP }}
+        NAMESPACE: ${{ env.TARGET_NAMESPACE }}
     
     - name: Display deployment summary
       if: steps.read_config.outputs.has_images == 'true'
@@ -259,8 +259,8 @@ jobs:
         echo "=========================================="
         echo ""
         echo "📊 Total Images Deployed: ${{ steps.read_config.outputs.image_count }}"
-        echo "🌐 VPS IP: ${VPS_IP}"
-        echo "📦 Namespace: ${TARGET_NAMESPACE}"
+        echo "🌐 VPS IP: ${{ env.VPS_IP }}"
+        echo "📦 Namespace: ${{ env.TARGET_NAMESPACE }}"
         echo ""
         echo "✅ Deployment completed successfully!"
         echo ""
