@@ -18,7 +18,7 @@ images:
     port: 3000
     node_port: 30081
     replicas: 1
-    environment: production  
+    environment: production   
   
   # Deployed images will be accessible via:
   # http://your-vps-ip:node_port

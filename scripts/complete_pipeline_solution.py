@@ -1123,7 +1123,8 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     # Create deployment section
     deployment_section = ""
     if dockerfile_exists and app_url:
-        terminate_url = f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml?repository={repo_name}&deployment={deployment_name}&namespace={namespace}"
+        # Use repository dispatch for automatic termination
+        terminate_url = f"https://api.github.com/repos/almightymoon/Pipeline/dispatches?repository={repo_name}&deployment={deployment_name}&namespace={namespace}"
         
         # Add Docker Hub info if available
         dockerhub_info = ""

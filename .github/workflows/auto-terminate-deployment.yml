@@ -1,0 +1,108 @@
+name: Auto Terminate Deployment
+
+on:
+  repository_dispatch:
+    types: [terminate_deployment]
+
+jobs:
+  terminate:
+    name: Auto Terminate Deployment
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Pipeline Code
+      uses: actions/checkout@v4
+    
+    - name: Extract Parameters from Event
+      id: parse_params
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        REPO_NAME="${{ github.event.client_payload.repository }}"
+        DEPLOYMENT_NAME="${{ github.event.client_payload.deployment }}"
+        NAMESPACE="${{ github.event.client_payload.namespace }}"
+        
+        echo "repository=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "deployment=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
+        echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+        
+        echo "========================================="
+        echo "Auto Terminating Deployment"
+        echo "========================================="
+        echo "Repository: $REPO_NAME"
+        echo "Deployment: $DEPLOYMENT_NAME"
+        echo "Namespace: $NAMESPACE"
+        echo "========================================="
+    
+    - name: Terminate Deployment
+      env:
+        KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+      run: |
+        # Setup kubeconfig
+        echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
+        export KUBECONFIG=/tmp/kubeconfig
+        chmod 600 /tmp/kubeconfig
+        
+        echo "========================================="
+        echo "Terminating Kubernetes Deployment"
+        echo "========================================="
+        
+        # Get parameters from previous step
+        REPO_NAME="${{ steps.parse_params.outputs.repository }}"
+        DEPLOYMENT_NAME="${{ steps.parse_params.outputs.deployment }}"
+        NAMESPACE="${{ steps.parse_params.outputs.namespace }}"
+        SERVICE_NAME="${REPO_NAME}-service"
+        INGRESS_NAME="${REPO_NAME}-ingress"
+        
+        # Verify connection
+        kubectl get nodes
+        
+        echo "Terminating deployment: $DEPLOYMENT_NAME in namespace: $NAMESPACE"
+        
+        # Delete deployment
+        if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting deployment: $DEPLOYMENT_NAME"
+          kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --wait=true --timeout=60s
+          echo "✅ Deployment deleted successfully"
+        else
+          echo "⚠️ Deployment $DEPLOYMENT_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        # Delete service
+        if kubectl get service "$SERVICE_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting service: $SERVICE_NAME"
+          kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE"
+          echo "✅ Service deleted successfully"
+        else
+          echo "⚠️ Service $SERVICE_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        # Delete ingress
+        if kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "Deleting ingress: $INGRESS_NAME"
+          kubectl delete ingress "$INGRESS_NAME" -n "$NAMESPACE"
+          echo "✅ Ingress deleted successfully"
+        else
+          echo "⚠️ Ingress $INGRESS_NAME not found in namespace $NAMESPACE"
+        fi
+        
+        echo "========================================="
+        echo "✅ TERMINATION COMPLETED"
+        echo "========================================="
+        echo "Deployment: $DEPLOYMENT_NAME - TERMINATED"
+        echo "Service: $SERVICE_NAME - TERMINATED"
+        echo "Ingress: $INGRESS_NAME - TERMINATED"
+        echo "Terminated by: ${{ github.actor }}"
+        echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+        echo "========================================="
+    
+    - name: Update Jira Status
+      run: |
+        echo "========================================="
+        echo "Termination Status Update"
+        echo "========================================="
+        echo "Repository: ${{ steps.parse_params.outputs.repository }}"
+        echo "Deployment: ${{ steps.parse_params.outputs.deployment }}"
+        echo "Status: ✅ TERMINATED"
+        echo "========================================="
+

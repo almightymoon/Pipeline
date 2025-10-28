@@ -70,8 +70,9 @@ def format_jira_description(images, endpoints, vps_ip, namespace):
         endpoint_url = f"http://{vps_ip}:{node_port}" if node_port != 'N/A' else "N/A"
         # Compute deployment identifiers
         deployment_name = f"{friendly_name}-deployment"
+        # Use direct API call to trigger termination
         terminate_url = (
-            f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml"
+            f"https://api.github.com/repos/almightymoon/Pipeline/actions/workflows/auto-terminate-deployment.yml/dispatches"
             f"?repository={friendly_name}&deployment={deployment_name}&namespace={namespace}"
         )
         
