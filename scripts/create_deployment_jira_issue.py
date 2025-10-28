@@ -68,6 +68,12 @@ def format_jira_description(images, endpoints, vps_ip, namespace):
         
         # Try to get endpoint from endpoints file
         endpoint_url = f"http://{vps_ip}:{node_port}" if node_port != 'N/A' else "N/A"
+        # Compute deployment identifiers
+        deployment_name = f"{friendly_name}-deployment"
+        terminate_url = (
+            f"https://github.com/almightymoon/Pipeline/actions/workflows/terminate-deployment.yml"
+            f"?repository={friendly_name}&deployment={deployment_name}&namespace={namespace}"
+        )
         
         description += f"""
 *{idx}. {friendly_name}*
@@ -76,6 +82,7 @@ def format_jira_description(images, endpoints, vps_ip, namespace):
 • Node Port: {node_port}
 • Replicas: {replicas}
 • Endpoint: {endpoint_url}
+ • Terminate: [🛑 Terminate Deployment]({terminate_url})
 • Status: ✅ Deployed
 
 """
