@@ -1,259 +1,260 @@
-name: Working ML Pipeline
+# name: Working ML Pipeline
 
-on:
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - 'repos-to-scan.yaml'
-  workflow_dispatch:
+# on:
+#   push:
+#     branches: [ main ]
+#     paths-ignore:
+#       - 'repos-to-scan.yaml'
+#   workflow_dispatch:
 
-env:
-  REGISTRY: harbor.yourcompany.com
-  IMAGE_NAME: almightymoon/pipeline
+# env:
+#   REGISTRY: harbor.yourcompany.com
+#   IMAGE_NAME: almightymoon/pipeline
 
-jobs:
-  # ==========================================
-  # 1. VALIDATE COMMIT STAGE
-  # ==========================================
-  validate-commit:
-    name: Validate Commit
-    runs-on: ubuntu-latest
-    outputs:
-      commit-valid: ${{ steps.validate.outputs.valid }}
+# jobs:
+#   # ==========================================
+#   # 1. VALIDATE COMMIT STAGE
+#   # ==========================================
+#   validate-commit:
+#     name: Validate Commit
+#     runs-on: ubuntu-latest
+#     outputs:
+#       commit-valid: ${{ steps.validate.outputs.valid }}
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
     
-    - name: Validate Commit
-      id: validate
-      run: |
-        echo "Validating commit..."
-        echo "Commit: ${{ github.sha }}"
-        echo "Branch: ${{ github.ref_name }}"
-        echo "Author: ${{ github.actor }}"
-        echo "valid=true" >> $GITHUB_OUTPUT
-        echo "✅ Commit validation passed"
+#     - name: Validate Commit
+#       id: validate
+#       run: |
+#         echo "Validating commit..."
+#         echo "Commit: ${{ github.sha }}"
+#         echo "Branch: ${{ github.ref_name }}"
+#         echo "Author: ${{ github.actor }}"
+#         echo "valid=true" >> $GITHUB_OUTPUT
+#         echo "✅ Commit validation passed"
 
-  # ==========================================
-  # 2. BUILD STAGE (FIXED)
-  # ==========================================
-  build:
-    name: Build & Package
-    runs-on: ubuntu-latest
-    needs: validate-commit
-    if: needs.validate-commit.outputs.commit-valid == 'true'
+#   # ==========================================
+#   # 2. BUILD STAGE (FIXED)
+#   # ==========================================
+#   build:
+#     name: Build & Package
+#     runs-on: ubuntu-latest
+#     needs: validate-commit
+#     if: needs.validate-commit.outputs.commit-valid == 'true'
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+#     - name: Set up Docker Buildx
+#       uses: docker/setup-buildx-action@v3
     
-    - name: Build Docker Image (Local Only)
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        load: true
-        tags: |
-          ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ${{ env.IMAGE_NAME }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+#     - name: Build Docker Image (Local Only)
+#       uses: docker/build-push-action@v5
+#       with:
+#         context: .
+#         push: false
+#         load: true
+#         tags: |
+#           ${{ env.IMAGE_NAME }}:${{ github.sha }}
+#           ${{ env.IMAGE_NAME }}:latest
+#         cache-from: type=gha
+#         cache-to: type=gha,mode=max
     
-    - name: Generate SBOM
-      run: |
-        echo "Generating SBOM..."
-        echo '{"name": "${{ github.repository }}", "version": "${{ github.sha }}", "created": "${{ github.event.head_commit.timestamp }}"}' > sbom.json
-        cat sbom.json
-        echo "✅ SBOM generated successfully"
+#     - name: Generate SBOM
+#       run: |
+#         echo "Generating SBOM..."
+#         echo '{"name": "${{ github.repository }}", "version": "${{ github.sha }}", "created": "${{ github.event.head_commit.timestamp }}"}' > sbom.json
+#         cat sbom.json
+#         echo "✅ SBOM generated successfully"
 
-  # ==========================================
-  # 3. SECURITY SCAN STAGE
-  # ==========================================
-  security-scan:
-    name: Security Analysis
-    runs-on: ubuntu-latest
-    needs: [validate-commit, build]
-    if: needs.validate-commit.outputs.commit-valid == 'true'
+#   # ==========================================
+#   # 3. SECURITY SCAN STAGE
+#   # ==========================================
+#   security-scan:
+#     name: Security Analysis
+#     runs-on: ubuntu-latest
+#     needs: [validate-commit, build]
+#     if: needs.validate-commit.outputs.commit-valid == 'true'
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
     
-    - name: Run Trivy Vulnerability Scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'table'
-        exit-code: '0'
+#     - name: Run Trivy Vulnerability Scanner
+#       uses: aquasecurity/trivy-action@master
+#       with:
+#         scan-type: 'fs'
+#         scan-ref: '.'
+#         format: 'table'
+#         exit-code: '0'
     
-    - name: Security Scan Summary
-      run: |
-        echo "========================================"
-        echo "        SECURITY SCAN SUMMARY"
-        echo "========================================"
-        echo ""
-        echo "Scan completed successfully!"
-        echo ""
-        echo "Key findings from Trivy:"
-        echo "  - Filesystem scan: COMPLETED"
-        echo "  - Secret detection: ENABLED"
-        echo "  - Vulnerability scan: ENABLED"
-        echo ""
-        echo "Note: Check the 'Run Trivy Vulnerability Scanner' step above for detailed findings."
-        echo ""
-        if [ -f "trivy-results.txt" ]; then
-          echo "Detailed results saved to: trivy-results.txt"
-        fi
-        echo "========================================"
+#     - name: Security Scan Summary
+#       run: |
+#         echo "========================================"
+#         echo "        SECURITY SCAN SUMMARY"
+#         echo "========================================"
+#         echo ""
+#         echo "Scan completed successfully!"
+#         echo ""
+#         echo "Key findings from Trivy:"
+#         echo "  - Filesystem scan: COMPLETED"
+#         echo "  - Secret detection: ENABLED"
+#         echo "  - Vulnerability scan: ENABLED"
+#         echo ""
+#         echo "Note: Check the 'Run Trivy Vulnerability Scanner' step above for detailed findings."
+#         echo ""
+#         if [ -f "trivy-results.txt" ]; then
+#           echo "Detailed results saved to: trivy-results.txt"
+#         fi
+#         echo "========================================"
 
-  # ==========================================
-  # 4. TEST STAGE
-  # ==========================================
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    needs: [validate-commit, build]
-    if: needs.validate-commit.outputs.commit-valid == 'true'
+#   # ==========================================
+#   # 4. TEST STAGE
+#   # ==========================================
+#   test:
+#     name: Run Tests
+#     runs-on: ubuntu-latest
+#     needs: [validate-commit, build]
+#     if: needs.validate-commit.outputs.commit-valid == 'true'
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
     
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+#     - name: Setup Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: '3.11'
     
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov
+#     - name: Install Dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install pytest pytest-cov
     
-    - name: Run Unit Tests
-      run: |
-        echo "Running unit tests..."
-        echo "✅ All tests passed"
+#     - name: Run Unit Tests
+#       run: |
+#         echo "Running unit tests..."
+#         echo "✅ All tests passed"
     
-    - name: Generate Test Report
-      run: |
-        echo "Generating test report..."
-        echo "Tests: 42"
-        echo "Passed: 41"
-        echo "Failed: 1"
-        echo "Coverage: 87.5%"
-        echo "✅ Test report generated"
+#     - name: Generate Test Report
+#       run: |
+#         echo "Generating test report..."
+#         echo "Tests: 42"
+#         echo "Passed: 41"
+#         echo "Failed: 1"
+#         echo "Coverage: 87.5%"
+#         echo "✅ Test report generated"
 
-  # ==========================================
-  # 5. DEPLOY STAGE (SIMPLIFIED)
-  # ==========================================
-  deploy:
-    name: Deploy to Kubernetes
-    runs-on: ubuntu-latest
-    needs: [build, security-scan, test]
-    if: always() && needs.build.result == 'success' && needs.security-scan.result == 'success' && needs.test.result == 'success'
+#   # ==========================================
+#   # 5. DEPLOY STAGE (SIMPLIFIED)
+#   # ==========================================
+#   deploy:
+#     name: Deploy to Kubernetes
+#     runs-on: ubuntu-latest
+#     needs: [build, security-scan, test]
+#     if: always() && needs.build.result == 'success' && needs.security-scan.result == 'success' && needs.test.result == 'success'
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
     
-    - name: Setup Kubectl
-      uses: azure/setup-kubectl@v4
-      with:
-        version: 'latest'
+#     - name: Setup Kubectl
+#       uses: azure/setup-kubectl@v4
+#       with:
+#         version: 'latest'
     
-    - name: Configure Kubernetes Access
-      run: |
-        echo "Configuring Kubernetes access..."
-        if [ -n "${{ secrets.KUBECONFIG }}" ]; then
-          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
-          echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
-          echo "✅ Kubernetes access configured"
-        else
-          echo "⚠️ KUBECONFIG secret not set, skipping deployment"
-        fi
+#     - name: Configure Kubernetes Access
+#       run: |
+#         echo "Configuring Kubernetes access..."
+#         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+#           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/kubeconfig
+#           echo "KUBECONFIG=$HOME/kubeconfig" >> $GITHUB_ENV
+#           echo "✅ Kubernetes access configured"
+#         else
+#           echo "⚠️ KUBECONFIG secret not set, skipping deployment"
+#         fi
     
-    - name: Deploy Application
-      run: |
-        echo "Deploying application..."
-        if [ -n "${{ secrets.KUBECONFIG }}" ]; then
-          echo "Testing Kubernetes connectivity..."
-          echo "Using KUBECONFIG: $KUBECONFIG"
-          kubectl get nodes || echo "⚠️ Kubernetes cluster not accessible - check server IP and firewall rules"
-          kubectl get pods --all-namespaces || echo "⚠️ Could not list pods"
-          echo "✅ Deployment step completed"
-        else
-          echo "⚠️ Skipping deployment - no Kubernetes access configured"
-        fi
+#     - name: Deploy Application
+#       run: |
+#         echo "Deploying application..."
+#         if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+#           echo "Testing Kubernetes connectivity..."
+#           echo "Using KUBECONFIG: $KUBECONFIG"
+#           kubectl get nodes || echo "⚠️ Kubernetes cluster not accessible - check server IP and firewall rules"
+#           kubectl get pods --all-namespaces || echo "⚠️ Could not list pods"
+#           echo "✅ Deployment step completed"
+#         else
+#           echo "⚠️ Skipping deployment - no Kubernetes access configured"
+#         fi
 
-  # ==========================================
-  # 6. MONITORING & REPORTING
-  # ==========================================
-  monitoring:
-    name: Setup Monitoring & Reporting
-    runs-on: ubuntu-latest
-    needs: [deploy, test]
-    if: always()
+#   # ==========================================
+#   # 6. MONITORING & REPORTING
+#   # ==========================================
+#   monitoring:
+#     name: Setup Monitoring & Reporting
+#     runs-on: ubuntu-latest
+#     needs: [deploy, test]
+#     if: always()
     
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout Code
+#       uses: actions/checkout@v4
       
-    - name: Send Metrics to Prometheus
-      run: |
-        echo "Sending metrics to Prometheus..."
-        if [ -n "${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}" ]; then
-          echo "✅ Metrics sent to Prometheus"
-        else
-          echo "⚠️ Prometheus URL not configured"
-        fi
+#     - name: Send Metrics to Prometheus
+#       run: |
+#         echo "Sending metrics to Prometheus..."
+#         if [ -n "${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}" ]; then
+#           echo "✅ Metrics sent to Prometheus"
+#         else
+#           echo "⚠️ Prometheus URL not configured"
+#         fi
     
-    - name: Create Jira Issue  
-      run: |
-        if [ -n "${{ secrets.JIRA_API_TOKEN }}" ] && [ -n "${{ secrets.JIRA_EMAIL }}" ]; then
-          pip install requests
-          python scripts/create_jira_issue.py
-        else
-          echo "Jira not configured - skipping"
-        fi
-      env:
-        JIRA_URL: ${{ secrets.JIRA_URL }}
-        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
-        JIRA_SUMMARY: "Pipeline Run #${{ github.run_number }}"
-        JIRA_DESCRIPTION: "Pipeline ${{ github.workflow }} completed. Run ${{ github.run_number }} on branch ${{ github.ref_name }}. View at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+#     - name: Create Jira Issue  
+#       run: |
+#         if [ -n "${{ secrets.JIRA_API_TOKEN }}" ] && [ -n "${{ secrets.JIRA_EMAIL }}" ]; then
+#           pip install requests
+#           python scripts/create_jira_issue.py
+#         else
+#           echo "Jira not configured - skipping"
+#         fi
+#       env:
+#         JIRA_URL: ${{ secrets.JIRA_URL }}
+#         JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+#         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+#         JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+#         JIRA_SUMMARY: "Pipeline Run #${{ github.run_number }}"
+#         JIRA_DESCRIPTION: "Pipeline ${{ github.workflow }} completed. Run ${{ github.run_number }} on branch ${{ github.ref_name }}. View at ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     
-    - name: Send Notification
-      run: |
-        echo "Pipeline Status: ${{ job.status }}"
-        echo "✅ Monitoring and reporting completed"
+#     - name: Send Notification
+#       run: |
+#         echo "Pipeline Status: ${{ job.status }}"
+#         echo "✅ Monitoring and reporting completed"
 
-  # ==========================================
-  # 7. CLEANUP & NOTIFICATIONS
-  # ==========================================
-  cleanup:
-    name: Cleanup & Notifications
-    runs-on: ubuntu-latest
-    needs: [monitoring]
-    if: always()
+#   # ==========================================
+#   # 7. CLEANUP & NOTIFICATIONS
+#   # ==========================================
+#   cleanup:
+#     name: Cleanup & Notifications
+#     runs-on: ubuntu-latest
+#     needs: [monitoring]
+#     if: always()
     
-    steps:
-    - name: Cleanup
-      run: |
-        echo "Cleaning up..."
-        echo "✅ Cleanup completed"
+#     steps:
+#     - name: Cleanup
+#       run: |
+#         echo "Cleaning up..."
+#         echo "✅ Cleanup completed"
     
-    - name: Send Final Notification
-      run: |
-        echo "🎉 Pipeline completed!"
-        echo "Status: ${{ job.status }}"
-        echo "Commit: ${{ github.sha }}"
-        echo "Branch: ${{ github.ref_name }}"
-        echo "Author: ${{ github.actor }}"
+#     - name: Send Final Notification
+#       run: |
+#         echo "🎉 Pipeline completed!"
+#         echo "Status: ${{ job.status }}"
+#         echo "Commit: ${{ github.sha }}"
+#         echo "Branch: ${{ github.ref_name }}"
+#         echo "Author: ${{ github.actor }}"
+# 

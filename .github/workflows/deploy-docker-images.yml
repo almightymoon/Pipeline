@@ -2,9 +2,7 @@ name: Deploy Docker Images to VPS
 
 on:
   workflow_dispatch:
-  schedule:
-    # Run daily at midnight UTC
-    - cron: '0 0 * * *'
+ 
   push:
     branches:
       - main
@@ -41,11 +39,20 @@ jobs:
           exit 1
         fi
         
-        # Count active images
-        IMAGE_COUNT=$(grep -c "^- image:" images-to-deploy.yaml || echo "0")
+        # Install yq if not available
+        if ! command -v yq &> /dev/null; then
+          echo "Installing yq..."
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+        fi
+        
+        # Count active images (not commented)
+        IMAGE_COUNT=$(yq '.images | length // 0' images-to-deploy.yaml 2>/dev/null || echo "0")
+        IMAGE_COUNT=$(echo "$IMAGE_COUNT" | tr -d '[:space:]')
+        
         echo "📊 Found $IMAGE_COUNT images to deploy"
         
-        if [ "$IMAGE_COUNT" -eq 0 ]; then
+        if [ -z "$IMAGE_COUNT" ] || [ "$IMAGE_COUNT" = "0" ]; then
           echo "⚠️  No images found to deploy"
           echo "has_images=false" >> $GITHUB_OUTPUT
           exit 0
@@ -71,13 +78,36 @@ jobs:
         echo "🚀 Deploying Docker images to Kubernetes..."
         export KUBECONFIG=$(pwd)/kubeconfig
         
+        # Install yq and jq if not available
+        if ! command -v yq &> /dev/null; then
+          echo "Installing yq..."
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+        fi
+        
+        if ! command -v jq &> /dev/null; then
+          echo "Installing jq..."
+          sudo apt-get update -qq && sudo apt-get install -y jq
+        fi
+        
         # Create namespace if it doesn't exist
         NAMESPACE="${TARGET_NAMESPACE}"
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - || true
         
-        # Parse images from YAML and deploy
-        yq eval '.images[] | select(.image != null and .image != "") | "\(.image) \(.name // "unnamed") \(.port // "80") \(.node_port // "") \(.replicas // "1")"' images-to-deploy.yaml | while IFS=' ' read -r image name port node_port replicas; do
-          if [ -z "$image" ]; then
+        # Create namespace from images-to-deploy.yaml if specified
+        TARGET_NAMESPACE="${TARGET_NAMESPACE}"
+        
+        # Parse and deploy each image
+        yq eval -o=json '.images[]' images-to-deploy.yaml 2>/dev/null | while IFS= read -r image_obj; do
+          image=$(echo "$image_obj" | jq -r '.image // empty')
+          name=$(echo "$image_obj" | jq -r '.name // empty')
+          port=$(echo "$image_obj" | jq -r '.port // "80"')
+          node_port=$(echo "$image_obj" | jq -r '.node_port // "30080"')
+          replicas=$(echo "$image_obj" | jq -r '.replicas // "1"')
+          namespace=$(echo "$image_obj" | jq -r '.namespace // "'"$TARGET_NAMESPACE"'"')
+          
+          # Skip if image is empty
+          if [ -z "$image" ] || [ "$image" = "null" ]; then
             continue
           fi
           
@@ -86,10 +116,14 @@ jobs:
           echo "   Port: $port"
           echo "   NodePort: $node_port"
           echo "   Replicas: $replicas"
+          echo "   Namespace: $namespace"
           
           # Generate deployment name
           DEPLOYMENT_NAME="${name}-deployment"
           SERVICE_NAME="${name}-service"
+          
+          # Create namespace if it doesn't exist
+          kubectl create namespace "$namespace" --dry-run=client -o yaml | kubectl apply -f - || true
           
           # Create deployment
           cat <<EOF | kubectl apply -f -
@@ -97,7 +131,7 @@ jobs:
         kind: Deployment
         metadata:
           name: ${DEPLOYMENT_NAME}
-          namespace: ${NAMESPACE}
+          namespace: ${namespace}
           labels:
             app: ${name}
         spec:
@@ -130,7 +164,7 @@ jobs:
         kind: Service
         metadata:
           name: ${SERVICE_NAME}
-          namespace: ${NAMESPACE}
+          namespace: ${namespace}
           labels:
             app: ${name}
         spec:
@@ -155,15 +189,32 @@ jobs:
       if: steps.read_config.outputs.has_images == 'true'
       run: |
         export KUBECONFIG=$(pwd)/kubeconfig
-        NAMESPACE="${TARGET_NAMESPACE}"
         
         echo "📊 Deployment Status:"
-        kubectl get deployments -n "$NAMESPACE"
-        kubectl get svc -n "$NAMESPACE"
-        kubectl get pods -n "$NAMESPACE"
+        
+        # Install jq if not available
+        if ! command -v jq &> /dev/null; then
+          sudo apt-get update -qq && sudo apt-get install -y jq
+        fi
+        
+        # Get all namespaces used in deployment
+        NAMESPACES=$(yq eval '.images[] | select(.namespace != null) | .namespace' images-to-deploy.yaml 2>/dev/null | sort -u)
+        NAMESPACES="${NAMESPACES:-${TARGET_NAMESPACE}}"
+        
+        # Display status for each namespace
+        for NAMESPACE in $NAMESPACES; do
+          echo ""
+          echo "--- Namespace: $NAMESPACE ---"
+          kubectl get deployments -n "$NAMESPACE" || true
+          kubectl get svc -n "$NAMESPACE" || true
+          kubectl get pods -n "$NAMESPACE" || true
+        done
         
         # Generate endpoints file
-        kubectl get svc -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}:{.spec.ports[0].nodePort}{"\n"}{end}' > deployment-endpoints.txt
+        echo "" > deployment-endpoints.txt
+        for NAMESPACE in $NAMESPACES; do
+          kubectl get svc -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}:{.spec.ports[0].nodePort}{"\n"}{end}' >> deployment-endpoints.txt || true
+        done
     
     - name: Create Jira deployment issue
       if: steps.read_config.outputs.has_images == 'true'
