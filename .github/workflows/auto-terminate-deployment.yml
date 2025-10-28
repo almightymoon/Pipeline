@@ -1,6 +1,8 @@
 name: Auto Terminate Deployment
 
 on:
+  repository_dispatch:
+    types: [terminate_deployment]
   workflow_dispatch:
     inputs:
       repository:
@@ -28,9 +30,18 @@ jobs:
     - name: Extract Parameters from Event
       id: parse_params
       run: |
-        REPO_NAME="${{ github.event.inputs.repository }}"
-        DEPLOYMENT_NAME="${{ github.event.inputs.deployment }}"
-        NAMESPACE="${{ github.event.inputs.namespace }}"
+        # Support both workflow_dispatch and repository_dispatch
+        if [ -n "${{ github.event.inputs.repository }}" ]; then
+          # workflow_dispatch (manual trigger)
+          REPO_NAME="${{ github.event.inputs.repository }}"
+          DEPLOYMENT_NAME="${{ github.event.inputs.deployment }}"
+          NAMESPACE="${{ github.event.inputs.namespace }}"
+        else
+          # repository_dispatch (webhook trigger)
+          REPO_NAME="${{ github.event.client_payload.repository }}"
+          DEPLOYMENT_NAME="${{ github.event.client_payload.deployment }}"
+          NAMESPACE="${{ github.event.client_payload.namespace }}"
+        fi
         
         echo "repository=$REPO_NAME" >> $GITHUB_OUTPUT
         echo "deployment=$DEPLOYMENT_NAME" >> $GITHUB_OUTPUT
