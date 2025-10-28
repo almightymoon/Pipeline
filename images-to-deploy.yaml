@@ -12,13 +12,13 @@ images:
   #   replicas: 1
   #   environment: staging
   
-  # - image: docker.io/yourusername/your-app:latest
-  #   name: my-app
-  #   namespace: production
-  #   port: 8080
-  #   node_port: 30081
-  #   replicas: 3
-  #   environment: production
+  - image: docker.io/arthurjones/getting-started:latest
+    name: my-app
+    namespace: production
+    port: 3000
+    node_port: 30081
+    replicas: 1
+    environment: production
   
   # Deployed images will be accessible via:
   # http://your-vps-ip:node_port
