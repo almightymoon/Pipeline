@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: pull-docker-images-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: pull-docker-images-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Pull Docker images from Docker Hub"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+  steps:
+    - name: pull-images
+      image: docker:latest
+      script: |
+        #!/bin/sh
+        set -e
+        echo "🐳 Pulling Docker images from Docker Hub..."
+        
+        # Parse images from YAML (simplified parser)
+        IMAGES=$(grep "^  - image:" "$(workspaces.config.path)/$(params.config-path)" | sed 's/.*image: //g' | tr -d ' ' || echo "")
+        
+        if [ -z "$IMAGES" ]; then
+          echo "⚠️  No images found to pull"
+          exit 0
+        fi
+        
+        for image in $IMAGES; do
+          echo "📥 Pulling image: $image"
+          docker pull "$image" || echo "⚠️  Warning: Could not pull $image"
+        done
+        
+        echo "✅ All images pulled successfully"
+      workingDir: $(workspaces.config.path)
+

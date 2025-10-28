@@ -1,0 +1,66 @@
+# Docker Image Deployment Configuration
+# Add Docker Hub image URLs here to automatically deploy them to your VPS/Kubernetes cluster
+# The pipeline will pull, deploy, and create Jira issues for each image
+
+images:
+  # Example entries:
+  # - image: nginx:latest
+  #   name: nginx-web-server
+  #   namespace: default
+  #   port: 80
+  #   node_port: 30080
+  #   replicas: 1
+  #   environment: staging
+  
+  # - image: docker.io/yourusername/your-app:latest
+  #   name: my-app
+  #   namespace: production
+  #   port: 8080
+  #   node_port: 30081
+  #   replicas: 3
+  #   environment: production
+  
+  # Deployed images will be accessible via:
+  # http://your-vps-ip:node_port
+
+# Example configurations:
+  # - image: nginx:latest
+  #   name: nginx-demo
+  #   namespace: default
+  #   port: 80
+  #   node_port: 30080
+  #   replicas: 1
+  #   environment: staging
+
+  # - image: httpd:latest
+  #   name: apache-demo
+  #   namespace: default
+  #   port: 80
+  #   node_port: 30081
+  #   replicas: 1
+  #   environment: staging
+
+  # - image: node:18-alpine
+  #   name: nodejs-demo
+  #   namespace: default
+  #   port: 3000
+  #   node_port: 30082
+  #   replicas: 1
+  #   environment: staging
+
+# Image deployment details:
+# - image: Full Docker Hub image name (e.g., nginx:latest or docker.io/user/app:v1.0)
+# - name: Friendly name for the deployed application
+# - namespace: Kubernetes namespace to deploy to (default, production, staging)
+# - port: Container port (the port your app listens on inside the container)
+# - node_port: External port (30000-32767 range for Kubernetes NodePort)
+# - replicas: Number of pod instances (default: 1)
+# - environment: Environment label (staging, production, development)
+
+# The pipeline will:
+# 1. Pull the Docker image
+# 2. Deploy it to Kubernetes with the specified configuration
+# 3. Create a service and ingress for external access
+# 4. Generate a Jira issue with deployment details and endpoints
+# 5. Monitor the deployment status
+

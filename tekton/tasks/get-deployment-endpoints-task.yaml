@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: get-deployment-endpoints-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: get-deployment-endpoints-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Get deployment endpoints and service information"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+    - name: target-namespace
+      type: string
+      description: "Target Kubernetes namespace"
+      default: "default"
+    - name: vps-ip
+      type: string
+      description: "VPS server IP address"
+      default: "213.109.162.134"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+    - name: kubeconfig
+      description: "Kubeconfig workspace"
+  steps:
+    - name: get-endpoints
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+        echo "🔍 Getting deployment endpoints..."
+        
+        # Setup kubeconfig
+        export KUBECONFIG=$(workspaces.kubeconfig.path)/kubeconfig
+        
+        # Get all deployments in namespace
+        kubectl get deployments -n "$(params.target-namespace)" -o wide
+        
+        # Get all services
+        kubectl get services -n "$(params.target-namespace)" -o wide
+        
+        # Get all ingress
+        kubectl get ingress -n "$(params.target-namespace)" -o wide 2>/dev/null || echo "No ingress found"
+        
+        echo "✅ Endpoints retrieved"
+        
+        # Save endpoints info
+        {
+          echo "VPS_IP=$(params.vps-ip)"
+          echo "NAMESPACE=$(params.target-namespace)"
+          kubectl get svc -n "$(params.target-namespace)" -o jsonpath='{range .items[*]}{.metadata.name}:{.spec.ports[0].nodePort}{"\n"}{end}' | head -5
+        } > "$(workspaces.config.path)/endpoints.txt"
+      workingDir: $(workspaces.config.path)
+

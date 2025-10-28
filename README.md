@@ -33,9 +33,11 @@ A comprehensive, automated CI/CD pipeline for ML/AI projects with integrated sec
 
 ### 🚀 Deployment
 - **Docker** - Automated container building
+- **Docker Hub Images** - Deploy any Docker Hub image to your VPS
 - **Kubernetes** - Automated deployment to K8s clusters
 - **NodePort Services** - External access to deployed applications
 - **Health Checks** - Automated application monitoring
+- **Image Deployment Pipeline** - Deploy images with automatic Jira integration
 
 ### 📈 Monitoring & Reporting
 - **Grafana** - Real-time dashboards for each repository
@@ -131,6 +133,37 @@ The pipeline will automatically:
 3. ✅ Generate Grafana dashboard
 4. ✅ Create Jira issue with results
 5. ✅ Deploy application (if Dockerfile exists)
+
+### 🆕 Deploy Docker Hub Images
+
+To deploy Docker images from Docker Hub to your VPS:
+
+1. **Edit `images-to-deploy.yaml`**:
+```yaml
+images:
+  - image: nginx:latest
+    name: nginx-demo
+    namespace: default
+    port: 80
+    node_port: 30080
+    replicas: 1
+```
+
+2. **Commit and push**:
+```bash
+git add images-to-deploy.yaml
+git commit -m "Deploy nginx"
+git push
+```
+
+The deployment pipeline will:
+1. ✅ Pull Docker images
+2. ✅ Deploy to Kubernetes
+3. ✅ Configure NodePort services
+4. ✅ Create Jira issue with endpoints
+5. ✅ Provide access URLs
+
+**See**: [IMAGE_DEPLOYMENT_QUICK_START.md](IMAGE_DEPLOYMENT_QUICK_START.md) for more details.
 
 ---
 
@@ -322,10 +355,16 @@ Node ports are assigned automatically (30000-32767 range).
 ### Additional Guides (in `docs/`)
 
 - **COMPLETE_PIPELINE_GUIDE.md** - Comprehensive pipeline documentation
+- **IMAGE_DEPLOYMENT_GUIDE.md** - Deploy Docker Hub images to your VPS
 - **DASHBOARDS_GUIDE.md** - Grafana dashboard setup
 - **JIRA_SETUP_GUIDE.md** - Jira integration guide
 - **K3S_CLUSTER_SETUP.md** - Kubernetes cluster setup
 - **CREDENTIALS_GUIDE.md** - Secrets and credentials management
+
+### Quick Start Guides
+
+- **IMAGE_DEPLOYMENT_QUICK_START.md** - Quick start for Docker image deployments
+- **QUICK_START.md** - Quick start guide
 
 ---
 

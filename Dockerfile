@@ -1,16 +1,27 @@
 FROM python:3.11-slim
 
+# Set environment variables for optimization
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies with space optimization
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --no-deps -r requirements.txt && \
+    pip cache purge && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Copy application code
-COPY . .
+# Copy only necessary application files
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY configs/ ./configs/
 
 # Create a simple health check
 RUN echo '#!/bin/bash\necho "OK"\nexit 0' > /app/health.sh && chmod +x /app/health.sh

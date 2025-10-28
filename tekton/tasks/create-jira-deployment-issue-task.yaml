@@ -1,0 +1,92 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-jira-deployment-issue-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: create-jira-deployment-issue-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Create Jira issue for deployment with endpoints"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+    - name: jira-url
+      type: string
+      description: "Jira server URL"
+    - name: jira-project-key
+      type: string
+      description: "Jira project key"
+    - name: jira-email
+      type: string
+      description: "Jira email"
+    - name: jira-api-token
+      type: string
+      description: "Jira API token"
+    - name: vps-ip
+      type: string
+      description: "VPS server IP address"
+      default: "213.109.162.134"
+    - name: target-namespace
+      type: string
+      description: "Target Kubernetes namespace"
+      default: "default"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+    - name: credentials
+      description: "Credentials workspace"
+  steps:
+    - name: create-jira-issue
+      image: python:3.9-slim
+      script: |
+        #!/bin/bash
+        set -e
+        echo "📝 Creating Jira issue for deployment..."
+        
+        # Install dependencies
+        pip install requests pyyaml -q
+        
+        # Get deployment info from previous tasks
+        if [ -f "$(workspaces.config.path)/endpoints.txt" ]; then
+          source "$(workspaces.config.path)/endpoints.txt"
+        fi
+        
+        # Run Jira issue creation script
+        python << 'EOF'
+import os
+import sys
+sys.path.append('/workspaces/config')
+from create_deployment_jira_issue import create_jira_deployment_issue
+
+create_jira_deployment_issue(
+    jira_url=os.getenv('JIRA_URL'),
+    jira_email=os.getenv('JIRA_EMAIL'),
+    jira_api_token=os.getenv('JIRA_API_TOKEN'),
+    jira_project_key=os.getenv('JIRA_PROJECT_KEY'),
+    config_path=os.getenv('CONFIG_PATH'),
+    vps_ip=os.getenv('VPS_IP'),
+    namespace=os.getenv('NAMESPACE')
+)
+EOF
+        
+        echo "✅ Jira issue created"
+      env:
+        - name: JIRA_URL
+          value: $(params.jira-url)
+        - name: JIRA_EMAIL
+          value: $(params.jira-email)
+        - name: JIRA_API_TOKEN
+          value: $(params.jira-api-token)
+        - name: JIRA_PROJECT_KEY
+          value: $(params.jira-project-key)
+        - name: CONFIG_PATH
+          value: $(workspaces.config.path)/$(params.config-path)
+        - name: VPS_IP
+          value: $(params.vps-ip)
+        - name: NAMESPACE
+          value: $(params.target-namespace)
+      workingDir: $(workspaces.config.path)
+

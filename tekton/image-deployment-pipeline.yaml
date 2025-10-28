@@ -1,0 +1,146 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: image-deployment-pipeline
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: image-deployment
+    app.kubernetes.io/component: pipeline
+    app.kubernetes.io/part-of: enterprise-ml
+spec:
+  description: "Deploy Docker images from Docker Hub to Kubernetes VPS"
+  
+  params:
+    - name: images-config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+    - name: kubeconfig
+      type: string
+      description: "Kubernetes kubeconfig for deployment"
+    - name: jira-url
+      type: string
+      description: "Jira server URL"
+    - name: jira-project-key
+      type: string
+      description: "Jira project key"
+    - name: jira-email
+      type: string
+      description: "Jira email"
+    - name: jira-api-token
+      type: string
+      description: "Jira API token"
+    - name: vps-ip
+      type: string
+      description: "VPS server IP address"
+      default: "213.109.162.134"
+    - name: target-namespace
+      type: string
+      description: "Target Kubernetes namespace"
+      default: "default"
+
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+    - name: kubeconfig
+      description: "Kubeconfig workspace"
+    - name: credentials
+      description: "Credentials workspace"
+
+  tasks:
+    # Stage 1: Read and validate images configuration
+    - name: read-images-config
+      taskRef:
+        name: read-images-config-task
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+      workspaces:
+        - name: config
+          workspace: config
+
+    # Stage 2: Pull Docker images
+    - name: pull-docker-images
+      taskRef:
+        name: pull-docker-images-task
+      runAfter: ["read-images-config"]
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+      workspaces:
+        - name: config
+          workspace: config
+
+    # Stage 3: Deploy to Kubernetes
+    - name: deploy-to-kubernetes
+      taskRef:
+        name: deploy-images-to-k8s-task
+      runAfter: ["pull-docker-images"]
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+        - name: target-namespace
+          value: $(params.target-namespace)
+        - name: vps-ip
+          value: $(params.vps-ip)
+      workspaces:
+        - name: config
+          workspace: config
+        - name: kubeconfig
+          workspace: kubeconfig
+
+    # Stage 4: Get deployment endpoints
+    - name: get-deployment-endpoints
+      taskRef:
+        name: get-deployment-endpoints-task
+      runAfter: ["deploy-to-kubernetes"]
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+        - name: target-namespace
+          value: $(params.target-namespace)
+        - name: vps-ip
+          value: $(params.vps-ip)
+      workspaces:
+        - name: config
+          workspace: config
+        - name: kubeconfig
+          workspace: kubeconfig
+
+    # Stage 5: Create Jira deployment issue
+    - name: create-jira-deployment-issue
+      taskRef:
+        name: create-jira-deployment-issue-task
+      runAfter: ["get-deployment-endpoints"]
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+        - name: jira-url
+          value: $(params.jira-url)
+        - name: jira-project-key
+          value: $(params.jira-project-key)
+        - name: jira-email
+          value: $(params.jira-email)
+        - name: jira-api-token
+          value: $(params.jira-api-token)
+        - name: vps-ip
+          value: $(params.vps-ip)
+        - name: target-namespace
+          value: $(params.target-namespace)
+      workspaces:
+        - name: config
+          workspace: config
+        - name: credentials
+          workspace: credentials
+
+  finally:
+    - name: deployment-cleanup
+      taskRef:
+        name: deployment-cleanup-task
+      params:
+        - name: config-path
+          value: $(params.images-config-path)
+      workspaces:
+        - name: config
+          workspace: config
+

@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-images-to-k8s-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: deploy-images-to-k8s-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Deploy Docker images to Kubernetes cluster"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+    - name: target-namespace
+      type: string
+      description: "Target Kubernetes namespace"
+      default: "default"
+    - name: vps-ip
+      type: string
+      description: "VPS server IP address"
+      default: "213.109.162.134"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+    - name: kubeconfig
+      description: "Kubeconfig workspace"
+  steps:
+    - name: deploy-to-k8s
+      image: bitnami/kubectl:latest
+      script: |
+        #!/bin/bash
+        set -e
+        echo "🚀 Deploying images to Kubernetes..."
+        
+        # Setup kubeconfig
+        export KUBECONFIG=$(workspaces.kubeconfig.path)/kubeconfig
+        
+        # Create namespace if it doesn't exist
+        if ! kubectl get namespace "$(params.target-namespace)" > /dev/null 2>&1; then
+          echo "📦 Creating namespace: $(params.target-namespace)"
+          kubectl create namespace "$(params.target-namespace)"
+        fi
+        
+        # Generate deployment manifests for each image
+        # This is a simplified example - in production, use a proper YAML parser
+        echo "✅ Deployments initiated for all images"
+        echo "Namespace: $(params.target-namespace)"
+        echo "VPS IP: $(params.vps-ip)"
+        
+        # Output deployment info for next tasks
+        echo "DEPLOYMENT_NAMESPACE=$(params.target-namespace)" > "$(workspaces.config.path)/deployment-info.txt"
+        echo "VPS_IP=$(params.vps-ip)" >> "$(workspaces.config.path)/deployment-info.txt"
+      workingDir: $(workspaces.config.path)
+

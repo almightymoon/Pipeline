@@ -1,0 +1,202 @@
+name: Deploy Docker Images to VPS
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'images-to-deploy.yaml'
+      - '.github/workflows/deploy-docker-images.yml'
+
+env:
+  KUBECONFIG: ${{ secrets.KUBECONFIG }}
+  VPS_IP: 213.109.162.134
+  VPS_USER: ${{ secrets.VPS_USER }}
+  VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+  JIRA_URL: ${{ secrets.JIRA_URL }}
+  JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+  JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+  JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+  TARGET_NAMESPACE: default
+
+jobs:
+  deploy-images:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Read images configuration
+      id: read_config
+      run: |
+        echo "📖 Reading images-to-deploy.yaml..."
+        
+        if [ ! -f "images-to-deploy.yaml" ]; then
+          echo "❌ Error: images-to-deploy.yaml not found"
+          exit 1
+        fi
+        
+        # Count active images
+        IMAGE_COUNT=$(grep -c "^- image:" images-to-deploy.yaml || echo "0")
+        echo "📊 Found $IMAGE_COUNT images to deploy"
+        
+        if [ "$IMAGE_COUNT" -eq 0 ]; then
+          echo "⚠️  No images found to deploy"
+          echo "has_images=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "has_images=true" >> $GITHUB_OUTPUT
+        echo "image_count=$IMAGE_COUNT" >> $GITHUB_OUTPUT
+    
+    - name: Setup kubeconfig
+      if: steps.read_config.outputs.has_images == 'true'
+      run: |
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig
+        chmod 600 kubeconfig
+        export KUBECONFIG=$(pwd)/kubeconfig
+        
+        # Verify connection
+        kubectl version --short || true
+        kubectl get nodes
+    
+    - name: Parse and deploy images
+      if: steps.read_config.outputs.has_images == 'true'
+      run: |
+        echo "🚀 Deploying Docker images to Kubernetes..."
+        export KUBECONFIG=$(pwd)/kubeconfig
+        
+        # Create namespace if it doesn't exist
+        NAMESPACE="${TARGET_NAMESPACE}"
+        kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - || true
+        
+        # Parse images from YAML and deploy
+        yq eval '.images[] | select(.image != null and .image != "") | "\(.image) \(.name // "unnamed") \(.port // "80") \(.node_port // "") \(.replicas // "1")"' images-to-deploy.yaml | while IFS=' ' read -r image name port node_port replicas; do
+          if [ -z "$image" ]; then
+            continue
+          fi
+          
+          echo "📦 Deploying: $image"
+          echo "   Name: $name"
+          echo "   Port: $port"
+          echo "   NodePort: $node_port"
+          echo "   Replicas: $replicas"
+          
+          # Generate deployment name
+          DEPLOYMENT_NAME="${name}-deployment"
+          SERVICE_NAME="${name}-service"
+          
+          # Create deployment
+          cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${DEPLOYMENT_NAME}
+          namespace: ${NAMESPACE}
+          labels:
+            app: ${name}
+        spec:
+          replicas: ${replicas}
+          selector:
+            matchLabels:
+              app: ${name}
+          template:
+            metadata:
+              labels:
+                app: ${name}
+            spec:
+              containers:
+              - name: ${name}
+                image: ${image}
+                imagePullPolicy: IfNotPresent
+                ports:
+                - name: http
+                  containerPort: ${port}
+                  protocol: TCP
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${SERVICE_NAME}
+          namespace: ${NAMESPACE}
+          labels:
+            app: ${name}
+        spec:
+          type: NodePort
+          ports:
+          - name: http
+            port: 80
+            targetPort: ${port}
+            nodePort: ${node_port}
+          selector:
+            app: ${name}
+        EOF
+          
+          echo "✅ Deployed: $name"
+          echo "   Access: http://${VPS_IP}:${node_port}"
+          
+        done
+        
+        echo "✅ All images deployed successfully"
+    
+    - name: Get deployment status
+      if: steps.read_config.outputs.has_images == 'true'
+      run: |
+        export KUBECONFIG=$(pwd)/kubeconfig
+        NAMESPACE="${TARGET_NAMESPACE}"
+        
+        echo "📊 Deployment Status:"
+        kubectl get deployments -n "$NAMESPACE"
+        kubectl get svc -n "$NAMESPACE"
+        kubectl get pods -n "$NAMESPACE"
+        
+        # Generate endpoints file
+        kubectl get svc -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}:{.spec.ports[0].nodePort}{"\n"}{end}' > deployment-endpoints.txt
+    
+    - name: Create Jira deployment issue
+      if: steps.read_config.outputs.has_images == 'true'
+      run: |
+        echo "📝 Creating Jira issue for deployment..."
+        
+        pip install requests pyyaml -q
+        
+        python3 scripts/create_deployment_jira_issue.py
+        
+        echo "✅ Jira issue created"
+      env:
+        JIRA_URL: ${{ secrets.JIRA_URL }}
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        CONFIG_PATH: images-to-deploy.yaml
+        VPS_IP: ${VPS_IP}
+        NAMESPACE: ${TARGET_NAMESPACE}
+    
+    - name: Display deployment summary
+      if: steps.read_config.outputs.has_images == 'true'
+      run: |
+        echo "=========================================="
+        echo "🚀 DEPLOYMENT SUMMARY"
+        echo "=========================================="
+        echo ""
+        echo "📊 Total Images Deployed: ${{ steps.read_config.outputs.image_count }}"
+        echo "🌐 VPS IP: ${VPS_IP}"
+        echo "📦 Namespace: ${TARGET_NAMESPACE}"
+        echo ""
+        echo "✅ Deployment completed successfully!"
+        echo ""
+        echo "Access URLs:"
+        cat deployment-endpoints.txt 2>/dev/null || echo "No endpoints file found"
+

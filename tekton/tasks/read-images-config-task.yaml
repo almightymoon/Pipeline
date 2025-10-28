@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: read-images-config-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: read-images-config-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Read and validate images-to-deploy.yaml configuration"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+  steps:
+    - name: read-config
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        set -e
+        echo "📖 Reading images configuration from $(params.config-path)"
+        
+        if [ ! -f "$(workspaces.config.path)/$(params.config-path)" ]; then
+          echo "❌ Error: Configuration file not found at $(workspaces.config.path)/$(params.config-path)"
+          exit 1
+        fi
+        
+        echo "✅ Configuration file found"
+        echo "Configuration contents:"
+        cat "$(workspaces.config.path)/$(params.config-path)"
+        
+        # Extract image count
+        IMAGE_COUNT=$(grep -c "^- image:" "$(workspaces.config.path)/$(params.config-path)" || echo "0")
+        echo "📊 Found $IMAGE_COUNT images to deploy"
+        
+        # Output for next tasks
+        echo "IMAGE_COUNT=$IMAGE_COUNT" > "$(workspaces.config.path)/deployment-info.txt"
+      workingDir: $(workspaces.config.path)
+

@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deployment-cleanup-task
+  namespace: ml-pipeline
+  labels:
+    app.kubernetes.io/name: deployment-cleanup-task
+    app.kubernetes.io/component: pipeline
+spec:
+  description: "Cleanup deployment artifacts"
+  params:
+    - name: config-path
+      type: string
+      description: "Path to images-to-deploy.yaml file"
+      default: "images-to-deploy.yaml"
+  workspaces:
+    - name: config
+      description: "Configuration workspace"
+  steps:
+    - name: cleanup
+      image: alpine:latest
+      script: |
+        #!/bin/sh
+        set -e
+        echo "🧹 Cleaning up deployment artifacts..."
+        
+        # Remove temporary files
+        rm -f "$(workspaces.config.path)/deployment-info.txt"
+        rm -f "$(workspaces.config.path)/endpoints.txt"
+        
+        echo "✅ Cleanup completed"
+      workingDir: $(workspaces.config.path)
+
