@@ -94,20 +94,32 @@ jobs:
         NAMESPACE="${TARGET_NAMESPACE}"
         kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - || true
         
-        # Create namespace from images-to-deploy.yaml if specified
-        TARGET_NAMESPACE="${TARGET_NAMESPACE}"
+        # Convert YAML to JSON and parse
+        yq eval -o=json '.' images-to-deploy.yaml > /tmp/images.json
         
-        # Parse and deploy each image
-        yq eval -o=json '.images[]' images-to-deploy.yaml 2>/dev/null | while IFS= read -r image_obj; do
-          image=$(echo "$image_obj" | jq -r '.image // empty')
-          name=$(echo "$image_obj" | jq -r '.name // empty')
-          port=$(echo "$image_obj" | jq -r '.port // "80"')
-          node_port=$(echo "$image_obj" | jq -r '.node_port // "30080"')
-          replicas=$(echo "$image_obj" | jq -r '.replicas // "1"')
-          namespace=$(echo "$image_obj" | jq -r '.namespace // "'"$TARGET_NAMESPACE"'"')
+        # Get the number of images
+        IMAGE_COUNT=$(jq -r '.images | length' /tmp/images.json 2>/dev/null || echo "0")
+        
+        echo "📊 Processing $IMAGE_COUNT images..."
+        
+        # Check if we have images to deploy
+        if [ "$IMAGE_COUNT" -eq 0 ]; then
+          echo "⚠️  No images found in configuration"
+          exit 0
+        fi
+        
+        # Parse and deploy each image using jq directly
+        for i in $(seq 0 $((IMAGE_COUNT - 1))); do
+          image=$(jq -r ".images[$i].image // empty" /tmp/images.json)
+          name=$(jq -r ".images[$i].name // empty" /tmp/images.json)
+          port=$(jq -r ".images[$i].port // \"80\"" /tmp/images.json)
+          node_port=$(jq -r ".images[$i].node_port // \"30080\"" /tmp/images.json)
+          replicas=$(jq -r ".images[$i].replicas // \"1\"" /tmp/images.json)
+          namespace=$(jq -r ".images[$i].namespace // \"$TARGET_NAMESPACE\"" /tmp/images.json)
           
-          # Skip if image is empty
-          if [ -z "$image" ] || [ "$image" = "null" ]; then
+          # Skip if image is empty or null
+          if [ -z "$image" ] || [ "$image" = "null" ] || [ "$image" = "empty" ]; then
+            echo "⚠️  Skipping empty image at index $i"
             continue
           fi
           
@@ -197,8 +209,12 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y jq
         fi
         
-        # Get all namespaces used in deployment
-        NAMESPACES=$(yq eval '.images[] | select(.namespace != null) | .namespace' images-to-deploy.yaml 2>/dev/null | sort -u)
+        # Get all namespaces used in deployment from the JSON file
+        if [ -f /tmp/images.json ]; then
+          NAMESPACES=$(jq -r '.images[] | select(.namespace != null) | .namespace' /tmp/images.json 2>/dev/null | sort -u)
+        else
+          NAMESPACES=$(yq eval '.images[] | select(.namespace != null) | .namespace' images-to-deploy.yaml 2>/dev/null | sort -u)
+        fi
         NAMESPACES="${NAMESPACES:-${TARGET_NAMESPACE}}"
         
         # Display status for each namespace
