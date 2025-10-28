@@ -59,60 +59,92 @@ jobs:
       env:
         KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
       run: |
+        set -euo pipefail
+
         # Setup kubeconfig
         echo "$KUBECONFIG_DATA" | base64 -d > /tmp/kubeconfig
         export KUBECONFIG=/tmp/kubeconfig
         chmod 600 /tmp/kubeconfig
-        
+
         echo "========================================="
         echo "Terminating Kubernetes Deployment"
         echo "========================================="
-        
+
         # Get parameters from previous step
         REPO_NAME="${{ steps.parse_params.outputs.repository }}"
         DEPLOYMENT_NAME="${{ steps.parse_params.outputs.deployment }}"
         NAMESPACE="${{ steps.parse_params.outputs.namespace }}"
+
+        # Commonly derived resource names
         SERVICE_NAME="${REPO_NAME}-service"
         INGRESS_NAME="${REPO_NAME}-ingress"
-        
+
         # Verify connection
         kubectl get nodes
-        
-        echo "Terminating deployment: $DEPLOYMENT_NAME in namespace: $NAMESPACE"
-        
-        # Delete deployment
-        if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-          echo "Deleting deployment: $DEPLOYMENT_NAME"
-          kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --wait=true --timeout=60s
-          echo "✅ Deployment deleted successfully"
-        else
-          echo "⚠️ Deployment $DEPLOYMENT_NAME not found in namespace $NAMESPACE"
+
+        echo "Requested: repo=$REPO_NAME deploy=$DEPLOYMENT_NAME ns=$NAMESPACE"
+
+        # Helper: find namespace if not found in provided one
+        resolve_namespace() {
+          local name="$1"
+          # Search all namespaces for a deployment with this name
+          FOUND_NS=$(kubectl get deploy -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}' | awk -v n="$name" '$2==n{print $1; exit}') || true
+          echo "$FOUND_NS"
+        }
+
+        # If deployment not found in provided namespace, try to locate it elsewhere
+        if ! kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+          echo "⚠️ Deployment not found in ns=$NAMESPACE. Attempting discovery..."
+          ALT_NS=$(resolve_namespace "$DEPLOYMENT_NAME")
+          if [ -n "$ALT_NS" ]; then
+            echo "🔎 Found deployment in namespace: $ALT_NS"
+            NAMESPACE="$ALT_NS"
+          else
+            echo "⚠️ Deployment $DEPLOYMENT_NAME not found in any namespace by exact name. Trying label selector app=$REPO_NAME"
+            ALT_NS=$(kubectl get deploy -A -l app="$REPO_NAME" -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}' | head -1 || true)
+            if [ -n "$ALT_NS" ]; then
+              echo "🔎 Found deployment via label in namespace: $ALT_NS"
+              NAMESPACE="$ALT_NS"
+              # derive actual deployment name from label
+              DEPLOYMENT_NAME=$(kubectl get deploy -n "$NAMESPACE" -l app="$REPO_NAME" -o jsonpath='{.items[0].metadata.name}')
+            else
+              echo "❌ Could not locate deployment to terminate. Exiting gracefully."
+              exit 0
+            fi
+          fi
         fi
-        
-        # Delete service
-        if kubectl get service "$SERVICE_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-          echo "Deleting service: $SERVICE_NAME"
-          kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE"
-          echo "✅ Service deleted successfully"
-        else
-          echo "⚠️ Service $SERVICE_NAME not found in namespace $NAMESPACE"
+
+        echo "➡️ Terminating deployment: $DEPLOYMENT_NAME in namespace: $NAMESPACE"
+
+        # First scale to zero to stop traffic fast
+        kubectl scale deploy "$DEPLOYMENT_NAME" -n "$NAMESPACE" --replicas=0 --timeout=60s || true
+
+        # Delete deployment (ignore if already gone)
+        kubectl delete deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --wait=true --timeout=90s || true
+
+        # Best-effort delete Service and Ingress by name and by label
+        kubectl delete service "$SERVICE_NAME" -n "$NAMESPACE" --ignore-not-found=true || true
+        kubectl delete ingress "$INGRESS_NAME" -n "$NAMESPACE" --ignore-not-found=true || true
+
+        # Also delete any service/ingress matching app label to ensure cleanup
+        kubectl delete svc -n "$NAMESPACE" -l app="$REPO_NAME" --ignore-not-found=true || true
+        kubectl delete ingress -n "$NAMESPACE" -l app="$REPO_NAME" --ignore-not-found=true || true
+
+        # Confirm no pods remain for this app
+        REMAINING_PODS=$(kubectl get pods -n "$NAMESPACE" -l app="$REPO_NAME" -o name | wc -l | tr -d ' ')
+        echo "Remaining pods with app=$REPO_NAME: $REMAINING_PODS"
+        if [ "$REMAINING_PODS" -gt 0 ]; then
+          echo "⚠️ Force deleting remaining pods"
+          kubectl delete pods -n "$NAMESPACE" -l app="$REPO_NAME" --force --grace-period=0 || true
         fi
-        
-        # Delete ingress
-        if kubectl get ingress "$INGRESS_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
-          echo "Deleting ingress: $INGRESS_NAME"
-          kubectl delete ingress "$INGRESS_NAME" -n "$NAMESPACE"
-          echo "✅ Ingress deleted successfully"
-        else
-          echo "⚠️ Ingress $INGRESS_NAME not found in namespace $NAMESPACE"
-        fi
-        
+
         echo "========================================="
         echo "✅ TERMINATION COMPLETED"
         echo "========================================="
-        echo "Deployment: $DEPLOYMENT_NAME - TERMINATED"
-        echo "Service: $SERVICE_NAME - TERMINATED"
-        echo "Ingress: $INGRESS_NAME - TERMINATED"
+        echo "Repository: $REPO_NAME"
+        echo "Namespace: $NAMESPACE"
+        echo "Deployment: $DEPLOYMENT_NAME - TERMINATED (or not present)"
+        echo "Service/Ingress: Removed if present"
         echo "Terminated by: ${{ github.actor }}"
         echo "Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
         echo "========================================="
