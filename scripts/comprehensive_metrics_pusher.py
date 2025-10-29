@@ -257,6 +257,8 @@ def collect_all_metrics():
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', '0')
     
     print(f"📊 Collecting comprehensive metrics for: {repository}")
+    print(f"   Repository name used in metrics: '{repository}'")
+    print(f"   ⚠️  IMPORTANT: Dashboard queries must use EXACT repository name: '{repository}'")
     
     # Collect metrics from various sources
     quality_metrics = read_quality_results()
@@ -359,6 +361,8 @@ def collect_all_metrics():
     print(f"  ✅ tests_coverage_percentage: {coverage}")
     print(f"  ✅ security_vulnerabilities_total: {security_metrics['total']}")
     print(f"  ✅ external_repo_scan_duration_seconds (sum/count): {build_duration}/1")
+    print(f"\n🔍 DEBUG: Repository name being used: '{repository}'")
+    print(f"🔍 DEBUG: Make sure dashboard uses exact same name: '{repository}'")
     
     return prom_metrics
 
@@ -376,54 +380,113 @@ def push_metrics(metrics, pushgateway_url):
     repository = os.environ.get('REPO_NAME', 'unknown')
     github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
     
-    # Clean repository name
-    clean_repo_name = repository.replace('_', '-').replace(' ', '-').lower()
-    job_name = f"comprehensive-metrics-{clean_repo_name}"
-    instance = f"run-{github_run_id}"
+    # Use repository name directly (don't clean it) to match dashboard queries exactly
+    # The dashboard queries use the exact repository name from repos-to-scan.yaml
+    job_name = f"pipeline-metrics"
+    # Use "latest" as fixed instance so metrics persist and are queryable
+    instance_latest = repository  # Use repository name as instance for easy querying
+    instance_run = f"{repository}-run-{github_run_id}"  # Keep unique for history
     
     print(f"📤 Pushing metrics to Pushgateway...")
     print(f"   URL: {pushgateway_url}")
+    print(f"   Repository: {repository}")
     print(f"   Job: {job_name}")
-    print(f"   Instance: {instance}")
+    print(f"   Instance (latest): {instance_latest}")
+    print(f"   Instance (run): {instance_run}")
     
-    # Push to Prometheus
-    push_url = f"{pushgateway_url}/metrics/job/{job_name}/instance/{instance}"
+    success_count = 0
     
-    try:
-        # Log what we're pushing (first 3 metrics for debugging)
-        print(f"\n📤 Pushing {len(metrics)} metrics...")
-        print(f"   Sample metrics (first 3):")
-        for m in metrics[:3]:
-            print(f"   - {m}")
+    # Push to BOTH instances:
+    # 1. Fixed instance with repository name (for current/latest metrics - easier to query)
+    # 2. Unique instance with run ID (for historical tracking)
+    
+    instances_to_push = [
+        (instance_latest, "latest"),
+        (instance_run, "historical")
+    ]
+    
+    for instance, instance_type in instances_to_push:
+        push_url = f"{pushgateway_url}/metrics/job/{job_name}/instance/{instance}"
         
-        response = requests.put(
-            push_url,
-            data=metrics_payload,
-            headers={'Content-Type': 'text/plain'},
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            print(f"✅ Successfully pushed {len(metrics)} metrics to Prometheus")
-            print(f"📊 Push URL: {push_url}")
-            print(f"📊 View at: {pushgateway_url}/metrics")
-            print(f"🔍 Verify metrics:")
-            print(f"   curl -s '{pushgateway_url}/metrics' | grep '{repository}' | head -5")
-        else:
-            print(f"❌ Failed to push metrics: HTTP {response.status_code}")
-            print(f"Response: {response.text[:500]}")
-            print(f"💡 Troubleshooting:")
-            print(f"   1. Check Pushgateway is accessible: curl {pushgateway_url}/metrics")
-            print(f"   2. Verify network connectivity to {pushgateway_url}")
+        try:
+            # Delete old metrics for this instance first (optional, but helps avoid stale data)
+            # Pushgateway uses DELETE to remove old metrics before PUT replaces them
+            if instance_type == "latest":
+                delete_url = f"{pushgateway_url}/metrics/job/{job_name}/instance/{instance}"
+                try:
+                    requests.delete(delete_url, timeout=5)
+                    print(f"   🗑️  Cleaned old metrics for {instance_type} instance")
+                except:
+                    pass  # Ignore delete errors, proceed with PUT
             
-    except Exception as e:
-        print(f"❌ Error pushing metrics: {e}")
-        import traceback
-        traceback.print_exc()
-        print(f"\n💡 Debugging info:")
-        print(f"   Pushgateway URL: {pushgateway_url}")
-        print(f"   Push URL: {push_url}")
-        print(f"   Metrics count: {len(metrics)}")
+            response = requests.put(
+                push_url,
+                data=metrics_payload,
+                headers={'Content-Type': 'text/plain'},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                success_count += 1
+                print(f"   ✅ Pushed to {instance_type} instance successfully")
+            else:
+                print(f"   ⚠️  Failed to push to {instance_type} instance: HTTP {response.status_code}")
+                
+        except Exception as e:
+            print(f"   ⚠️  Error pushing to {instance_type} instance: {e}")
+    
+    if success_count > 0:
+        print(f"\n✅ Successfully pushed {len(metrics)} metrics to Prometheus")
+        print(f"📊 View metrics at: {pushgateway_url}/metrics")
+        print(f"\n🔍 IMPORTANT: Verify these details match dashboard queries:")
+        print(f"   Repository name in metrics: '{repository}'")
+        print(f"   Make sure dashboard queries use: repository=\"{repository}\"")
+        print(f"   Job name: {job_name}")
+        print(f"   Instance: {instance_latest}")
+        
+        # Verify metrics were actually stored in Pushgateway
+        try:
+            verify_url = f"{pushgateway_url}/metrics"
+            verify_response = requests.get(verify_url, timeout=10)
+            if verify_response.status_code == 200:
+                metrics_text = verify_response.text
+                # Check if our metrics are there
+                repo_metrics_found = [m for m in metrics if repository in m]
+                found_count = sum(1 for metric_line in repo_metrics_found if metric_line.split('{')[0].strip() in metrics_text)
+                
+                if found_count > 0:
+                    print(f"   ✅ Verified: Found {found_count} metrics in Pushgateway for repository '{repository}'")
+                    # Show a sample of found metrics
+                    sample_metric = repo_metrics_found[0].split('{')[0].strip()
+                    if sample_metric in metrics_text:
+                        lines = metrics_text.split('\n')
+                        matching = [l for l in lines if repository in l and sample_metric in l]
+                        if matching:
+                            print(f"   📊 Sample metric found:")
+                            print(f"      {matching[0][:120]}...")
+                else:
+                    print(f"   ⚠️  Warning: Metrics pushed but not found in Pushgateway yet (may need a moment to appear)")
+            else:
+                print(f"   ⚠️  Could not verify metrics (HTTP {verify_response.status_code})")
+        except Exception as e:
+            print(f"   ⚠️  Could not verify metrics: {e}")
+        
+        print(f"\n🔍 Verification commands:")
+        print(f"   curl -s '{pushgateway_url}/metrics' | grep 'repository=\"{repository}\"' | head -10")
+        print(f"\n📋 Dashboard queries to verify (use these in Grafana/Prometheus):")
+        print(f"   pipeline_runs_total{{repository=\"{repository}\",status=\"total\"}}")
+        print(f"   code_quality_score{{repository=\"{repository}\"}}")
+        print(f"   tests_coverage_percentage{{repository=\"{repository}\"}}")
+        print(f"   security_vulnerabilities_total{{repository=\"{repository}\"}}")
+        print(f"   external_repo_scan_duration_seconds_sum{{repository=\"{repository}\"}}")
+        print(f"\n💡 Important: The repository name in queries MUST match exactly: '{repository}'")
+    else:
+        print(f"\n❌ Failed to push metrics to any instance")
+        print(f"💡 Troubleshooting:")
+        print(f"   1. Check Pushgateway is accessible: curl {pushgateway_url}/metrics")
+        print(f"   2. Verify network connectivity to {pushgateway_url}")
+        print(f"   3. Check Pushgateway logs for errors")
+        print(f"   4. Verify repository name: '{repository}'")
 
 def main():
     """Main function"""

@@ -871,7 +871,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 2},
                     "targets": [
                         {
-                            "expr": f'max(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or pipeline_runs_total{{repository="{repo_name}",status="total"}} or sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or 157999',
+                            "expr": f'max(pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}}) or pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}} or sum(pipeline_runs_total{{job=~"pipeline-metrics|external-repo-scan-.*",repository="{repo_name}",status="total"}}) or sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or 157999',
                             "legendFormat": "Build Number",
                             "refId": "A",
                             "instant": True
@@ -898,7 +898,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 2},
                     "targets": [
                         {
-                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or 300',
+                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{job="pipeline-metrics",repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{job="pipeline-metrics",repository="{repo_name}"}})) or (sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or 300',
                             "legendFormat": "Duration",
                             "refId": "A",
                             "instant": True
@@ -925,7 +925,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 2},
                     "targets": [
                         {
-                            "expr": f'max(code_quality_score{{repository="{repo_name}"}}) or code_quality_score{{repository="{repo_name}"}} or sum(code_quality_score{{repository="{repo_name}"}}) or 14',
+                            "expr": f'max(code_quality_score{{job="pipeline-metrics",repository="{repo_name}"}}) or code_quality_score{{job="pipeline-metrics",repository="{repo_name}"}} or max(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_score{{repository="{repo_name}"}}) or 14',
                             "legendFormat": "Quality Score",
                             "refId": "A",
                             "instant": True
@@ -952,7 +952,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 2},
                     "targets": [
                         {
-                            "expr": f'max(tests_coverage_percentage{{repository="{repo_name}"}}) or tests_coverage_percentage{{repository="{repo_name}"}} or max(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or 0',
+                            "expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or tests_coverage_percentage{{job="pipeline-metrics",repository="{repo_name}"}} or max(tests_coverage_percentage{{repository="{repo_name}"}}) or max(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or 0',
                             "legendFormat": "Coverage",
                             "refId": "A",
                             "instant": True
@@ -979,7 +979,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 2},
                     "targets": [
                         {
-                            "expr": f'max(security_vulnerabilities_total{{repository="{repo_name}"}}) or security_vulnerabilities_total{{repository="{repo_name}"}} or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
+                            "expr": f'max(security_vulnerabilities_total{{job="pipeline-metrics",repository="{repo_name}"}}) or security_vulnerabilities_total{{job="pipeline-metrics",repository="{repo_name}"}} or max(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
