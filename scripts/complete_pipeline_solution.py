@@ -718,40 +718,127 @@ def get_sonarqube_recommendations(metrics):
     except Exception as e:
         return f"❌ Error generating recommendations: {str(e)[:100]}"
 
+def fetch_sonarqube_metrics(repo_name):
+    """Fetch real-time metrics from SonarQube API"""
+    sonar_url = os.environ.get('SONARQUBE_URL', 'http://213.109.162.134:30100')
+    sonar_token = os.environ.get('SONARQUBE_TOKEN')
+    
+    if not sonar_token:
+        print("⚠️ SonarQube token not provided, skipping SonarQube metrics")
+        return {}
+    
+    metrics = {}
+    try:
+        # Fetch component measures
+        measures_response = requests.get(
+            f"{sonar_url}/api/measures/component",
+            params={
+                'component': repo_name,
+                'metricKeys': 'bugs,vulnerabilities,security_hotspots,code_smells,coverage,duplicated_lines_density,maintainability_rating,reliability_rating,security_rating,sqale_index,ncloc'
+            },
+            auth=(sonar_token, ""),
+            timeout=15
+        )
+        
+        if measures_response.status_code == 200:
+            data = measures_response.json()
+            if 'component' in data and 'measures' in data['component']:
+                for measure in data['component']['measures']:
+                    metrics[measure['metric']] = measure.get('value', '0')
+            print(f"✅ Fetched {len(metrics)} SonarQube metrics")
+        else:
+            print(f"⚠️ SonarQube API returned {measures_response.status_code}")
+            
+        # Fetch issues by severity
+        issues_response = requests.get(
+            f"{sonar_url}/api/issues/search",
+            params={
+                'componentKeys': repo_name,
+                'resolved': 'false',
+                'facets': 'severities'
+            },
+            auth=(sonar_token, ""),
+            timeout=15
+        )
+        
+        if issues_response.status_code == 200:
+            issues_data = issues_response.json()
+            if 'facets' in issues_data:
+                for facet in issues_data['facets']:
+                    if facet['property'] == 'severities':
+                        for value in facet['values']:
+                            metrics[f"issues_{value['val'].lower()}"] = value['count']
+                            
+    except Exception as e:
+        print(f"⚠️ Error fetching SonarQube metrics: {e}")
+    
+    return metrics
+
 def create_dashboard_with_real_data(repo_info, metrics):
-    """Create Grafana dashboard with real data"""
+    """Create Grafana dashboard with real-time Prometheus queries"""
     
     repo_name = repo_info['name']
     repo_url = repo_info['url']
     repo_branch = repo_info['branch']
     scan_type = repo_info['scan_type']
     
+    # Fetch SonarQube metrics
+    sonar_metrics = fetch_sonarqube_metrics(repo_name)
+    
     # Generate unique UID
     dashboard_uid = generate_dashboard_uid(repo_name)
     
-    print(f"Creating dashboard for: {repo_name}")
+    print(f"Creating enhanced dashboard for: {repo_name}")
     print(f"Dashboard UID: {dashboard_uid}")
+    print(f"Using Prometheus queries for real-time data")
     
-    # Create dashboard JSON
+    # Create dashboard JSON with Prometheus queries
     dashboard_json = {
         "dashboard": {
             "uid": dashboard_uid,
-            "title": f"Pipeline Dashboard - {repo_name}",
-            "tags": ["pipeline", "real-data", "auto-generated", repo_name],
+            "title": f"🚀 Pipeline Dashboard - {repo_name}",
+            "tags": ["pipeline", "real-time", "prometheus", "sonarqube", "loki", "auto-generated", repo_name],
             "timezone": "browser",
             "refresh": "30s",
+            "time": {"from": "now-24h", "to": "now"},
+            "annotations": {
+                "list": [
+                    {
+                        "name": "SonarQube Analysis",
+                        "datasource": {"type": "prometheus", "uid": "prometheus"},
+                        "enable": True,
+                        "expr": f'sonarqube_project_last_analysis_timestamp{{project="{repo_name}"}}',
+                        "iconColor": "blue",
+                        "titleFormat": "SonarQube Analysis",
+                        "type": "dashboard"
+                    }
+                ]
+            },
             "panels": [
                 # ROW 1: Key Metrics (Top row - 3 equal panels)
-                # Panel 1: Pipeline Status
+                # Panel 1: Pipeline Status (from Prometheus)
                 {
                     "id": 1,
-                    "title": f"🚀 Pipeline Status - {repo_name}",
+                    "title": f"🚀 Pipeline Status",
                     "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
                     "targets": [
-                        {"expr": f"{metrics['pipeline_runs']['total']}", "legendFormat": "Total Runs", "refId": "A"},
-                        {"expr": f"{metrics['pipeline_runs']['successful']}", "legendFormat": "Successful", "refId": "B"},
-                        {"expr": f"{metrics['pipeline_runs']['failed']}", "legendFormat": "Failed", "refId": "C"}
+                        {
+                            "expr": f'sum(external_repo_scan_total{{repository="{repo_name}"}})',
+                            "legendFormat": "Total Scans",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sum(external_repo_scan_success{{repository="{repo_name}"}})',
+                            "legendFormat": "Successful",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sum(external_repo_scan_failed{{repository="{repo_name}"}})',
+                            "legendFormat": "Failed",
+                            "refId": "C"
+                        }
                     ],
                     "fieldConfig": {
                         "defaults": {
@@ -766,17 +853,34 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 2: Security Vulnerabilities
+                # Panel 2: Security Vulnerabilities (from Prometheus + Trivy)
                 {
                     "id": 2,
-                    "title": f"🔒 Security Status - {repo_name}",
+                    "title": f"🔒 Security Vulnerabilities",
                     "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
                     "targets": [
-                        {"expr": f"{metrics['security']['critical']}", "legendFormat": "Critical", "refId": "A"},
-                        {"expr": f"{metrics['security']['high']}", "legendFormat": "High", "refId": "B"},
-                        {"expr": f"{metrics['security']['medium']}", "legendFormat": "Medium", "refId": "C"},
-                        {"expr": f"{metrics['security']['low']}", "legendFormat": "Low", "refId": "D"}
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}})',
+                            "legendFormat": "Critical",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}})',
+                            "legendFormat": "High",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}})',
+                            "legendFormat": "Medium",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}})',
+                            "legendFormat": "Low",
+                            "refId": "D"
+                        }
                     ],
                     "fieldConfig": {
                         "defaults": {
@@ -785,33 +889,51 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "steps": [
                                     {"color": "green", "value": None},
                                     {"color": "yellow", "value": 1},
-                                    {"color": "red", "value": 5}
+                                    {"color": "orange", "value": 5},
+                                    {"color": "red", "value": 10}
                                 ]
                             },
                             "unit": "short"
                         }
                     }
                 },
-                # Panel 3: Code Quality Overview
+                # Panel 3: SonarQube Metrics (from Prometheus)
                 {
                     "id": 3,
-                    "title": f"📊 Code Quality - {repo_name}",
+                    "title": f"🧠 SonarQube Metrics",
                     "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
                     "targets": [
-                        {"expr": f"{metrics['quality']['todo_comments']}", "legendFormat": "TODO/FIXME", "refId": "A"},
-                        {"expr": f"{metrics['quality']['debug_statements']}", "legendFormat": "Debug Statements", "refId": "B"},
-                        {"expr": f"{metrics['quality']['large_files']}", "legendFormat": "Large Files", "refId": "C"},
-                        {"expr": f"{metrics['quality']['quality_score']}", "legendFormat": "Quality Score", "refId": "D"}
+                        {
+                            "expr": f'sonarqube_bugs{{project="{repo_name}"}}',
+                            "legendFormat": "Bugs",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sonarqube_vulnerabilities{{project="{repo_name}"}}',
+                            "legendFormat": "Vulnerabilities",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sonarqube_code_smells{{project="{repo_name}"}}',
+                            "legendFormat": "Code Smells",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sonarqube_security_hotspots{{project="{repo_name}"}}',
+                            "legendFormat": "Security Hotspots",
+                            "refId": "D"
+                        }
                     ],
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "thresholds"},
                             "thresholds": {
                                 "steps": [
-                                    {"color": "green", "value": 90},
-                                    {"color": "yellow", "value": 70},
-                                    {"color": "red", "value": None}
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 1},
+                                    {"color": "red", "value": 10}
                                 ]
                             },
                             "unit": "short"
@@ -899,67 +1021,222 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 },
                 
                 # ROW 4: Code Quality and Test Results (2 panels side by side)
-                # Panel 7: Code Quality Analysis
+                # Panel 7: Code Quality Metrics (from Prometheus)
                 {
                     "id": 7,
-                    "title": f"🔧 Code Quality Analysis - {repo_name}",
-                    "type": "text",
+                    "title": f"🔧 Code Quality Metrics",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 🔧 Code Quality Analysis - {repo_name}
-
-### TODO/FIXME Comments: {metrics['quality']['todo_comments']}
-{'No TODO/FIXME comments found - code is clean!' if metrics['quality']['todo_comments'] == 0 else f'{metrics["quality"]["todo_comments"]} TODO/FIXME comments need attention'}
-
-### Debug Statements: {metrics['quality']['debug_statements']}
-{'No debug statements found - production ready!' if metrics['quality']['debug_statements'] == 0 else f'{metrics["quality"]["debug_statements"]} debug statements should be removed'}
-
-### Large Files (>1MB): {metrics['quality']['large_files']}
-{'No large files found - optimized!' if metrics['quality']['large_files'] == 0 else f'{metrics["quality"]["large_files"]} large files need optimization'}
-
-### Quality Score: {metrics['quality']['quality_score']}/100
-**Grade:** {'EXCELLENT' if metrics['quality']['quality_score'] >= 90 else 'GOOD' if metrics['quality']['quality_score'] >= 70 else 'NEEDS IMPROVEMENT'}
-
-### Total Improvements Needed: {metrics['quality']['total_improvements']}
-{'No improvements needed - code is excellent!' if metrics['quality']['total_improvements'] == 0 else f'{metrics["quality"]["total_improvements"]} improvements suggested'}"""
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_maintainability_rating{{project="{repo_name}"}}',
+                            "legendFormat": "Maintainability Rating",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sonarqube_reliability_rating{{project="{repo_name}"}}',
+                            "legendFormat": "Reliability Rating",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sonarqube_security_rating{{project="{repo_name}"}}',
+                            "legendFormat": "Security Rating",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'code_quality_score{{repository="{repo_name}"}}',
+                            "legendFormat": "Quality Score",
+                            "refId": "D"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "drawStyle": "line",
+                                "lineInterpolation": "smooth",
+                                "fillOpacity": 10
+                            },
+                            "min": 0,
+                            "max": 100,
+                            "unit": "short"
+                        }
                     }
                 },
-                # Panel 8: Test Results Analysis
+                # Panel 8: Test Results (from Prometheus)
                 {
                     "id": 8,
-                    "title": f"🧪 Test Results Analysis - {repo_name}",
-                    "type": "text",
+                    "title": f"🧪 Test Results",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+                    "targets": [
+                        {
+                            "expr": f'tests_passed{{repository="{repo_name}"}}',
+                            "legendFormat": "Tests Passed",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'tests_failed{{repository="{repo_name}"}}',
+                            "legendFormat": "Tests Failed",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
+                            "legendFormat": "Coverage %",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sonarqube_coverage{{project="{repo_name}"}}',
+                            "legendFormat": "SonarQube Coverage",
+                            "refId": "D"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "drawStyle": "bars",
+                                "lineInterpolation": "linear",
+                                "fillOpacity": 80
+                            },
+                            "unit": "short"
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Coverage %"},
+                                "properties": [{"id": "unit", "value": "percent"}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "SonarQube Coverage"},
+                                "properties": [{"id": "unit", "value": "percent"}]
+                            }
+                        ]
+                    }
+                },
+                # ROW 4.5: Log Panels from Loki
+                # Panel 8.5: Pipeline Logs (from Loki)
+                {
+                    "id": 8.5,
+                    "title": f"📝 Pipeline Execution Logs",
+                    "type": "logs",
+                    "datasource": {"type": "loki", "uid": "loki"},
+                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 32},
+                    "targets": [
+                        {
+                            "expr": f'{{job="pipeline",repository="{repo_name}"}} | json',
+                            "refId": "A"
+                        }
+                    ],
                     "options": {
-                        "mode": "markdown",
-                        "content": f"""## 🧪 Test Results Analysis - {repo_name}
-
-### Tests Passed: {metrics['tests']['passed']}
-{'✅ All tests are passing!' if metrics['tests']['failed'] == 0 and metrics['tests']['passed'] > 0 else f'✅ {metrics["tests"]["passed"]} tests passed successfully' if metrics['tests']['passed'] > 0 else '⚠️ No tests found'}
-
-### Tests Failed: {metrics['tests']['failed']}
-{'✅ No test failures - excellent!' if metrics['tests']['failed'] == 0 else f'🚨 {metrics["tests"]["failed"]} tests failed and need attention'}
-
-### Test Coverage: {metrics['tests']['coverage']}%
-**Coverage Grade:** {'🟢 EXCELLENT' if metrics['tests']['coverage'] >= 90 else '🟡 GOOD' if metrics['tests']['coverage'] >= 70 else '🔴 NEEDS IMPROVEMENT'}
-
-### Test Summary:
-- **Total Tests:** {metrics['tests']['passed'] + metrics['tests']['failed']}
-- **Success Rate:** {((metrics['tests']['passed'] / max(1, metrics['tests']['passed'] + metrics['tests']['failed'])) * 100):.1f}%
-- **Quality:** {'🟢 EXCELLENT' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '🟡 GOOD' if metrics['tests']['failed'] <= 1 else '🔴 NEEDS ATTENTION'}
-
-{'**✅ Test suite is healthy with good coverage!**' if metrics['tests']['failed'] == 0 and metrics['tests']['coverage'] >= 80 else '**⚠️ Test suite needs attention**'}"""
+                        "showTime": True,
+                        "showLabels": True,
+                        "wrapLogMessage": True,
+                        "prettifyLogMessage": True,
+                        "enableLogDetails": True,
+                        "dedupStrategy": "none",
+                        "sortOrder": "Descending"
+                    }
+                },
+                # Panel 8.6: Error Logs (from Loki)
+                {
+                    "id": 8.6,
+                    "title": f"🚨 Error & Warning Logs",
+                    "type": "logs",
+                    "datasource": {"type": "loki", "uid": "loki"},
+                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 32},
+                    "targets": [
+                        {
+                            "expr": f'{{job="pipeline",repository="{repo_name}"}} |~ "(?i)(error|fail|exception|warning)" | json',
+                            "refId": "A"
+                        }
+                    ],
+                    "options": {
+                        "showTime": True,
+                        "showLabels": False,
+                        "wrapLogMessage": True,
+                        "prettifyLogMessage": True,
+                        "enableLogDetails": True,
+                        "sortOrder": "Descending"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "fixed", "fixedColor": "red"}
+                        }
                     }
                 },
                 
-                # ROW 5: SonarQube Issues Panel
-                # Panel 9: SonarQube Code Quality Issues
+                # ROW 5: SonarQube Metrics Panel
+                # Panel 9: SonarQube Metrics Overview (from Prometheus)
                 {
                     "id": 9,
-                    "title": f"🧠 SonarQube Code Quality Issues - {repo_name}",
+                    "title": f"🧠 SonarQube Metrics Overview",
+                    "type": "bargauge",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 42},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_bugs{{project="{repo_name}"}}',
+                            "legendFormat": "Bugs",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sonarqube_vulnerabilities{{project="{repo_name}"}}',
+                            "legendFormat": "Vulnerabilities",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sonarqube_code_smells{{project="{repo_name}"}}',
+                            "legendFormat": "Code Smells",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sonarqube_security_hotspots{{project="{repo_name}"}}',
+                            "legendFormat": "Security Hotspots",
+                            "refId": "D"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
+                            "legendFormat": "Blocker Issues",
+                            "refId": "E"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "legendFormat": "Critical Issues",
+                            "refId": "F"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "green", "value": 0},
+                                    {"color": "yellow", "value": 5},
+                                    {"color": "orange", "value": 10},
+                                    {"color": "red", "value": 20}
+                                ]
+                            },
+                            "unit": "short",
+                            "custom": {
+                                "displayMode": "gradient",
+                                "orientation": "horizontal"
+                            }
+                        }
+                    },
+                    "options": {
+                        "displayMode": "gradient",
+                        "orientation": "horizontal",
+                        "showUnfilled": True
+                    }
+                },
+                # Panel 9.5: SonarQube Detailed Text Panel
+                {
+                    "id": 9.5,
+                    "title": f"🧠 SonarQube Code Quality Details - {repo_name}",
                     "type": "text",
-                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 50},
                     "options": {
                         "mode": "markdown",
                         "content": f"""## 🧠 SonarQube Code Quality Analysis - {repo_name}
@@ -1019,8 +1296,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
 """
                     }
                 }
-            ],
-            "time": {"from": "now-1h", "to": "now"}
+            ]
         },
         "overwrite": True
     }
@@ -1042,20 +1318,30 @@ def create_dashboard_with_real_data(repo_info, metrics):
             dashboard_url = f"{GRAFANA_URL}/d/{dashboard_uid}/{dashboard_slug}"
             
             print("=" * 80)
-            print("✅ DASHBOARD CREATED WITH REAL DATA!")
+            print("✅ ENHANCED DASHBOARD CREATED WITH REAL-TIME DATA!")
             print("=" * 80)
             print(f"Repository: {repo_name}")
             print(f"Dashboard URL: {dashboard_url}")
             print(f"Dashboard UID: {dashboard_uid}")
             print("")
-            print("📊 REAL METRICS FROM PIPELINE:")
-            print(f"  Security: {metrics['security']['total']} vulnerabilities")
-            print(f"  TODO Comments: {metrics['quality']['todo_comments']}")
-            print(f"  Debug Statements: {metrics['quality']['debug_statements']}")
-            print(f"  Large Files: {metrics['quality']['large_files']}")
-            print(f"  Total Improvements: {metrics['quality']['total_improvements']}")
-            print(f"  Files Scanned: {metrics['scan_info']['files_scanned']}")
-            print(f"  Repository Size: {metrics['scan_info']['repository_size']}")
+            print("📊 DASHBOARD FEATURES:")
+            print("  ✅ Real-time Prometheus queries for metrics")
+            print("  ✅ SonarQube metrics via API (pushed to Prometheus)")
+            print("  ✅ Loki log queries for pipeline execution logs")
+            print("  ✅ Dynamic data refresh every 30 seconds")
+            print("  ✅ Security vulnerabilities from Trivy (via Prometheus)")
+            print("  ✅ Test results and coverage (via Prometheus)")
+            print("")
+            print("📈 METRICS SOURCES:")
+            print(f"  - SonarQube: {len(sonar_metrics)} metrics fetched")
+            print(f"  - Security: {metrics['security']['total']} vulnerabilities (Trivy)")
+            print(f"  - Quality: {metrics['quality']['total_improvements']} improvements")
+            print(f"  - Files Scanned: {metrics['scan_info']['files_scanned']}")
+            print("")
+            print("🔗 DATA SOURCES:")
+            print("  - Prometheus: http://213.109.162.134:30090")
+            print("  - Loki: http://213.109.162.134:3100")
+            print("  - SonarQube: http://213.109.162.134:30100")
             print("=" * 80)
             
             return dashboard_url

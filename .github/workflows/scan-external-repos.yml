@@ -1120,6 +1120,18 @@ jobs:
         echo "📊 Namespace: $NAMESPACE"
         echo "🏷️  Deployment: $DEPLOYMENT_NAME"
     
+    - name: Push SonarQube Metrics to Prometheus
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        pip install requests
+        python scripts/sonarqube_metrics_exporter.py
+      env:
+        SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
+        SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+        REPO_NAME: ${{ steps.read_config.outputs.repo_name }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        PROMETHEUS_PUSHGATEWAY_URL: http://213.109.162.134:30091
+    
     - name: Create Dashboard and Jira Issue
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
@@ -1151,6 +1163,12 @@ jobs:
         GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
         GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
         GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
+        # SonarQube for real-time metrics
+        SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
+        SONARQUBE_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
+        # Prometheus for dynamic queries
+        PROMETHEUS_URL: http://213.109.162.134:30090
+        LOKI_URL: http://213.109.162.134:3100
     
     - name: Summary Report
       if: steps.read_config.outputs.has_repos == 'true' && success()
