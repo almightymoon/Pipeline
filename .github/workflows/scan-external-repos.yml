@@ -1151,8 +1151,6 @@ jobs:
         GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
         GRAFANA_USERNAME: ${{ secrets.GRAFANA_USERNAME }}
         GRAFANA_PASSWORD: ${{ secrets.GRAFANA_PASSWORD }}
-        # Prometheus Pushgateway URL
-        PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.PROMETHEUS_PUSHGATEWAY_URL }}
     
     - name: Summary Report
       if: steps.read_config.outputs.has_repos == 'true' && success()

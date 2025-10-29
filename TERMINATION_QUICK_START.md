@@ -31,7 +31,7 @@ If you want **completely automatic** termination (no GitHub UI click), you need:
 
 ### Step 2: Add as GitHub Secret
 
-1. Go to: https://github.com/almightymoon/Pipeline/settings/secrets/actions
+1. Go to: https://github.com/username/Pipeline/settings/secrets/actions
 2. Click "New repository secret"
 3. Name: `GITHUB_TOKEN`
 4. Value: (paste your token)

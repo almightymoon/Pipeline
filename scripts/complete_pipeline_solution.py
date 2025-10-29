@@ -13,11 +13,6 @@ import hashlib
 import re
 from datetime import datetime
 
-# Add scripts directory to path for imports
-script_dir = os.path.dirname(os.path.abspath(__file__))
-if script_dir not in sys.path:
-    sys.path.insert(0, script_dir)
-
 # Configuration
 # Configuration - Use environment variables for URLs
 GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://213.109.162.134:30102')
@@ -723,166 +718,34 @@ def get_sonarqube_recommendations(metrics):
     except Exception as e:
         return f"❌ Error generating recommendations: {str(e)[:100]}"
 
-def push_metrics_to_prometheus(repo_name, metrics):
-    """Push metrics to Prometheus Pushgateway"""
-    try:
-        # Use PROMETHEUS_PUSHGATEWAY_URL from environment (port 30091), fallback to default
-        PROMETHEUS_URL = os.environ.get('PROMETHEUS_PUSHGATEWAY_URL', 'http://213.109.162.134:30091')
-        # Normalize: ensure scheme present
-        if PROMETHEUS_URL and not PROMETHEUS_URL.startswith(('http://', 'https://')):
-            PROMETHEUS_URL = f"http://{PROMETHEUS_URL}"
-        
-        # Prepare metrics in Prometheus format
-        prometheus_metrics = []
-        
-        # Pipeline metrics
-        prometheus_metrics.append(f"pipeline_runs_total{{repository=\"{repo_name}\"}} {metrics['pipeline_runs']['total']}")
-        prometheus_metrics.append(f"pipeline_runs_successful{{repository=\"{repo_name}\"}} {metrics['pipeline_runs']['successful']}")
-        prometheus_metrics.append(f"pipeline_runs_failed{{repository=\"{repo_name}\"}} {metrics['pipeline_runs']['failed']}")
-        
-        # Security metrics
-        prometheus_metrics.append(f"security_vulnerabilities_critical{{repository=\"{repo_name}\"}} {metrics['security']['critical']}")
-        prometheus_metrics.append(f"security_vulnerabilities_high{{repository=\"{repo_name}\"}} {metrics['security']['high']}")
-        prometheus_metrics.append(f"security_vulnerabilities_medium{{repository=\"{repo_name}\"}} {metrics['security']['medium']}")
-        prometheus_metrics.append(f"security_vulnerabilities_low{{repository=\"{repo_name}\"}} {metrics['security']['low']}")
-        prometheus_metrics.append(f"security_vulnerabilities_total{{repository=\"{repo_name}\"}} {metrics['security']['total']}")
-        
-        # Quality metrics
-        prometheus_metrics.append(f"code_quality_todo_comments{{repository=\"{repo_name}\"}} {metrics['quality']['todo_comments']}")
-        prometheus_metrics.append(f"code_quality_debug_statements{{repository=\"{repo_name}\"}} {metrics['quality']['debug_statements']}")
-        prometheus_metrics.append(f"code_quality_large_files{{repository=\"{repo_name}\"}} {metrics['quality']['large_files']}")
-        prometheus_metrics.append(f"code_quality_score{{repository=\"{repo_name}\"}} {metrics['quality']['quality_score']}")
-        
-        # Test metrics
-        prometheus_metrics.append(f"tests_passed{{repository=\"{repo_name}\"}} {metrics['tests']['passed']}")
-        prometheus_metrics.append(f"tests_failed{{repository=\"{repo_name}\"}} {metrics['tests']['failed']}")
-        prometheus_metrics.append(f"tests_coverage_percent{{repository=\"{repo_name}\"}} {metrics['tests']['coverage']}")
-        
-        # Scan metrics
-        prometheus_metrics.append(f"scan_files_scanned{{repository=\"{repo_name}\"}} {metrics['scan_info']['files_scanned']}")
-        
-        # Join metrics
-        metrics_text = "\n".join(prometheus_metrics)
-        
-        # Push to Prometheus
-        push_url = f"{PROMETHEUS_URL}/metrics/job/pipeline-scan/instance/{repo_name}"
-        
-        response = requests.post(
-            push_url,
-            data=metrics_text,
-            headers={'Content-Type': 'text/plain'},
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            print(f"✅ Metrics pushed to Prometheus for {repo_name}")
-            return True
-        else:
-            print(f"⚠️ Failed to push to Prometheus: {response.status_code}")
-            return False
-    except Exception as e:
-        print(f"⚠️ Error pushing to Prometheus: {e}")
-        return False
-
 def create_dashboard_with_real_data(repo_info, metrics):
-    """Create enhanced Grafana dashboard with real data and better metrics"""
+    """Create Grafana dashboard with real data"""
     
     repo_name = repo_info['name']
     repo_url = repo_info['url']
     repo_branch = repo_info['branch']
     scan_type = repo_info['scan_type']
     
-    # First push metrics to Prometheus (non-blocking - continue even if it fails)
-    print(f"📤 Pushing metrics to Prometheus for {repo_name}...")
-    try:
-        push_metrics_to_prometheus(repo_name, metrics)
-    except Exception as e:
-        print(f"⚠️ Warning: Could not push metrics to Prometheus (continuing anyway): {e}")
-    
     # Generate unique UID
     dashboard_uid = generate_dashboard_uid(repo_name)
     
-    print(f"Creating enhanced dashboard for: {repo_name}")
+    print(f"Creating dashboard for: {repo_name}")
     print(f"Dashboard UID: {dashboard_uid}")
     
-    # Load enhanced dashboard template
-    enhanced_dashboard_path = 'monitoring/enhanced-grafana-dashboard.json'
-    try:
-        if os.path.exists(enhanced_dashboard_path):
-            with open(enhanced_dashboard_path, 'r') as f:
-                dashboard_template = json.load(f)
-                dashboard_json = dashboard_template.copy()
-        else:
-            print(f"⚠️ Enhanced dashboard template not found at {enhanced_dashboard_path}, using built-in template")
-            dashboard_json = {"dashboard": {}}
-    except Exception as e:
-        print(f"⚠️ Error loading enhanced dashboard template: {e}, using built-in template")
-        dashboard_json = {"dashboard": {}}
-    
-    # Update dashboard metadata
-    if 'dashboard' not in dashboard_json:
-        dashboard_json['dashboard'] = {}
-    
-    dashboard_json['dashboard']['uid'] = dashboard_uid
-    dashboard_json['dashboard']['title'] = f"🚀 Enterprise Pipeline - {repo_name}"
-    dashboard_json['dashboard']['tags'] = ["pipeline", "metrics", "logs", "security", "quality", repo_name]
-    
-    # Update Prometheus queries to use repository label
-    repo_filter = f'{{repository="{repo_name}"}}'
-    
-    if 'panels' in dashboard_json['dashboard']:
-        for panel in dashboard_json['dashboard']['panels']:
-            if 'targets' in panel:
-                for target in panel['targets']:
-                    if 'expr' in target:
-                        expr = target['expr']
-                        # Update metric names to match what we push
-                        # Security vulnerabilities
-                        expr = expr.replace('trivy_vulnerabilities_total', f'security_vulnerabilities_total{repo_filter}')
-                        expr = expr.replace('trivy_vulnerabilities_found', f'security_vulnerabilities_total{repo_filter}')
-                        # Test metrics
-                        expr = expr.replace('pytest_tests_passed_total', f'tests_passed{repo_filter}')
-                        expr = expr.replace('pytest_tests_failed_total', f'tests_failed{repo_filter}')
-                        expr = expr.replace('pytest_tests_skipped_total', '0')  # Not tracked currently
-                        # Code quality
-                        expr = expr.replace('code_quality_score', f'code_quality_score{repo_filter}')
-                        expr = expr.replace('code_coverage_percentage', f'tests_coverage_percent{repo_filter}')
-                        # Scan metrics
-                        expr = expr.replace('external_repo_files_scanned_total', f'scan_files_scanned{repo_filter}')
-                        expr = expr.replace('external_repo_lines_analyzed_total', '0')  # Not tracked currently
-                        expr = expr.replace('external_repo_scan_duration_seconds', '0')  # Not tracked currently
-                        target['expr'] = expr
-    
-    # Set time range and other dashboard properties
-    if 'time' not in dashboard_json['dashboard']:
-        dashboard_json['dashboard']['time'] = {"from": "now-24h", "to": "now"}
-    
-    if 'timezone' not in dashboard_json['dashboard']:
-        dashboard_json['dashboard']['timezone'] = "browser"
-    
-    if 'refresh' not in dashboard_json['dashboard']:
-        dashboard_json['dashboard']['refresh'] = "30s"
-    
-    # Force use of General folder and remove folder keys that cause 400 folder errors
-    for key in ('folderId', 'folderUid'):
-        if key in dashboard_json.get('dashboard', {}):
-            del dashboard_json['dashboard'][key]
-        if key in dashboard_json:
-            del dashboard_json[key]
-    # Explicitly set General folder
-    dashboard_json['folderId'] = 0
-    
-    # Set overwrite flag
-    dashboard_json['overwrite'] = True
-    
-    # Ensure we have a proper dashboard structure
-    if 'panels' not in dashboard_json['dashboard']:
-        print("⚠️ Warning: Enhanced dashboard template has no panels, using fallback")
-        # Minimal fallback - just a message panel
-        dashboard_json['dashboard']['panels'] = [
+    # Create dashboard JSON
+    dashboard_json = {
+        "dashboard": {
+            "uid": dashboard_uid,
+            "title": f"Pipeline Dashboard - {repo_name}",
+            "tags": ["pipeline", "real-data", "auto-generated", repo_name],
+            "timezone": "browser",
+            "refresh": "30s",
+            "panels": [
+                # ROW 1: Key Metrics (Top row - 3 equal panels)
+                # Panel 1: Pipeline Status
                 {
                     "id": 1,
-                    "title": f"⚠️ Dashboard - {repo_name}",
+                    "title": f"🚀 Pipeline Status - {repo_name}",
                     "type": "stat",
                     "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
                     "targets": [
@@ -1156,7 +1019,11 @@ def create_dashboard_with_real_data(repo_info, metrics):
 """
                     }
                 }
-            ]
+            ],
+            "time": {"from": "now-1h", "to": "now"}
+        },
+        "overwrite": True
+    }
     
     # Deploy to Grafana
     try:
@@ -1175,29 +1042,20 @@ def create_dashboard_with_real_data(repo_info, metrics):
             dashboard_url = f"{GRAFANA_URL}/d/{dashboard_uid}/{dashboard_slug}"
             
             print("=" * 80)
-            print("✅ ENHANCED DASHBOARD CREATED WITH REAL-TIME METRICS!")
+            print("✅ DASHBOARD CREATED WITH REAL DATA!")
             print("=" * 80)
             print(f"Repository: {repo_name}")
             print(f"Dashboard URL: {dashboard_url}")
             print(f"Dashboard UID: {dashboard_uid}")
             print("")
-            print("📊 METRICS PUSHED TO PROMETHEUS:")
+            print("📊 REAL METRICS FROM PIPELINE:")
             print(f"  Security: {metrics['security']['total']} vulnerabilities")
             print(f"  TODO Comments: {metrics['quality']['todo_comments']}")
             print(f"  Debug Statements: {metrics['quality']['debug_statements']}")
             print(f"  Large Files: {metrics['quality']['large_files']}")
-            print(f"  Quality Score: {metrics['quality']['quality_score']}/100")
-            print(f"  Tests Passed: {metrics['tests']['passed']}")
-            print(f"  Tests Failed: {metrics['tests']['failed']}")
+            print(f"  Total Improvements: {metrics['quality']['total_improvements']}")
             print(f"  Files Scanned: {metrics['scan_info']['files_scanned']}")
-            print("")
-            print("🚀 Dashboard includes:")
-            print("   • Real-time Prometheus queries")
-            print("   • Time-series visualizations")
-            print("   • Security vulnerability tables")
-            print("   • Code quality gauges")
-            print("   • Test result trends")
-            print("   • Pipeline execution logs")
+            print(f"  Repository Size: {metrics['scan_info']['repository_size']}")
             print("=" * 80)
             
             return dashboard_url
