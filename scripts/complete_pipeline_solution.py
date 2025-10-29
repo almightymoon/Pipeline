@@ -871,7 +871,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or sum(external_repo_scan_total{{repository="{repo_name}"}}) or 157999',
+                            "expr": f'sum(last_over_time(pipeline_runs_total{{repository="{repo_name}",status="total"}}[15m])) or max(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or 157999',
                             "legendFormat": "Build Number",
                             "refId": "A",
                             "instant": True
@@ -898,7 +898,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 2},
                     "targets": [
                         {
-                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or sum(external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}}) * 300 or 300',
+                            "expr": f'(sum(last_over_time(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}[15m])) / sum(last_over_time(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}[15m]))) or (sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or 300',
                             "legendFormat": "Duration",
                             "refId": "A",
                             "instant": True
@@ -925,7 +925,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}}) or 14',
+                            "expr": f'max(last_over_time(code_quality_score{{repository="{repo_name}"}}[15m])) or max(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_score{{repository="{repo_name}"}}) or 14',
                             "legendFormat": "Quality Score",
                             "refId": "A",
                             "instant": True
@@ -952,7 +952,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or 0',
+                            "expr": f'max(last_over_time(tests_coverage_percentage{{repository="{repo_name}"}}[15m])) or max(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or 0',
                             "legendFormat": "Coverage",
                             "refId": "A",
                             "instant": True
@@ -979,7 +979,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or 0',
+                            "expr": f'sum(last_over_time(security_vulnerabilities_total{{repository="{repo_name}"}}[15m])) or max(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
