@@ -1136,10 +1136,9 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     }
                 }
             ],
-            "time": {"from": "now-1h", "to": "now"}
-        },
-        "overwrite": True
-    }
+            
+        
+    
     
     # Deploy to Grafana
     try:
