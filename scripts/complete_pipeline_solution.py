@@ -828,40 +828,41 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     }
                 },
                 # ROW 1: Pipeline Overview Section
-                # Panel 1: Pipeline Status Grid
+                # Panel 1: Pipeline Status Stats
                 {
                     "id": 1,
                     "title": "Pipeline Status",
-                    "type": "table",
+                    "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 6, "x": 0, "y": 3},
+                    "gridPos": {"h": 8, "w": 6, "x": 0, "y": 3},
                     "targets": [
                         {
-                            "expr": f'label_replace(external_repo_scan_total{{repository="{repo_name}"}}, "build_number", "$1", "run", "(.*)")',
-                            "format": "table",
+                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="total"}} or external_repo_scan_total{{repository="{repo_name}"}} or 0',
+                            "legendFormat": "Total Runs",
                             "refId": "A"
+                        },
+                        {
+                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="success"}} or external_repo_scan_total{{repository="{repo_name}",status="completed"}} or 0',
+                            "legendFormat": "Successful",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="failure"}} or external_repo_scan_failed{{repository="{repo_name}"}} or 0',
+                            "legendFormat": "Failed",
+                            "refId": "C"
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "custom": {
-                                "displayMode": "color-background",
-                                "inspect": False
-                            }
-                        },
-                        "overrides": [
-                            {
-                                "matcher": {"id": "byName", "options": "build_number"},
-                                "properties": [
-                                    {"id": "displayName", "value": "Build Number"},
-                                    {"id": "custom.width", "value": 100}
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "red", "value": 1}
                                 ]
-                            }
-                        ]
-                    },
-                    "options": {
-                        "showHeader": True,
-                        "sortBy": [{"displayName": "Build Number", "desc": True}]
+                            },
+                            "unit": "short"
+                        }
                     }
                 },
                 # Panel 2: Build Duration, Quality Score, Test Coverage - Combined Stat
@@ -870,20 +871,20 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Build Metrics",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 5, "w": 6, "x": 6, "y": 3},
+                    "gridPos": {"h": 8, "w": 8, "x": 6, "y": 3},
                     "targets": [
                         {
-                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
+                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or vector(0)',
                             "legendFormat": "Avg Duration (s)",
                             "refId": "A"
                         },
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}}',
+                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 0',
                             "legendFormat": "Quality Score",
                             "refId": "B"
                         },
                         {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
                             "legendFormat": "Coverage %",
                             "refId": "C"
                         }
@@ -908,10 +909,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Security Vulnerabilities",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 5, "w": 4, "x": 12, "y": 3},
+                    "gridPos": {"h": 8, "w": 4, "x": 14, "y": 3},
                     "targets": [
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}})',
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or 0',
                             "legendFormat": "Total",
                             "refId": "A"
                         }
@@ -940,20 +941,26 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "orientation": "auto"
                     }
                 },
-                # Panel 4: Build Numbers List (Time Series)
+                # Panel 4: Build Duration Trend
                 {
                     "id": 4,
-                    "title": "Build Duration",
+                    "title": "Build Duration Trend",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 5, "w": 2, "x": 16, "y": 3},
+                    "gridPos": {"h": 8, "w": 6, "x": 18, "y": 3},
                     "targets": [
                         {
-                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
-                            "legendFormat": "Duration",
+                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}} * 300 / 3600 or vector(0)',
+                            "legendFormat": "Avg Duration (s)",
                             "refId": "A"
                         }
-                    ]
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "unit": "s"
+                        }
+                    }
                 },
                 # ROW 2: SonarQube Code Quality Metrics Section
                 # Panel 5: Issues by Severity Distribution (Donut Chart)
@@ -962,30 +969,30 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Issues by Severity Distribution",
                     "type": "piechart",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 0, "y": 13},
+                    "gridPos": {"h": 10, "w": 10, "x": 0, "y": 11},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}} or 0',
                             "legendFormat": "BLOCKER",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 0',
                             "legendFormat": "MAJOR",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 0',
                             "legendFormat": "MINOR",
                             "refId": "D"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}} or 0',
                             "legendFormat": "INFO",
                             "refId": "E"
                         }
@@ -1045,10 +1052,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Issues Breakdown (Clickable)",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 8, "y": 13},
+                    "gridPos": {"h": 10, "w": 7, "x": 10, "y": 11},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}} or sonarqube_bugs{{project="{repo_name}"}} or sonarqube_vulnerabilities{{project="{repo_name}"}} or sonarqube_code_smells{{project="{repo_name}"}}',
                             "format": "table",
                             "refId": "A"
                         }
@@ -1089,30 +1096,30 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Issues by Severity",
                     "type": "barchart",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 16, "y": 13},
+                    "gridPos": {"h": 10, "w": 7, "x": 17, "y": 11},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}} or 0',
                             "legendFormat": "BLOCKER",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 0',
                             "legendFormat": "MAJOR",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 0',
                             "legendFormat": "MINOR",
                             "refId": "D"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}} or 0',
                             "legendFormat": "INFO",
                             "refId": "E"
                         }
@@ -1148,10 +1155,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Complete SonarQube Issues List (Clickable & Sortable)",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 23},
+                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 21},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}} or sonarqube_bugs{{project="{repo_name}"}} or sonarqube_vulnerabilities{{project="{repo_name}"}} or sonarqube_code_smells{{project="{repo_name}"}}',
                             "format": "table",
                             "refId": "A"
                         }
@@ -1176,25 +1183,25 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Security Vulnerabilities by Severity",
                     "type": "piechart",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 0, "y": 31},
+                    "gridPos": {"h": 10, "w": 10, "x": 0, "y": 29},
                     "targets": [
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}})',
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="CRITICAL"}}) or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}})',
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="HIGH"}}) or 0',
                             "legendFormat": "HIGH",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}})',
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="MEDIUM"}}) or 0',
                             "legendFormat": "MEDIUM",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}})',
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="LOW"}}) or 0',
                             "legendFormat": "LOW",
                             "refId": "D"
                         }
@@ -1244,13 +1251,13 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 # Panel 10: Critical Issues Breakdown (Click for Details)
                 {
                     "id": 10,
-                    "title": "Critical Issues Breakdown (Click for Details)",
+                    "title": "Critical Issues Breakdown",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 8, "y": 31},
+                    "gridPos": {"h": 10, "w": 14, "x": 10, "y": 29},
                     "targets": [
                         {
-                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}',
+                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}} or security_vulnerabilities_total{{repository="{repo_name}",severity="CRITICAL"}}',
                             "format": "table",
                             "refId": "A"
                         }
@@ -1268,54 +1275,27 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "sortBy": []
                     }
                 },
-                # Panel 11: Critical Security Issues - Click for Details
+                # ROW 4: Trends & Historical Data Section
+                # Panel 11: Issues Trend Over Time
                 {
                     "id": 11,
-                    "title": "Critical Security Issues - Click for Details",
-                    "type": "table",
-                    "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 8, "x": 16, "y": 31},
-                    "targets": [
-                        {
-                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}',
-                            "format": "table",
-                            "refId": "A"
-                        }
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "custom": {
-                                "align": "auto",
-                                "displayMode": "auto"
-                            }
-                        }
-                    },
-                    "options": {
-                        "showHeader": True,
-                        "sortBy": []
-                    }
-                },
-                # ROW 4: Trends & Historical Data Section
-                # Panel 12: Issues Trend Over Time
-                {
-                    "id": 12,
                     "title": "Issues Trend Over Time",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 41},
+                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 39},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 0',
                             "legendFormat": "MAJOR",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 0',
                             "legendFormat": "MINOR",
                             "refId": "C"
                         }
@@ -1345,31 +1325,31 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         ]
                     }
                 },
-                # Panel 13: Code Quality Metrics Trend
+                # Panel 12: Code Quality Metrics Trend
                 {
-                    "id": 13,
+                    "id": 12,
                     "title": "Code Quality Metrics Trend",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 41},
+                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 39},
                     "targets": [
                         {
-                            "expr": f'sonarqube_maintainability_rating{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_maintainability_rating{{project="{repo_name}"}} or 0',
                             "legendFormat": "Maintainability",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_reliability_rating{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_reliability_rating{{project="{repo_name}"}} or 0',
                             "legendFormat": "Reliability",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_security_rating{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_security_rating{{project="{repo_name}"}} or 0',
                             "legendFormat": "Security",
                             "refId": "C"
                         },
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}}',
+                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 0',
                             "legendFormat": "Quality Score",
                             "refId": "D"
                         }
@@ -1389,26 +1369,26 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     }
                 },
                 # ROW 5: Comprehensive Testing Results Section
-                # Panel 14: Test Results Summary (Clickable)
+                # Panel 13: Test Results Summary
                 {
-                    "id": 14,
-                    "title": "Test Results Summary (Clickable)",
+                    "id": 13,
+                    "title": "Test Results Summary",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 6, "x": 0, "y": 51},
+                    "gridPos": {"h": 8, "w": 8, "x": 0, "y": 49},
                     "targets": [
                         {
-                            "expr": f'tests_passed{{repository="{repo_name}"}}',
+                            "expr": f'tests_passed{{repository="{repo_name}"}} or tests_passed_total{{repository="{repo_name}"}} or 0',
                             "legendFormat": "Passed",
                             "refId": "A"
                         },
                         {
-                            "expr": f'tests_failed{{repository="{repo_name}"}}',
+                            "expr": f'tests_failed{{repository="{repo_name}"}} or tests_failed_total{{repository="{repo_name}"}} or 0',
                             "legendFormat": "Failed",
                             "refId": "B"
                         },
                         {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
                             "legendFormat": "Coverage %",
                             "refId": "C"
                         }
@@ -1427,114 +1407,78 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 15: Avg Response Time
+                # Panel 14: Test Coverage & Quality Trend
+                {
+                    "id": 14,
+                    "title": "Test Coverage & Quality Trend",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 8, "x": 8, "y": 49},
+                    "targets": [
+                        {
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
+                            "legendFormat": "Test Coverage %",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 0',
+                            "legendFormat": "Quality Score",
+                            "refId": "B"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "unit": "short"
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Test Coverage %"},
+                                "properties": [{"id": "unit", "value": "percent"}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Quality Score"},
+                                "properties": [{"id": "unit", "value": "short"}]
+                            }
+                        ]
+                    }
+                },
+                # Panel 15: Error & Success Rate
                 {
                     "id": 15,
-                    "title": "Avg Response Time",
+                    "title": "Error & Success Rate",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 6, "x": 6, "y": 51},
+                    "gridPos": {"h": 8, "w": 8, "x": 16, "y": 49},
                     "targets": [
                         {
-                            "expr": f'rate(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}[5m]) / rate(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}[5m])',
-                            "legendFormat": "Avg Response Time",
-                            "refId": "A"
-                        }
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "palette-classic"},
-                            "unit": "s"
-                        }
-                    }
-                },
-                # Panel 16: Error Rate
-                {
-                    "id": 16,
-                    "title": "Error Rate",
-                    "type": "stat",
-                    "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 4, "x": 12, "y": 51},
-                    "targets": [
-                        {
-                            "expr": f'(sum(tests_failed{{repository="{repo_name}"}}) / (sum(tests_passed{{repository="{repo_name}"}}) + sum(tests_failed{{repository="{repo_name}"}}))) * 100',
+                            "expr": f'(sum(tests_failed{{repository="{repo_name}"}} or tests_failed_total{{repository="{repo_name}"}} or vector(0)) / (sum(tests_passed{{repository="{repo_name}"}} or tests_passed_total{{repository="{repo_name}"}} or vector(0)) + sum(tests_failed{{repository="{repo_name}"}} or tests_failed_total{{repository="{repo_name}"}} or vector(0)))) * 100',
                             "legendFormat": "Error Rate %",
                             "refId": "A"
-                        }
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "green", "value": None},
-                                    {"color": "yellow", "value": 5},
-                                    {"color": "red", "value": 10}
-                                ]
-                            },
-                            "unit": "percent"
-                        }
-                    }
-                },
-                # Panel 17: Success Rate
-                {
-                    "id": 17,
-                    "title": "Success Rate",
-                    "type": "stat",
-                    "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 4, "x": 16, "y": 51},
-                    "targets": [
+                        },
                         {
-                            "expr": f'(sum(tests_passed{{repository="{repo_name}"}}) / (sum(tests_passed{{repository="{repo_name}"}}) + sum(tests_failed{{repository="{repo_name}"}}))) * 100',
+                            "expr": f'(sum(tests_passed{{repository="{repo_name}"}} or tests_passed_total{{repository="{repo_name}"}} or vector(0)) / (sum(tests_passed{{repository="{repo_name}"}} or tests_passed_total{{repository="{repo_name}"}} or vector(0)) + sum(tests_failed{{repository="{repo_name}"}} or tests_failed_total{{repository="{repo_name}"}} or vector(0)))) * 100',
                             "legendFormat": "Success Rate %",
-                            "refId": "A"
-                        }
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "red", "value": None},
-                                    {"color": "yellow", "value": 80},
-                                    {"color": "green", "value": 95}
-                                ]
-                            },
-                            "unit": "percent"
-                        }
-                    }
-                },
-                # Panel 18: Throughput (RPS)
-                {
-                    "id": 18,
-                    "title": "Throughput (RPS)",
-                    "type": "timeseries",
-                    "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 4, "x": 20, "y": 51},
-                    "targets": [
-                        {
-                            "expr": f'rate(external_repo_scan_total{{repository="{repo_name}"}}[5m])',
-                            "legendFormat": "Scans/sec",
-                            "refId": "A"
+                            "refId": "B"
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "palette-classic"},
-                            "unit": "reqps"
+                            "unit": "percent"
                         }
                     }
                 },
-                # Panel 19: Pipeline Execution Logs (from Loki)
+                # Panel 16: Pipeline Execution Logs (from Loki)
                 {
-                    "id": 19,
+                    "id": 16,
                     "title": "📝 Pipeline Execution Logs",
                     "type": "logs",
                     "datasource": {"type": "loki", "uid": "loki"},
-                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 59},
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 57},
                     "targets": [
                         {
-                            "expr": f'{{job="pipeline",repository="{repo_name}"}} | json',
+                            "expr": f'{{job="pipeline",repository="{repo_name}"}} or {{job=~".*pipeline.*"}} | json',
                             "refId": "A"
                         }
                     ],
