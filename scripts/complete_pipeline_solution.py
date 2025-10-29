@@ -13,6 +13,11 @@ import hashlib
 import re
 from datetime import datetime
 
+# Add scripts directory to path for imports
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
 # Configuration
 # Configuration - Use environment variables for URLs
 GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://213.109.162.134:30102')
@@ -1135,10 +1140,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
 """
                     }
                 }
-            ],
-            
-        
-    
+            ]
     
     # Deploy to Grafana
     try:
