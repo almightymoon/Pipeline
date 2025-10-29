@@ -838,7 +838,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 0, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="success"}}) or sum(external_repo_scan_total{{repository="{repo_name}",status="completed"}}) or vector(1)',
+                            "expr": f'last_over_time(sum(pipeline_runs_total{{repository="{repo_name}",status="success"}})[1h:]) or last_over_time(sum(external_repo_scan_total{{repository="{repo_name}",status="completed"}})[1h:]) or vector(1)',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -871,9 +871,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or sum(external_repo_scan_total{{repository="{repo_name}"}}) or 157999',
+                            "expr": f'last_over_time(sum(pipeline_runs_total{{repository="{repo_name}",status="total"}})[1h:]) or last_over_time(sum(external_repo_scan_total{{repository="{repo_name}"}})[1h:]) or 157999',
                             "legendFormat": "Build Number",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -897,9 +898,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}) or sum(external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}}) * 300 or 300',
+                            "expr": f'last_over_time((sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}))[1h:]) or last_over_time(sum(external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}})[1h:]) * 300 or 300',
                             "legendFormat": "Duration",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -923,9 +925,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}}) or 14',
+                            "expr": f'last_over_time(sum(code_quality_score{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(code_quality_total_improvements{{repository="{repo_name}"}})[1h:]) or 14',
                             "legendFormat": "Quality Score",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -949,9 +952,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(tests_coverage_percent{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(tests_coverage_percentage{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(sonarqube_coverage{{project="{repo_name}"}})[1h:]) or 0',
                             "legendFormat": "Coverage",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -975,9 +979,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 2},
                     "targets": [
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(security_vulnerabilities_found{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(security_vulnerabilities_total{{repository="{repo_name}"}})[1h:]) or 0',
                             "legendFormat": "Total",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -1014,29 +1019,34 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 0, "y": 10},
                     "targets": [
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}})[1h:]) or vector(0)',
                             "legendFormat": "BLOCKER",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}})[1h:]) or last_over_time(sum(sonarqube_bugs{{project="{repo_name}"}})[1h:]) or vector(0)',
                             "legendFormat": "CRITICAL",
-                            "refId": "B"
+                            "refId": "B",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}})[1h:]) or last_over_time(sum(sonarqube_code_smells{{project="{repo_name}"}})[1h:]) or vector(0)',
                             "legendFormat": "MAJOR",
-                            "refId": "C"
+                            "refId": "C",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}})[1h:]) or vector(0)',
                             "legendFormat": "MINOR",
-                            "refId": "D"
+                            "refId": "D",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}})[1h:]) or vector(0)',
                             "legendFormat": "INFO",
-                            "refId": "E"
+                            "refId": "E",
+                            "instant": True
                         }
                     ],
                     "options": {
@@ -1142,27 +1152,27 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 16, "y": 10},
                     "targets": [
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}})[1h:]) or vector(0)',
                             "legendFormat": "BLOCKER",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}})[1h:]) or last_over_time(sum(sonarqube_bugs{{project="{repo_name}"}})[1h:]) or vector(0)',
                             "legendFormat": "CRITICAL",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}})[1h:]) or last_over_time(sum(sonarqube_code_smells{{project="{repo_name}"}})[1h:]) or vector(0)',
                             "legendFormat": "MAJOR",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}})[1h:]) or vector(0)',
                             "legendFormat": "MINOR",
                             "refId": "D"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}) or 0',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}})[1h:]) or vector(0)',
                             "legendFormat": "INFO",
                             "refId": "E"
                         }
@@ -1201,9 +1211,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 0, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(tests_coverage_percent{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(tests_coverage_percentage{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(sonarqube_coverage{{project="{repo_name}"}})[1h:]) or 0',
                             "legendFormat": "Coverage",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -1241,9 +1252,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 6, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}}) or 14',
+                            "expr": f'last_over_time(sum(code_quality_score{{repository="{repo_name}"}})[1h:]) or last_over_time(sum(code_quality_total_improvements{{repository="{repo_name}"}})[1h:]) or 14',
                             "legendFormat": "Quality Score",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         }
                     ],
                     "fieldConfig": {
@@ -1321,24 +1333,28 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 0, "y": 28},
                     "targets": [
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="CRITICAL"}}) or 0',
+                            "expr": f'last_over_time(sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}})[1h:]) or last_over_time(sum(security_vulnerabilities_total{{repository="{repo_name}",severity="CRITICAL"}})[1h:]) or vector(0)',
                             "legendFormat": "CRITICAL",
-                            "refId": "A"
+                            "refId": "A",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="HIGH"}}) or 0',
+                            "expr": f'last_over_time(sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}})[1h:]) or last_over_time(sum(security_vulnerabilities_total{{repository="{repo_name}",severity="HIGH"}})[1h:]) or vector(0)',
                             "legendFormat": "HIGH",
-                            "refId": "B"
+                            "refId": "B",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="MEDIUM"}}) or 0',
+                            "expr": f'last_over_time(sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}})[1h:]) or last_over_time(sum(security_vulnerabilities_total{{repository="{repo_name}",severity="MEDIUM"}})[1h:]) or vector(0)',
                             "legendFormat": "MEDIUM",
-                            "refId": "C"
+                            "refId": "C",
+                            "instant": True
                         },
                         {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}",severity="LOW"}}) or 0',
+                            "expr": f'last_over_time(sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}})[1h:]) or last_over_time(sum(security_vulnerabilities_total{{repository="{repo_name}",severity="LOW"}})[1h:]) or vector(0)',
                             "legendFormat": "LOW",
-                            "refId": "D"
+                            "refId": "D",
+                            "instant": True
                         }
                     ],
                     "options": {
@@ -1432,17 +1448,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 12, "x": 0, "y": 40},
                     "targets": [
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 4',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}})[6h:1h]) or last_over_time(sum(sonarqube_bugs{{project="{repo_name}"}})[6h:1h]) or vector(0)',
                             "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 14',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}})[6h:1h]) or last_over_time(sum(sonarqube_code_smells{{project="{repo_name}"}})[6h:1h]) or vector(0)',
                             "legendFormat": "MAJOR",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 2',
+                            "expr": f'last_over_time(sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}})[6h:1h]) or vector(0)',
                             "legendFormat": "MINOR",
                             "refId": "C"
                         }
@@ -1493,12 +1509,12 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 12, "x": 12, "y": 40},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or 14',
+                            "expr": f'last_over_time(sum(code_quality_score{{repository="{repo_name}"}})[6h:1h]) or vector(14)',
                             "legendFormat": "Quality Score",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(tests_coverage_percent{{repository="{repo_name}"}})[6h:1h]) or last_over_time(sum(tests_coverage_percentage{{repository="{repo_name}"}})[6h:1h]) or last_over_time(sum(sonarqube_coverage{{project="{repo_name}"}})[6h:1h]) or vector(0)',
                             "legendFormat": "Test Coverage (right y-axis)",
                             "refId": "B"
                         }
@@ -1544,17 +1560,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 24, "x": 0, "y": 50},
                     "targets": [
                         {
-                            "expr": f'sum(quality_todo_comments{{repository="{repo_name}"}}) or sum(code_quality_todo_comments{{repository="{repo_name}"}}) or 0',
+                            "expr": f'last_over_time(sum(quality_todo_comments{{repository="{repo_name}"}})[6h:1h]) or last_over_time(sum(code_quality_todo_comments{{repository="{repo_name}"}})[6h:1h]) or vector(0)',
                             "legendFormat": "TODO Comments",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(quality_debug_statements{{repository="{repo_name}"}}) or sum(code_quality_debug_statements{{repository="{repo_name}"}}) or 66',
+                            "expr": f'last_over_time(sum(quality_debug_statements{{repository="{repo_name}"}})[6h:1h]) or last_over_time(sum(code_quality_debug_statements{{repository="{repo_name}"}})[6h:1h]) or vector(66)',
                             "legendFormat": "Debug Statements",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sum(quality_large_files{{repository="{repo_name}"}}) or sum(code_quality_large_files{{repository="{repo_name}"}}) or 4',
+                            "expr": f'last_over_time(sum(quality_large_files{{repository="{repo_name}"}})[6h:1h]) or last_over_time(sum(code_quality_large_files{{repository="{repo_name}"}})[6h:1h]) or vector(4)',
                             "legendFormat": "Large Files",
                             "refId": "C"
                         }
