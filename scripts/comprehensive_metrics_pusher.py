@@ -81,7 +81,13 @@ def read_trivy_results():
 
 def get_sonarqube_metrics():
     """Get SonarQube metrics via API"""
-    metrics = {}
+    metrics = {
+        'coverage': 0.0,
+        'bugs': 0,
+        'vulnerabilities': 0,
+        'code_smells': 0,
+        'issues_by_severity': {}
+    }
     
     sonar_url = os.environ.get('SONARQUBE_URL', 'http://213.109.162.134:30100')
     sonar_token = os.environ.get('SONARQUBE_TOKEN', '')
@@ -92,12 +98,12 @@ def get_sonarqube_metrics():
         return metrics
     
     try:
-        # Get coverage
+        # Get measures (coverage, bugs, vulnerabilities, code_smells)
         response = requests.get(
             f"{sonar_url}/api/measures/component",
             params={
                 'component': project_key,
-                'metricKeys': 'coverage'
+                'metricKeys': 'coverage,bugs,vulnerabilities,code_smells,maintainability_rating,reliability_rating,security_rating'
             },
             auth=(sonar_token, ""),
             timeout=10
@@ -107,10 +113,43 @@ def get_sonarqube_metrics():
             data = response.json()
             if 'component' in data and 'measures' in data['component']:
                 for measure in data['component']['measures']:
-                    if measure['metric'] == 'coverage':
-                        metrics['coverage'] = float(measure['value'])
+                    metric_name = measure['metric']
+                    metric_value = measure['value']
+                    
+                    if metric_name == 'coverage':
+                        metrics['coverage'] = float(metric_value)
+                    elif metric_name == 'bugs':
+                        metrics['bugs'] = int(metric_value)
+                    elif metric_name == 'vulnerabilities':
+                        metrics['vulnerabilities'] = int(metric_value)
+                    elif metric_name == 'code_smells':
+                        metrics['code_smells'] = int(metric_value)
+        
+        # Get issues by severity
+        issues_response = requests.get(
+            f"{sonar_url}/api/issues/search",
+            params={
+                'componentKeys': project_key,
+                'resolved': 'false',
+                'facets': 'severities'
+            },
+            auth=(sonar_token, ""),
+            timeout=10
+        )
+        
+        if issues_response.status_code == 200:
+            issues_data = issues_response.json()
+            if 'facets' in issues_data:
+                for facet in issues_data['facets']:
+                    if facet['property'] == 'severities':
+                        for value in facet['values']:
+                            severity = value['val']
+                            count = value['count']
+                            metrics['issues_by_severity'][severity] = count
+                            print(f"📊 Issues {severity}: {count}")
+                            
     except Exception as e:
-        print(f"⚠️  Error fetching SonarQube coverage: {e}")
+        print(f"⚠️  Error fetching SonarQube metrics: {e}")
     
     return metrics
 
@@ -134,7 +173,9 @@ def collect_all_metrics():
         quality_metrics['debug_statements'] * 0.05 +
         quality_metrics['large_files'] * 0.5 +
         security_metrics['CRITICAL'] * 5 +
-        security_metrics['HIGH'] * 2
+        security_metrics['HIGH'] * 2 +
+        sonarqube_metrics.get('bugs', 0) * 0.3 +
+        sonarqube_metrics.get('vulnerabilities', 0) * 1
     )))
     
     # Build Prometheus metrics
@@ -172,12 +213,25 @@ def collect_all_metrics():
         f'security_vulnerabilities_total{{repository="{repository}"}} {security_metrics["total"]}'
     ])
     
-    # Test coverage metrics
+    # SonarQube metrics
     coverage = sonarqube_metrics.get('coverage', 0.0)
     prom_metrics.extend([
+        f'sonarqube_coverage{{project="{repository}"}} {coverage}',
+        f'sonarqube_bugs{{project="{repository}"}} {sonarqube_metrics.get("bugs", 0)}',
+        f'sonarqube_vulnerabilities{{project="{repository}"}} {sonarqube_metrics.get("vulnerabilities", 0)}',
+        f'sonarqube_code_smells{{project="{repository}"}} {sonarqube_metrics.get("code_smells", 0)}'
+    ])
+    
+    # SonarQube issues by severity
+    issues_by_severity = sonarqube_metrics.get('issues_by_severity', {})
+    for severity in ['BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'INFO']:
+        count = issues_by_severity.get(severity, 0)
+        prom_metrics.append(f'sonarqube_issues_by_severity{{project="{repository}",severity="{severity}"}} {count}')
+    
+    # Test coverage metrics (multiple variations for dashboard compatibility)
+    prom_metrics.extend([
         f'tests_coverage_percent{{repository="{repository}"}} {coverage}',
-        f'tests_coverage_percentage{{repository="{repository}"}} {coverage}',
-        f'sonarqube_coverage{{project="{repository}"}} {coverage}'
+        f'tests_coverage_percentage{{repository="{repository}"}} {coverage}'
     ])
     
     # Test metrics (defaults)
@@ -189,6 +243,8 @@ def collect_all_metrics():
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
     print(f"  - Security: CRITICAL={security_metrics['CRITICAL']}, HIGH={security_metrics['HIGH']}, Total={security_metrics['total']}")
+    print(f"  - SonarQube: Bugs={sonarqube_metrics.get('bugs', 0)}, Vulns={sonarqube_metrics.get('vulnerabilities', 0)}, Code Smells={sonarqube_metrics.get('code_smells', 0)}")
+    print(f"  - SonarQube Issues by Severity: {issues_by_severity}")
     print(f"  - Coverage: {coverage}%")
     print(f"  - Quality Score: {int(quality_score)}")
     
