@@ -726,7 +726,8 @@ def get_sonarqube_recommendations(metrics):
 def push_metrics_to_prometheus(repo_name, metrics):
     """Push metrics to Prometheus Pushgateway"""
     try:
-        PROMETHEUS_URL = os.environ.get('PROMETHEUS_URL', 'http://213.109.162.134:30103')
+        # Use PROMETHEUS_PUSHGATEWAY_URL from environment (port 30091), fallback to default
+        PROMETHEUS_URL = os.environ.get('PROMETHEUS_PUSHGATEWAY_URL', 'http://213.109.162.134:30091')
         
         # Prepare metrics in Prometheus format
         prometheus_metrics = []
@@ -788,9 +789,12 @@ def create_dashboard_with_real_data(repo_info, metrics):
     repo_branch = repo_info['branch']
     scan_type = repo_info['scan_type']
     
-    # First push metrics to Prometheus
+    # First push metrics to Prometheus (non-blocking - continue even if it fails)
     print(f"📤 Pushing metrics to Prometheus for {repo_name}...")
-    push_metrics_to_prometheus(repo_name, metrics)
+    try:
+        push_metrics_to_prometheus(repo_name, metrics)
+    except Exception as e:
+        print(f"⚠️ Warning: Could not push metrics to Prometheus (continuing anyway): {e}")
     
     # Generate unique UID
     dashboard_uid = generate_dashboard_uid(repo_name)
@@ -855,6 +859,12 @@ def create_dashboard_with_real_data(repo_info, metrics):
     
     if 'refresh' not in dashboard_json['dashboard']:
         dashboard_json['dashboard']['refresh'] = "30s"
+    
+    # Remove folderId to avoid "folder not found" error - will use default General folder
+    if 'folderId' in dashboard_json.get('dashboard', {}):
+        del dashboard_json['dashboard']['folderId']
+    if 'folderId' in dashboard_json:
+        del dashboard_json['folderId']
     
     # Set overwrite flag
     dashboard_json['overwrite'] = True
