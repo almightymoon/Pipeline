@@ -43,3 +43,4 @@ repositories:
 # - quick: Fast scan (basic checks and security only)
 
 # Test commit to trigger external repo scanner
+# Dashboard metrics fix - updated Prometheus config and queries
