@@ -250,6 +250,12 @@ def collect_all_metrics():
     print(f"  - SonarQube Issues by Severity: {issues_by_severity}")
     print(f"  - Coverage: {coverage}%")
     print(f"  - Quality Score: {int(quality_score)}")
+    print(f"\n📋 Metrics summary for {repository}:")
+    print(f"  ✅ pipeline_runs_total with status=total: {build_number}")
+    print(f"  ✅ code_quality_score: {int(quality_score)}")
+    print(f"  ✅ tests_coverage_percentage: {coverage}")
+    print(f"  ✅ security_vulnerabilities_total: {security_metrics['total']}")
+    print(f"  ✅ external_repo_scan_duration_seconds (sum/count): 300/1")
     
     return prom_metrics
 
@@ -281,6 +287,12 @@ def push_metrics(metrics, pushgateway_url):
     push_url = f"{pushgateway_url}/metrics/job/{job_name}/instance/{instance}"
     
     try:
+        # Log what we're pushing (first 3 metrics for debugging)
+        print(f"\n📤 Pushing {len(metrics)} metrics...")
+        print(f"   Sample metrics (first 3):")
+        for m in metrics[:3]:
+            print(f"   - {m}")
+        
         response = requests.put(
             push_url,
             data=metrics_payload,
@@ -290,15 +302,25 @@ def push_metrics(metrics, pushgateway_url):
         
         if response.status_code == 200:
             print(f"✅ Successfully pushed {len(metrics)} metrics to Prometheus")
+            print(f"📊 Push URL: {push_url}")
             print(f"📊 View at: {pushgateway_url}/metrics")
+            print(f"🔍 Verify metrics:")
+            print(f"   curl -s '{pushgateway_url}/metrics' | grep '{repository}' | head -5")
         else:
             print(f"❌ Failed to push metrics: HTTP {response.status_code}")
-            print(f"Response: {response.text}")
+            print(f"Response: {response.text[:500]}")
+            print(f"💡 Troubleshooting:")
+            print(f"   1. Check Pushgateway is accessible: curl {pushgateway_url}/metrics")
+            print(f"   2. Verify network connectivity to {pushgateway_url}")
             
     except Exception as e:
         print(f"❌ Error pushing metrics: {e}")
         import traceback
         traceback.print_exc()
+        print(f"\n💡 Debugging info:")
+        print(f"   Pushgateway URL: {pushgateway_url}")
+        print(f"   Push URL: {push_url}")
+        print(f"   Metrics count: {len(metrics)}")
 
 def main():
     """Main function"""
