@@ -927,7 +927,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "textSize": {}
                     }
                 },
-                # Panel 3: Build Duration (Stat: "5 mins 5 mins" with chart)
+                # Panel 3: Build Duration (Simplified - Single Value)
                 {
                     "id": 3,
                     "title": "Build Duration",
@@ -936,7 +936,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 8},
                     "targets": [
                         {
-                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
+                            "expr": f'max(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})',
                             "legendFormat": "Duration",
                             "refId": "A",
                             "instant": True
@@ -944,14 +944,27 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "color": {"mode": "fixed", "fixedColor": "red"},
-                            "unit": "m"
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 300},
+                                    {"color": "orange", "value": 600},
+                                    {"color": "red", "value": 900}
+                                ]
+                            },
+                            "unit": "m",
+                            "min": 0,
+                            "max": None
                         }
                     },
                     "options": {
-                        "graphMode": "area",
-                        "colorMode": "value",
-                        "orientation": "auto"
+                        "graphMode": "none",
+                        "colorMode": "background",
+                        "orientation": "auto",
+                        "textMode": "value",
+                        "textSize": {}
                     }
                 },
                 # Panel 4: Quality Score (Simplified - Single Value with Threshold Colors)
@@ -1033,43 +1046,45 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "orientation": "auto"
                     }
                 },
-                # Panel 6: Security Vulnerabilities (Stat: "0" with chart)
+                # Panel 6: Security Vulnerabilities (Simplified - Single Value with Color Coding)
                 {
                     "id": 6,
-                    "title": "Security Vulnerabilities...",
+                    "title": "Security Vulnerabilities",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
                     "targets": [
                         {
-                            "expr": f'security_vulnerabilities_total{{repository="{repo_name}"}}',
+                            "expr": f'max(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}})',
                             "legendFormat": "Total",
                             "refId": "A",
-                            "instant": True
-                        },
-                        {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}})',
-                            "legendFormat": "Total (from found)",
-                            "refId": "B",
-                            "instant": True
-                        },
-                        {
-                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}})',
-                            "legendFormat": "Total (all)",
-                            "refId": "C",
                             "instant": True
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "color": {"mode": "fixed", "fixedColor": "gray"},
-                            "unit": "short"
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "green", "value": 0},
+                                    {"color": "yellow", "value": 1},
+                                    {"color": "orange", "value": 10},
+                                    {"color": "red", "value": 50}
+                                ]
+                            },
+                            "unit": "short",
+                            "min": 0,
+                            "max": None
                         }
                     },
                     "options": {
-                        "graphMode": "area",
-                        "colorMode": "value",
-                        "orientation": "auto"
+                        "graphMode": "none",
+                        "colorMode": "background",
+                        "orientation": "auto",
+                        "textMode": "value",
+                        "textSize": {}
                     }
                 },
                 # SECTION HEADER: SonarQube Code Quality Metrics
