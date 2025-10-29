@@ -1,3 +1,11 @@
+# ==============================================================================
+# BASIC PIPELINE - DISABLED
+# ==============================================================================
+# This workflow has been disabled and is not currently in use.
+# We are now using the advanced scan-external-repos.yml pipeline instead.
+# This file is kept for reference but will not execute.
+# ==============================================================================
+
 # name: Working ML Pipeline
 
 # on:

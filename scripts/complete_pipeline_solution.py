@@ -792,15 +792,16 @@ def create_dashboard_with_real_data(repo_info, metrics):
     print(f"Dashboard UID: {dashboard_uid}")
     print(f"Using Prometheus queries for real-time data")
     
-    # Create dashboard JSON with Prometheus queries
+    # Create dashboard JSON matching the professional layout with Prometheus queries
     dashboard_json = {
         "dashboard": {
             "uid": dashboard_uid,
-            "title": f"🚀 Pipeline Dashboard - {repo_name}",
+            "title": f"ML Pipeline - SonarQube & Quality Metrics Dashboard",
             "tags": ["pipeline", "real-time", "prometheus", "sonarqube", "loki", "auto-generated", repo_name],
+            "style": "dark",
             "timezone": "browser",
             "refresh": "30s",
-            "time": {"from": "now-24h", "to": "now"},
+            "time": {"from": "now-6h", "to": "now"},
             "annotations": {
                 "list": [
                     {
@@ -815,28 +816,75 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 ]
             },
             "panels": [
-                # ROW 1: Key Metrics (Top row - 3 equal panels)
-                # Panel 1: Pipeline Status (from Prometheus)
+                # HEADER: Repository Info Panel
+                {
+                    "id": 0,
+                    "title": "Repository Info",
+                    "type": "text",
+                    "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+                    "options": {
+                        "mode": "markdown",
+                        "content": f"**Repository:** {repo_name} | **Last Updated:** Auto-refresh every 30s | **Data Source:** Prometheus + SonarQube"
+                    }
+                },
+                # ROW 1: Pipeline Overview Section
+                # Panel 1: Pipeline Status Grid
                 {
                     "id": 1,
-                    "title": f"🚀 Pipeline Status",
-                    "type": "stat",
+                    "title": "Pipeline Status",
+                    "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+                    "gridPos": {"h": 10, "w": 6, "x": 0, "y": 3},
                     "targets": [
                         {
-                            "expr": f'sum(external_repo_scan_total{{repository="{repo_name}"}})',
-                            "legendFormat": "Total Scans",
+                            "expr": f'label_replace(external_repo_scan_total{{repository="{repo_name}"}}, "build_number", "$1", "run", "(.*)")',
+                            "format": "table",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "displayMode": "color-background",
+                                "inspect": False
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "build_number"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Build Number"},
+                                    {"id": "custom.width", "value": 100}
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": [{"displayName": "Build Number", "desc": True}]
+                    }
+                },
+                # Panel 2: Build Duration, Quality Score, Test Coverage - Combined Stat
+                {
+                    "id": 2,
+                    "title": "Build Metrics",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 5, "w": 6, "x": 6, "y": 3},
+                    "targets": [
+                        {
+                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
+                            "legendFormat": "Avg Duration (s)",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sum(external_repo_scan_success{{repository="{repo_name}"}})',
-                            "legendFormat": "Successful",
+                            "expr": f'code_quality_score{{repository="{repo_name}"}}',
+                            "legendFormat": "Quality Score",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sum(external_repo_scan_failed{{repository="{repo_name}"}})',
-                            "legendFormat": "Failed",
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
+                            "legendFormat": "Coverage %",
                             "refId": "C"
                         }
                     ],
@@ -846,202 +894,478 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "thresholds": {
                                 "steps": [
                                     {"color": "green", "value": None},
-                                    {"color": "red", "value": 1}
+                                    {"color": "yellow", "value": 70},
+                                    {"color": "red", "value": 50}
                                 ]
                             },
                             "unit": "short"
                         }
                     }
                 },
-                # Panel 2: Security Vulnerabilities (from Prometheus + Trivy)
+                # Panel 3: Security Vulnerabilities Large Number
                 {
-                    "id": 2,
-                    "title": f"🔒 Security Vulnerabilities",
+                    "id": 3,
+                    "title": "Security Vulnerabilities",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+                    "gridPos": {"h": 5, "w": 4, "x": 12, "y": 3},
+                    "targets": [
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}})',
+                            "legendFormat": "Total",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 1},
+                                    {"color": "red", "value": 3}
+                                ]
+                            },
+                            "unit": "short",
+                            "custom": {
+                                "displayMode": "list"
+                            },
+                            "mappings": [],
+                            "max": 100
+                        }
+                    },
+                    "options": {
+                        "graphMode": "none",
+                        "colorMode": "value",
+                        "orientation": "auto"
+                    }
+                },
+                # Panel 4: Build Numbers List (Time Series)
+                {
+                    "id": 4,
+                    "title": "Build Duration",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 5, "w": 2, "x": 16, "y": 3},
+                    "targets": [
+                        {
+                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
+                            "legendFormat": "Duration",
+                            "refId": "A"
+                        }
+                    ]
+                },
+                # ROW 2: SonarQube Code Quality Metrics Section
+                # Panel 5: Issues by Severity Distribution (Donut Chart)
+                {
+                    "id": 5,
+                    "title": "Issues by Severity Distribution",
+                    "type": "piechart",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 8, "x": 0, "y": 13},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
+                            "legendFormat": "BLOCKER",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "legendFormat": "CRITICAL",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "legendFormat": "MAJOR",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "legendFormat": "MINOR",
+                            "refId": "D"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}',
+                            "legendFormat": "INFO",
+                            "refId": "E"
+                        }
+                    ],
+                    "options": {
+                        "reduceOptions": {
+                            "values": False,
+                            "calcs": ["lastNotNull"],
+                            "fields": ""
+                        },
+                        "pieType": "donut",
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        },
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "showLegend": True,
+                            "values": ["value", "percent"]
+                        }
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {
+                                "mode": "palette-classic"
+                            },
+                            "mappings": []
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "BLOCKER"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "CRITICAL"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "MAJOR"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "MINOR"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "INFO"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+                            }
+                        ]
+                    }
+                },
+                # Panel 6: Issues Breakdown Table (Clickable)
+                {
+                    "id": 6,
+                    "title": "Issues Breakdown (Clickable)",
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 8, "x": 8, "y": 13},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}}',
+                            "format": "table",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "color-background"
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "severity"},
+                                "properties": [
+                                    {
+                                        "id": "mappings",
+                                        "value": [
+                                            {"type": "value", "value": "BLOCKER", "text": "🔴 BLOCKER", "color": "red"},
+                                            {"type": "value", "value": "CRITICAL", "text": "🟠 CRITICAL", "color": "orange"},
+                                            {"type": "value", "value": "MAJOR", "text": "🔴 MAJOR", "color": "red"},
+                                            {"type": "value", "value": "MINOR", "text": "🟡 MINOR", "color": "yellow"},
+                                            {"type": "value", "value": "INFO", "text": "🟢 INFO", "color": "green"}
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": []
+                    }
+                },
+                # Panel 7: Issues by Severity Stacked Bar Chart
+                {
+                    "id": 7,
+                    "title": "Issues by Severity",
+                    "type": "barchart",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 8, "x": 16, "y": 13},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
+                            "legendFormat": "BLOCKER",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "legendFormat": "CRITICAL",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "legendFormat": "MAJOR",
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "legendFormat": "MINOR",
+                            "refId": "D"
+                        },
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}',
+                            "legendFormat": "INFO",
+                            "refId": "E"
+                        }
+                    ],
+                    "options": {
+                        "stacking": "normal",
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "bottom",
+                            "showLegend": True
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "none"
+                        }
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "hideFrom": {
+                                    "tooltip": False,
+                                    "viz": False,
+                                    "legend": False
+                                }
+                            },
+                            "color": {"mode": "palette-classic"}
+                        }
+                    }
+                },
+                # Panel 8: Complete SonarQube Issues List (Clickable & Sortable)
+                {
+                    "id": 8,
+                    "title": "Complete SonarQube Issues List (Clickable & Sortable)",
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 23},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}}',
+                            "format": "table",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "auto"
+                            }
+                        }
+                    },
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": [{"displayName": "severity", "desc": False}]
+                    }
+                },
+                # ROW 3: Security & Vulnerability Analysis Section
+                # Panel 9: Security Vulnerabilities by Severity (Donut Chart)
+                {
+                    "id": 9,
+                    "title": "Security Vulnerabilities by Severity",
+                    "type": "piechart",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 8, "x": 0, "y": 31},
                     "targets": [
                         {
                             "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}})',
-                            "legendFormat": "Critical",
+                            "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
                             "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}})',
-                            "legendFormat": "High",
+                            "legendFormat": "HIGH",
                             "refId": "B"
                         },
                         {
                             "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}})',
-                            "legendFormat": "Medium",
+                            "legendFormat": "MEDIUM",
                             "refId": "C"
                         },
                         {
                             "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}})',
-                            "legendFormat": "Low",
+                            "legendFormat": "LOW",
                             "refId": "D"
+                        }
+                    ],
+                    "options": {
+                        "reduceOptions": {
+                            "values": False,
+                            "calcs": ["lastNotNull"],
+                            "fields": ""
+                        },
+                        "pieType": "donut",
+                        "tooltip": {
+                            "mode": "single",
+                            "sort": "none"
+                        },
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "showLegend": True,
+                            "values": ["value", "percent"]
+                        }
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"}
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "CRITICAL"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "HIGH"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "MEDIUM"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "LOW"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+                            }
+                        ]
+                    }
+                },
+                # Panel 10: Critical Issues Breakdown (Click for Details)
+                {
+                    "id": 10,
+                    "title": "Critical Issues Breakdown (Click for Details)",
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 8, "x": 8, "y": 31},
+                    "targets": [
+                        {
+                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}',
+                            "format": "table",
+                            "refId": "A"
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "green", "value": None},
-                                    {"color": "yellow", "value": 1},
-                                    {"color": "orange", "value": 5},
-                                    {"color": "red", "value": 10}
-                                ]
-                            },
-                            "unit": "short"
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "color-background"
+                            }
                         }
+                    },
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": []
                     }
                 },
-                # Panel 3: SonarQube Metrics (from Prometheus)
+                # Panel 11: Critical Security Issues - Click for Details
                 {
-                    "id": 3,
-                    "title": f"🧠 SonarQube Metrics",
-                    "type": "stat",
+                    "id": 11,
+                    "title": "Critical Security Issues - Click for Details",
+                    "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+                    "gridPos": {"h": 10, "w": 8, "x": 16, "y": 31},
                     "targets": [
                         {
-                            "expr": f'sonarqube_bugs{{project="{repo_name}"}}',
-                            "legendFormat": "Bugs",
+                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}',
+                            "format": "table",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "auto"
+                            }
+                        }
+                    },
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": []
+                    }
+                },
+                # ROW 4: Trends & Historical Data Section
+                # Panel 12: Issues Trend Over Time
+                {
+                    "id": 12,
+                    "title": "Issues Trend Over Time",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 41},
+                    "targets": [
+                        {
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
+                            "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_vulnerabilities{{project="{repo_name}"}}',
-                            "legendFormat": "Vulnerabilities",
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}',
+                            "legendFormat": "MAJOR",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_code_smells{{project="{repo_name}"}}',
-                            "legendFormat": "Code Smells",
+                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}',
+                            "legendFormat": "MINOR",
                             "refId": "C"
-                        },
-                        {
-                            "expr": f'sonarqube_security_hotspots{{project="{repo_name}"}}',
-                            "legendFormat": "Security Hotspots",
-                            "refId": "D"
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "green", "value": None},
-                                    {"color": "yellow", "value": 1},
-                                    {"color": "red", "value": 10}
-                                ]
+                            "color": {"mode": "palette-classic"},
+                            "custom": {
+                                "drawStyle": "line",
+                                "lineInterpolation": "smooth",
+                                "fillOpacity": 10
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "CRITICAL"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
                             },
-                            "unit": "short"
-                        }
+                            {
+                                "matcher": {"id": "byName", "options": "MAJOR"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "MINOR"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+                            }
+                        ]
                     }
                 },
-                
-                # ROW 2: Repository Information (Full width)
-                # Panel 4: Repository Information
+                # Panel 13: Code Quality Metrics Trend
                 {
-                    "id": 4,
-                    "title": f"📋 Repository Information - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 4, "w": 24, "x": 0, "y": 6},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 📋 Repository Information
-
-| **Property** | **Value** |
-|--------------|-----------|
-| **Repository** | {repo_name} |
-| **URL** | [{repo_url}]({repo_url}) |
-| **Branch** | {repo_branch} |
-| **Scan Type** | {scan_type} |
-| **Scan Time** | {metrics['scan_info']['scan_time']} |
-| **Pipeline Run** | {metrics['scan_info']['pipeline_run']} |
-| **Files Scanned** | {metrics['scan_info']['files_scanned']} |
-| **Repository Size** | {metrics['scan_info']['repository_size']} |
-
-**Last Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')} | **Dashboard Status:** ✅ Real-time data from pipeline run"""
-                    }
-                },
-                
-                # ROW 2.5: Deployment Status (if deployed)
-                {
-                    "id": 4.5,
-                    "title": f"🚀 Deployment Status - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 4, "w": 24, "x": 0, "y": 10},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 🚀 Deployment Status
-
-{get_deployment_status_content(repo_info, metrics)}
-"""
-                    }
-                },
-                
-                # ROW 3: Detailed Analysis (2 panels side by side)
-                # Panel 5: Security Vulnerabilities Details
-                {
-                    "id": 5,
-                    "title": f"🔍 Security Vulnerabilities - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 14},
-                    "options": {
-                        "mode": "markdown",
-                        "content": get_detailed_vulnerability_list_for_dashboard(metrics)
-                    }
-                },
-                # Panel 6: Large Files with Project-Specific Recommendations
-                {
-                    "id": 6,
-                    "title": f"📁 Large Files & Optimization - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 14},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 📁 Large Files Found - {repo_name}
-
-{get_large_files_list_for_dashboard(metrics)}
-
----
-
-## 🎯 Project-Specific Optimization Recommendations
-
-{get_project_specific_recommendations(repo_name, get_large_files_details_for_recommendations())}
-
----
-
-## 📊 File Analysis Summary
-- **Total Large Files:** {metrics['quality']['large_files']} files > 1MB
-- **Priority:** {'✅ No optimization needed' if metrics['quality']['large_files'] == 0 else '🟡 LOW' if metrics['quality']['large_files'] < 10 else '🔴 HIGH'} - Performance optimization {'not needed' if metrics['quality']['large_files'] == 0 else 'recommended'}"""
-                    }
-                },
-                
-                # ROW 4: Code Quality and Test Results (2 panels side by side)
-                # Panel 7: Code Quality Metrics (from Prometheus)
-                {
-                    "id": 7,
-                    "title": f"🔧 Code Quality Metrics",
+                    "id": 13,
+                    "title": "Code Quality Metrics Trend",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 41},
                     "targets": [
                         {
                             "expr": f'sonarqube_maintainability_rating{{project="{repo_name}"}}',
-                            "legendFormat": "Maintainability Rating",
+                            "legendFormat": "Maintainability",
                             "refId": "A"
                         },
                         {
                             "expr": f'sonarqube_reliability_rating{{project="{repo_name}"}}',
-                            "legendFormat": "Reliability Rating",
+                            "legendFormat": "Reliability",
                             "refId": "B"
                         },
                         {
                             "expr": f'sonarqube_security_rating{{project="{repo_name}"}}',
-                            "legendFormat": "Security Rating",
+                            "legendFormat": "Security",
                             "refId": "C"
                         },
                         {
@@ -1064,65 +1388,150 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 8: Test Results (from Prometheus)
+                # ROW 5: Comprehensive Testing Results Section
+                # Panel 14: Test Results Summary (Clickable)
                 {
-                    "id": 8,
-                    "title": f"🧪 Test Results",
-                    "type": "timeseries",
+                    "id": 14,
+                    "title": "Test Results Summary (Clickable)",
+                    "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+                    "gridPos": {"h": 8, "w": 6, "x": 0, "y": 51},
                     "targets": [
                         {
                             "expr": f'tests_passed{{repository="{repo_name}"}}',
-                            "legendFormat": "Tests Passed",
+                            "legendFormat": "Passed",
                             "refId": "A"
                         },
                         {
                             "expr": f'tests_failed{{repository="{repo_name}"}}',
-                            "legendFormat": "Tests Failed",
+                            "legendFormat": "Failed",
                             "refId": "B"
                         },
                         {
                             "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
                             "legendFormat": "Coverage %",
                             "refId": "C"
-                        },
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 70},
+                                    {"color": "red", "value": 50}
+                                ]
+                            },
+                            "unit": "short"
+                        }
+                    }
+                },
+                # Panel 15: Avg Response Time
+                {
+                    "id": 15,
+                    "title": "Avg Response Time",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 6, "x": 6, "y": 51},
+                    "targets": [
                         {
-                            "expr": f'sonarqube_coverage{{project="{repo_name}"}}',
-                            "legendFormat": "SonarQube Coverage",
-                            "refId": "D"
+                            "expr": f'rate(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}[5m]) / rate(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}[5m])',
+                            "legendFormat": "Avg Response Time",
+                            "refId": "A"
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "palette-classic"},
-                            "custom": {
-                                "drawStyle": "bars",
-                                "lineInterpolation": "linear",
-                                "fillOpacity": 80
-                            },
-                            "unit": "short"
-                        },
-                        "overrides": [
-                            {
-                                "matcher": {"id": "byName", "options": "Coverage %"},
-                                "properties": [{"id": "unit", "value": "percent"}]
-                            },
-                            {
-                                "matcher": {"id": "byName", "options": "SonarQube Coverage"},
-                                "properties": [{"id": "unit", "value": "percent"}]
-                            }
-                        ]
+                            "unit": "s"
+                        }
                     }
                 },
-                # ROW 4.5: Log Panels from Loki
-                # Panel 8.5: Pipeline Logs (from Loki)
+                # Panel 16: Error Rate
                 {
-                    "id": 8.5,
-                    "title": f"📝 Pipeline Execution Logs",
+                    "id": 16,
+                    "title": "Error Rate",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 4, "x": 12, "y": 51},
+                    "targets": [
+                        {
+                            "expr": f'(sum(tests_failed{{repository="{repo_name}"}}) / (sum(tests_passed{{repository="{repo_name}"}}) + sum(tests_failed{{repository="{repo_name}"}}))) * 100',
+                            "legendFormat": "Error Rate %",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 5},
+                                    {"color": "red", "value": 10}
+                                ]
+                            },
+                            "unit": "percent"
+                        }
+                    }
+                },
+                # Panel 17: Success Rate
+                {
+                    "id": 17,
+                    "title": "Success Rate",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 4, "x": 16, "y": 51},
+                    "targets": [
+                        {
+                            "expr": f'(sum(tests_passed{{repository="{repo_name}"}}) / (sum(tests_passed{{repository="{repo_name}"}}) + sum(tests_failed{{repository="{repo_name}"}}))) * 100',
+                            "legendFormat": "Success Rate %",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "yellow", "value": 80},
+                                    {"color": "green", "value": 95}
+                                ]
+                            },
+                            "unit": "percent"
+                        }
+                    }
+                },
+                # Panel 18: Throughput (RPS)
+                {
+                    "id": 18,
+                    "title": "Throughput (RPS)",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 4, "x": 20, "y": 51},
+                    "targets": [
+                        {
+                            "expr": f'rate(external_repo_scan_total{{repository="{repo_name}"}}[5m])',
+                            "legendFormat": "Scans/sec",
+                            "refId": "A"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "unit": "reqps"
+                        }
+                    }
+                },
+                # Panel 19: Pipeline Execution Logs (from Loki)
+                {
+                    "id": 19,
+                    "title": "📝 Pipeline Execution Logs",
                     "type": "logs",
                     "datasource": {"type": "loki", "uid": "loki"},
-                    "gridPos": {"h": 10, "w": 12, "x": 0, "y": 32},
+                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 59},
                     "targets": [
                         {
                             "expr": f'{{job="pipeline",repository="{repo_name}"}} | json',
@@ -1137,163 +1546,6 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "enableLogDetails": True,
                         "dedupStrategy": "none",
                         "sortOrder": "Descending"
-                    }
-                },
-                # Panel 8.6: Error Logs (from Loki)
-                {
-                    "id": 8.6,
-                    "title": f"🚨 Error & Warning Logs",
-                    "type": "logs",
-                    "datasource": {"type": "loki", "uid": "loki"},
-                    "gridPos": {"h": 10, "w": 12, "x": 12, "y": 32},
-                    "targets": [
-                        {
-                            "expr": f'{{job="pipeline",repository="{repo_name}"}} |~ "(?i)(error|fail|exception|warning)" | json',
-                            "refId": "A"
-                        }
-                    ],
-                    "options": {
-                        "showTime": True,
-                        "showLabels": False,
-                        "wrapLogMessage": True,
-                        "prettifyLogMessage": True,
-                        "enableLogDetails": True,
-                        "sortOrder": "Descending"
-                    },
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "fixed", "fixedColor": "red"}
-                        }
-                    }
-                },
-                
-                # ROW 5: SonarQube Metrics Panel
-                # Panel 9: SonarQube Metrics Overview (from Prometheus)
-                {
-                    "id": 9,
-                    "title": f"🧠 SonarQube Metrics Overview",
-                    "type": "bargauge",
-                    "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 24, "x": 0, "y": 42},
-                    "targets": [
-                        {
-                            "expr": f'sonarqube_bugs{{project="{repo_name}"}}',
-                            "legendFormat": "Bugs",
-                            "refId": "A"
-                        },
-                        {
-                            "expr": f'sonarqube_vulnerabilities{{project="{repo_name}"}}',
-                            "legendFormat": "Vulnerabilities",
-                            "refId": "B"
-                        },
-                        {
-                            "expr": f'sonarqube_code_smells{{project="{repo_name}"}}',
-                            "legendFormat": "Code Smells",
-                            "refId": "C"
-                        },
-                        {
-                            "expr": f'sonarqube_security_hotspots{{project="{repo_name}"}}',
-                            "legendFormat": "Security Hotspots",
-                            "refId": "D"
-                        },
-                        {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}',
-                            "legendFormat": "Blocker Issues",
-                            "refId": "E"
-                        },
-                        {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}',
-                            "legendFormat": "Critical Issues",
-                            "refId": "F"
-                        }
-                    ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "steps": [
-                                    {"color": "green", "value": 0},
-                                    {"color": "yellow", "value": 5},
-                                    {"color": "orange", "value": 10},
-                                    {"color": "red", "value": 20}
-                                ]
-                            },
-                            "unit": "short",
-                            "custom": {
-                                "displayMode": "gradient",
-                                "orientation": "horizontal"
-                            }
-                        }
-                    },
-                    "options": {
-                        "displayMode": "gradient",
-                        "orientation": "horizontal",
-                        "showUnfilled": True
-                    }
-                },
-                # Panel 9.5: SonarQube Detailed Text Panel
-                {
-                    "id": 9.5,
-                    "title": f"🧠 SonarQube Code Quality Details - {repo_name}",
-                    "type": "text",
-                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 50},
-                    "options": {
-                        "mode": "markdown",
-                        "content": f"""## 🧠 SonarQube Code Quality Analysis - {repo_name}
-
-### 📊 Issue Summary
-
-| **Metric** | **Count** | **Status** |
-|------------|-----------|------------|
-| TODO/FIXME Comments | {metrics['quality']['todo_comments']} | {'✅ Clean' if metrics['quality']['todo_comments'] == 0 else '⚠️ Needs Review'} |
-| Debug Statements | {metrics['quality']['debug_statements']} | {'✅ Clean' if metrics['quality']['debug_statements'] == 0 else '⚠️ Remove Before Production'} |
-| Large Files (>1MB) | {metrics['quality']['large_files']} | {'✅ Optimized' if metrics['quality']['large_files'] == 0 else '⚠️ Consider Optimization'} |
-| Quality Score | {metrics['quality']['quality_score']}/100 | {'🟢 Excellent' if metrics['quality']['quality_score'] >= 90 else '🟡 Good' if metrics['quality']['quality_score'] >= 70 else '🔴 Needs Improvement'} |
-
----
-
-### 🔍 Detailed Analysis
-
-**Code Quality Breakdown:**
-- **TODO/FIXME Comments:** {metrics['quality']['todo_comments']} items found
-  - {'✅ No technical debt markers found' if metrics['quality']['todo_comments'] == 0 else f'⚠️ {metrics["quality"]["todo_comments"]} items need to be addressed or converted to proper issues'}
-
-- **Debug Statements:** {metrics['quality']['debug_statements']} statements found
-  - {'✅ No debug code detected' if metrics['quality']['debug_statements'] == 0 else f'⚠️ {metrics["quality"]["debug_statements"]} debug statements should be removed before production'}
-
-- **Large Files:** {metrics['quality']['large_files']} files > 1MB
-  - {'✅ All files are optimally sized' if metrics['quality']['large_files'] == 0 else f'⚠️ {metrics["quality"]["large_files"]} large files may impact performance'}
-
----
-
-### 🎯 Quality Score Calculation
-
-**Current Score:** {metrics['quality']['quality_score']}/100
-
-**Score Breakdown:**
-- Base Score: 100
-- TODO/FIXME Penalty: -{metrics['quality']['todo_comments'] * 2} points
-- Debug Statements Penalty: -{metrics['quality']['debug_statements'] * 1} points  
-- Large Files Penalty: -{metrics['quality']['large_files'] * 5} points
-
-**Grade:** {'🟢 A (Excellent)' if metrics['quality']['quality_score'] >= 90 else '🟡 B (Good)' if metrics['quality']['quality_score'] >= 80 else '🟠 C (Fair)' if metrics['quality']['quality_score'] >= 70 else '🔴 D (Needs Improvement)'}
-
----
-
-### 📋 Recommendations
-
-{get_sonarqube_recommendations(metrics)}
-
----
-
-### 🔗 SonarQube Dashboard
-
-**Access SonarQube:** [http://213.109.162.134:30100/dashboard?id={repo_name}](http://213.109.162.134:30100/dashboard?id={repo_name})
-
----
-
-**Last Analysis:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
-"""
                     }
                 }
             ]
