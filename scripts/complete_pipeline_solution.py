@@ -168,12 +168,26 @@ def extract_real_metrics_from_pipeline():
                     with open(test_file, 'r') as f:
                         test_data = json.load(f)
                     
-                    # Parse JSON test results
-                    if 'tests' in test_data:
-                        tests = test_data['tests']
-                        metrics['tests']['passed'] = tests.get('unit_tests', {}).get('passed', 0)
-                        metrics['tests']['failed'] = tests.get('unit_tests', {}).get('failed', 0)
-                        metrics['tests']['coverage'] = tests.get('coverage', 0.0)
+                    # Parse JSON test results - handle different structures
+                    if isinstance(test_data, dict):
+                        if 'tests' in test_data:
+                            tests = test_data['tests']
+                            # Check if tests is a dict before using .get()
+                            if isinstance(tests, dict):
+                                # Try unit_tests nested structure
+                                if 'unit_tests' in tests and isinstance(tests['unit_tests'], dict):
+                                    metrics['tests']['passed'] = tests['unit_tests'].get('passed', 0)
+                                    metrics['tests']['failed'] = tests['unit_tests'].get('failed', 0)
+                                # Try direct structure
+                                else:
+                                    metrics['tests']['passed'] = tests.get('passed', 0)
+                                    metrics['tests']['failed'] = tests.get('failed', 0)
+                                metrics['tests']['coverage'] = tests.get('coverage', test_data.get('coverage', 0.0))
+                        # Try direct structure at root level
+                        else:
+                            metrics['tests']['passed'] = test_data.get('passed', test_data.get('tests_passed', 0))
+                            metrics['tests']['failed'] = test_data.get('failed', test_data.get('tests_failed', 0))
+                            metrics['tests']['coverage'] = test_data.get('coverage', test_data.get('coverage_percent', 0.0))
                 else:
                     with open(test_file, 'r') as f:
                         content = f.read()
@@ -902,7 +916,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "color": {"mode": "fixed", "fixedColor": "blue"},
                             "unit": "short",
                             "min": 0,
-                            "max": null
+                            "max": None
                         }
                     },
                     "options": {
