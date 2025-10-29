@@ -828,6 +828,26 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     },
                     "transparent": True
                 },
+                # DEBUG Panel: Available Repository Metrics
+                {
+                    "id": 99,
+                    "title": "🔍 Debug: Available Repositories",
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 6, "w": 24, "x": 0, "y": 2},
+                    "targets": [
+                        {
+                            "expr": f'group(pipeline_runs_total) by (repository)',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "A"
+                        }
+                    ],
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": []
+                    }
+                },
                 # ROW 1: Pipeline Status Section - 6 small stat panels
                 # Panel 1: Pipeline Status (Table showing Success)
                 {
@@ -835,7 +855,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Pipeline Status",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 0, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 0, "y": 8},
                     "targets": [
                         {
                             "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="success"}}) or sum(external_repo_scan_total{{repository="{repo_name}",status="completed"}}) or vector(1)',
@@ -868,10 +888,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Build Number",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 4, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 4, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}}) or pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}} or sum(pipeline_runs_total{{job=~"pipeline-metrics|external-repo-scan-.*",repository="{repo_name}",status="total"}}) or sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or 157999',
+                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="total"}} or pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}}',
                             "legendFormat": "Build Number",
                             "refId": "A",
                             "instant": True
@@ -895,10 +915,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Build Duration",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 8, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 8, "y": 8},
                     "targets": [
                         {
-                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{job="pipeline-metrics",repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{job="pipeline-metrics",repository="{repo_name}"}})) or (sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or 300',
+                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or (external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}) or 300',
                             "legendFormat": "Duration",
                             "refId": "A",
                             "instant": True
@@ -922,10 +942,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Quality Score",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 12, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 12, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(code_quality_score{{job="pipeline-metrics",repository="{repo_name}"}}) or code_quality_score{{job="pipeline-metrics",repository="{repo_name}"}} or max(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_score{{repository="{repo_name}"}}) or 14',
+                            "expr": f'code_quality_score{{repository="{repo_name}"}} or max(code_quality_score{{repository="{repo_name}"}})',
                             "legendFormat": "Quality Score",
                             "refId": "A",
                             "instant": True
@@ -949,10 +969,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Test Coverage",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 16, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 16, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or tests_coverage_percentage{{job="pipeline-metrics",repository="{repo_name}"}} or max(tests_coverage_percentage{{repository="{repo_name}"}}) or max(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or 0',
+                            "expr": f'tests_coverage_percentage{{repository="{repo_name}"}} or tests_coverage_percent{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
                             "legendFormat": "Coverage",
                             "refId": "A",
                             "instant": True
@@ -976,10 +996,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Security Vulnerabilities...",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 4, "x": 20, "y": 2},
+                    "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(security_vulnerabilities_total{{job="pipeline-metrics",repository="{repo_name}"}}) or security_vulnerabilities_total{{job="pipeline-metrics",repository="{repo_name}"}} or max(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
+                            "expr": f'security_vulnerabilities_total{{repository="{repo_name}"}} or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
@@ -1002,7 +1022,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "id": 7,
                     "title": "",
                     "type": "text",
-                    "gridPos": {"h": 2, "w": 24, "x": 0, "y": 8},
+                    "gridPos": {"h": 2, "w": 24, "x": 0, "y": 14},
                     "options": {
                         "mode": "markdown",
                         "content": "## SonarQube Code Quality Metrics"
