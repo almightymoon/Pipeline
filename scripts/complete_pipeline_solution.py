@@ -882,7 +882,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "sortBy": []
                     }
                 },
-                # Panel 2: Build Number (Stat: "157 999")
+                # Panel 2: Build Number (Simplified - Single Value)
                 {
                     "id": 2,
                     "title": "Build Number",
@@ -891,8 +891,8 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 8},
                     "targets": [
                         {
-                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="total"}} or pipeline_runs_total{{job="pipeline-metrics",repository="{repo_name}",status="total"}}',
-                            "legendFormat": "Build Number",
+                            "expr": f'max(pipeline_runs_total{{repository="{repo_name}",status="total"}})',
+                            "legendFormat": "Build #",
                             "refId": "A",
                             "instant": True
                         }
@@ -900,13 +900,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "fixed", "fixedColor": "blue"},
-                            "unit": "short"
+                            "unit": "short",
+                            "min": 0,
+                            "max": null
                         }
                     },
                     "options": {
                         "graphMode": "none",
                         "colorMode": "value",
-                        "orientation": "auto"
+                        "orientation": "auto",
+                        "textMode": "value",
+                        "textSize": {}
                     }
                 },
                 # Panel 3: Build Duration (Stat: "5 mins 5 mins" with chart)
@@ -918,7 +922,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 8},
                     "targets": [
                         {
-                            "expr": f'(sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})) or (external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}) or 300',
+                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}',
                             "legendFormat": "Duration",
                             "refId": "A",
                             "instant": True
@@ -936,7 +940,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "orientation": "auto"
                     }
                 },
-                # Panel 4: Quality Score (Stat: "14" with chart)
+                # Panel 4: Quality Score (Simplified - Single Value with Threshold Colors)
                 {
                     "id": 4,
                     "title": "Quality Score",
@@ -945,22 +949,35 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 8},
                     "targets": [
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}} or max(code_quality_score{{repository="{repo_name}"}})',
-                            "legendFormat": "Quality Score",
+                            "expr": f'max(code_quality_score{{repository="{repo_name}"}})',
+                            "legendFormat": "Score",
                             "refId": "A",
                             "instant": True
                         }
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "color": {"mode": "fixed", "fixedColor": "green"},
-                            "unit": "short"
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "orange", "value": 50},
+                                    {"color": "yellow", "value": 70},
+                                    {"color": "green", "value": 80}
+                                ]
+                            },
+                            "unit": "short",
+                            "min": 0,
+                            "max": 100
                         }
                     },
                     "options": {
-                        "graphMode": "area",
-                        "colorMode": "value",
-                        "orientation": "auto"
+                        "graphMode": "none",
+                        "colorMode": "background",
+                        "orientation": "auto",
+                        "textMode": "value",
+                        "textSize": {}
                     }
                 },
                 # Panel 5: Test Coverage (Stat: "0%" with chart)
@@ -972,9 +989,21 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 8},
                     "targets": [
                         {
-                            "expr": f'tests_coverage_percentage{{repository="{repo_name}"}} or tests_coverage_percent{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
-                            "legendFormat": "Coverage",
+                            "expr": f'tests_coverage_percentage{{repository="{repo_name}"}}',
+                            "legendFormat": "Coverage %",
                             "refId": "A",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
+                            "legendFormat": "Coverage % (alt)",
+                            "refId": "B",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'sonarqube_coverage{{project="{repo_name}"}}',
+                            "legendFormat": "SonarQube Coverage",
+                            "refId": "C",
                             "instant": True
                         }
                     ],
@@ -999,9 +1028,21 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
                     "targets": [
                         {
-                            "expr": f'security_vulnerabilities_total{{repository="{repo_name}"}} or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}}) or 0',
+                            "expr": f'security_vulnerabilities_total{{repository="{repo_name}"}}',
                             "legendFormat": "Total",
                             "refId": "A",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}})',
+                            "legendFormat": "Total (from found)",
+                            "refId": "B",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'sum(security_vulnerabilities_found{{repository="{repo_name}"}})',
+                            "legendFormat": "Total (all)",
+                            "refId": "C",
                             "instant": True
                         }
                     ],
