@@ -728,6 +728,9 @@ def push_metrics_to_prometheus(repo_name, metrics):
     try:
         # Use PROMETHEUS_PUSHGATEWAY_URL from environment (port 30091), fallback to default
         PROMETHEUS_URL = os.environ.get('PROMETHEUS_PUSHGATEWAY_URL', 'http://213.109.162.134:30091')
+        # Normalize: ensure scheme present
+        if PROMETHEUS_URL and not PROMETHEUS_URL.startswith(('http://', 'https://')):
+            PROMETHEUS_URL = f"http://{PROMETHEUS_URL}"
         
         # Prepare metrics in Prometheus format
         prometheus_metrics = []
@@ -860,11 +863,14 @@ def create_dashboard_with_real_data(repo_info, metrics):
     if 'refresh' not in dashboard_json['dashboard']:
         dashboard_json['dashboard']['refresh'] = "30s"
     
-    # Remove folderId to avoid "folder not found" error - will use default General folder
-    if 'folderId' in dashboard_json.get('dashboard', {}):
-        del dashboard_json['dashboard']['folderId']
-    if 'folderId' in dashboard_json:
-        del dashboard_json['folderId']
+    # Force use of General folder and remove folder keys that cause 400 folder errors
+    for key in ('folderId', 'folderUid'):
+        if key in dashboard_json.get('dashboard', {}):
+            del dashboard_json['dashboard'][key]
+        if key in dashboard_json:
+            del dashboard_json[key]
+    # Explicitly set General folder
+    dashboard_json['folderId'] = 0
     
     # Set overwrite flag
     dashboard_json['overwrite'] = True
