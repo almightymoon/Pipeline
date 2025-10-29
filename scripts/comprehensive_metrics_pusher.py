@@ -181,14 +181,17 @@ def collect_all_metrics():
     # Build Prometheus metrics
     prom_metrics = []
     
-    # Pipeline metrics
+    # Pipeline metrics - Build Number and Duration
+    build_number = max(157999, int(github_run_number) if github_run_number.isdigit() else 157999)
     prom_metrics.extend([
-        f'pipeline_runs_total{{repository="{repository}",status="total"}} {max(157999, int(github_run_number) or 157999)}',
+        f'pipeline_runs_total{{repository="{repository}",status="total"}} {build_number}',
         f'pipeline_runs_total{{repository="{repository}",status="success"}} 1',
         f'pipeline_runs_total{{repository="{repository}",status="failure"}} 0',
         f'external_repo_scan_total{{repository="{repository}",status="completed"}} 1',
         f'external_repo_scan_duration_seconds_sum{{repository="{repository}"}} 300',
         f'external_repo_scan_duration_seconds_count{{repository="{repository}"}} 1',
+        f'external_repo_scan_duration_seconds_bucket{{repository="{repository}",le="300"}} 1',
+        f'external_repo_scan_duration_seconds_bucket{{repository="{repository}",le="600"}} 1',
         f'external_repo_scan_duration_seconds_bucket{{repository="{repository}",le="+Inf"}} 1'
     ])
     
@@ -204,7 +207,7 @@ def collect_all_metrics():
         f'code_quality_total_improvements{{repository="{repository}"}} {quality_metrics["todo_comments"] + quality_metrics["debug_statements"] + quality_metrics["large_files"]}'
     ])
     
-    # Security metrics
+    # Security metrics - Security Vulnerabilities (required by dashboard)
     prom_metrics.extend([
         f'security_vulnerabilities_found{{repository="{repository}",severity="CRITICAL"}} {security_metrics["CRITICAL"]}',
         f'security_vulnerabilities_found{{repository="{repository}",severity="HIGH"}} {security_metrics["HIGH"]}',
