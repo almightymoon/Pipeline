@@ -838,7 +838,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 0, "y": 2},
                     "targets": [
                         {
-                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="success"}} or external_repo_scan_total{{repository="{repo_name}",status="completed"}} or vector(1)',
+                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="success"}}) or sum(external_repo_scan_total{{repository="{repo_name}",status="completed"}}) or vector(1)',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -871,7 +871,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 2},
                     "targets": [
                         {
-                            "expr": f'pipeline_runs_total{{repository="{repo_name}",status="total"}} or external_repo_scan_total{{repository="{repo_name}"}} or 157999',
+                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="total"}}) or sum(external_repo_scan_total{{repository="{repo_name}"}}) or 157999',
                             "legendFormat": "Build Number",
                             "refId": "A"
                         }
@@ -897,7 +897,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 2},
                     "targets": [
                         {
-                            "expr": f'external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}} or external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}} * 300 or 300',
+                            "expr": f'sum(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}}) / sum(external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}) or sum(external_repo_scan_duration_seconds_bucket{{repository="{repo_name}",le="+Inf"}}) * 300 or 300',
                             "legendFormat": "Duration",
                             "refId": "A"
                         }
@@ -923,7 +923,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 2},
                     "targets": [
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 14',
+                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}}) or 14',
                             "legendFormat": "Quality Score",
                             "refId": "A"
                         }
@@ -949,7 +949,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 2},
                     "targets": [
                         {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
                             "legendFormat": "Coverage",
                             "refId": "A"
                         }
@@ -1014,27 +1014,27 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 0, "y": 10},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}) or 0',
                             "legendFormat": "BLOCKER",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 0',
                             "legendFormat": "MAJOR",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 0',
                             "legendFormat": "MINOR",
                             "refId": "D"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}) or 0',
                             "legendFormat": "INFO",
                             "refId": "E"
                         }
@@ -1099,6 +1099,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         {
                             "expr": f'sonarqube_issues_by_severity{{project="{repo_name}"}} or sonarqube_bugs{{project="{repo_name}"}} or sonarqube_vulnerabilities{{project="{repo_name}"}} or sonarqube_code_smells{{project="{repo_name}"}}',
                             "format": "table",
+                            "instant": True,
                             "refId": "A"
                         }
                     ],
@@ -1141,27 +1142,27 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 16, "y": 10},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="BLOCKER"}}) or 0',
                             "legendFormat": "BLOCKER",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 0',
                             "legendFormat": "CRITICAL",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 0',
                             "legendFormat": "MAJOR",
                             "refId": "C"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 0',
                             "legendFormat": "MINOR",
                             "refId": "D"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}} or 0',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="INFO"}}) or 0',
                             "legendFormat": "INFO",
                             "refId": "E"
                         }
@@ -1200,7 +1201,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 0, "y": 20},
                     "targets": [
                         {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
                             "legendFormat": "Coverage",
                             "refId": "A"
                         }
@@ -1240,7 +1241,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 6, "y": 20},
                     "targets": [
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 14',
+                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}}) or 14',
                             "legendFormat": "Quality Score",
                             "refId": "A"
                         }
@@ -1280,8 +1281,9 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 12, "x": 12, "y": 20},
                     "targets": [
                         {
-                            "expr": f'quality_todo_comments{{repository="{repo_name}"}} or 0',
+                            "expr": f'quality_todo_comments{{repository="{repo_name}"}} or code_quality_todo_comments{{repository="{repo_name}"}} or sum(quality_todo_comments{{repository="{repo_name}"}}) or 0',
                             "format": "table",
+                            "instant": True,
                             "refId": "A"
                         }
                     ],
@@ -1392,6 +1394,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         {
                             "expr": f'security_vulnerabilities_found{{repository="{repo_name}"}} or security_vulnerabilities_total{{repository="{repo_name}"}}',
                             "format": "table",
+                            "instant": True,
                             "refId": "A"
                         }
                     ],
@@ -1429,17 +1432,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 12, "x": 0, "y": 40},
                     "targets": [
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}} or sonarqube_bugs{{project="{repo_name}"}} or 4',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="CRITICAL"}}) or sum(sonarqube_bugs{{project="{repo_name}"}}) or 4',
                             "legendFormat": "CRITICAL",
                             "refId": "A"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}} or sonarqube_code_smells{{project="{repo_name}"}} or 14',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MAJOR"}}) or sum(sonarqube_code_smells{{project="{repo_name}"}}) or 14',
                             "legendFormat": "MAJOR",
                             "refId": "B"
                         },
                         {
-                            "expr": f'sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}} or 2',
+                            "expr": f'sum(sonarqube_issues_by_severity{{project="{repo_name}",severity="MINOR"}}) or 2',
                             "legendFormat": "MINOR",
                             "refId": "C"
                         }
@@ -1490,12 +1493,12 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 12, "x": 12, "y": 40},
                     "targets": [
                         {
-                            "expr": f'code_quality_score{{repository="{repo_name}"}} or 14',
+                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or 14',
                             "legendFormat": "Quality Score",
                             "refId": "A"
                         },
                         {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}} or tests_coverage_percentage{{repository="{repo_name}"}} or sonarqube_coverage{{project="{repo_name}"}} or 0',
+                            "expr": f'sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}}) or sum(sonarqube_coverage{{project="{repo_name}"}}) or 0',
                             "legendFormat": "Test Coverage (right y-axis)",
                             "refId": "B"
                         }
@@ -1541,17 +1544,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 24, "x": 0, "y": 50},
                     "targets": [
                         {
-                            "expr": f'quality_todo_comments{{repository="{repo_name}"}} or 0',
+                            "expr": f'sum(quality_todo_comments{{repository="{repo_name}"}}) or sum(code_quality_todo_comments{{repository="{repo_name}"}}) or 0',
                             "legendFormat": "TODO Comments",
                             "refId": "A"
                         },
                         {
-                            "expr": f'quality_debug_statements{{repository="{repo_name}"}} or 66',
+                            "expr": f'sum(quality_debug_statements{{repository="{repo_name}"}}) or sum(code_quality_debug_statements{{repository="{repo_name}"}}) or 66',
                             "legendFormat": "Debug Statements",
                             "refId": "B"
                         },
                         {
-                            "expr": f'quality_large_files{{repository="{repo_name}"}} or 4',
+                            "expr": f'sum(quality_large_files{{repository="{repo_name}"}}) or sum(code_quality_large_files{{repository="{repo_name}"}}) or 4',
                             "legendFormat": "Large Files",
                             "refId": "C"
                         }
