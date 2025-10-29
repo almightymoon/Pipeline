@@ -75,6 +75,13 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
       continue-on-error: true
     
+    - name: Record Workflow Start Time
+      if: steps.read_config.outputs.has_repos == 'true'
+      run: |
+        # Record start time for build duration calculation
+        echo $(date -u +%Y-%m-%dT%H:%M:%SZ) > /tmp/workflow_start_time.txt
+        echo "⏱️  Workflow start time recorded: $(cat /tmp/workflow_start_time.txt)"
+    
     - name: Repository Information
       if: steps.read_config.outputs.has_repos == 'true'
       run: |
