@@ -1309,16 +1309,19 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "SonarQube Issues (Clickable)",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 6, "w": 12, "x": 12, "y": 20},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sonarqube_bugs{{project="{repo_name}"}} or sonarqube_vulnerabilities{{project="{repo_name}"}} or sonarqube_code_smells{{project="{repo_name}"}} or sonarqube_issues_by_severity{{project="{repo_name}"}}',
+                            "expr": f'sonarqube_issue_info{{project="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
                         }
                     ],
-                    "fieldConfig": {"defaults": {"custom": {"align": "auto", "displayMode": "auto"}}},
+                    "fieldConfig": {
+                        "defaults": {"custom": {"align": "auto", "displayMode": "auto"}},
+                        "overrides": []
+                    },
                     "options": {"showHeader": True, "sortBy": []}
                 },
                 # SECTION HEADER: Security & Vulnerability Analysis

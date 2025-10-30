@@ -288,6 +288,50 @@ def get_sonarqube_metrics():
     
     return metrics
 
+def fetch_sonarqube_issues(project_key: str) -> list:
+    """Fetch open issues from SonarQube and return metric lines per issue.
+    Each metric is: sonarqube_issue_info{project, key, type, severity, file, line} 1
+    """
+    sonar_url = os.environ.get('SONARQUBE_URL', 'http://213.109.162.134:30100')
+    sonar_token = os.environ.get('SONARQUBE_TOKEN')
+    metrics = []
+    if not sonar_token:
+        return metrics
+    try:
+        params = {
+            'componentKeys': project_key,
+            'resolved': 'false',
+            'p': 1,
+            'ps': 100
+        }
+        while True:
+            resp = requests.get(f"{sonar_url}/api/issues/search", params=params, auth=(sonar_token, ''), timeout=15)
+            if resp.status_code != 200:
+                break
+            data = resp.json()
+            for issue in data.get('issues', []):
+                key = issue.get('key', '')
+                itype = issue.get('type', '')
+                sev = issue.get('severity', '')
+                comp = issue.get('component', '')
+                text_range = issue.get('textRange') or {}
+                line = str(text_range.get('startLine', ''))
+                # trim project prefix from component to get relative path
+                file_path = comp.split(':', 1)[-1]
+                label = f'sonarqube_issue_info{{project="{project_key}",key="{key}",type="{itype}",severity="{sev}",file="{file_path}",line="{line}"}} 1'
+                metrics.append(label)
+            # paging
+            paging = data.get('paging', {})
+            page_index = paging.get('pageIndex', params['p'])
+            page_size = paging.get('pageSize', params['ps'])
+            total = paging.get('total', 0)
+            if page_index * page_size >= total:
+                break
+            params['p'] = page_index + 1
+    except Exception as e:
+        print(f"⚠️  Error fetching SonarQube issues: {e}")
+    return metrics
+
 def calculate_build_duration():
     """Calculate actual build duration from workflow start time"""
     duration_seconds = 300  # Default fallback
@@ -421,6 +465,11 @@ def collect_all_metrics():
         f'sonarqube_vulnerabilities{{project="{repository}"}} {sonarqube_metrics.get("vulnerabilities", 0)}',
         f'sonarqube_code_smells{{project="{repository}"}} {sonarqube_metrics.get("code_smells", 0)}'
     ])
+
+    # SonarQube per-issue metrics for clickable table
+    issue_metrics = fetch_sonarqube_issues(repository)
+    if issue_metrics:
+        prom_metrics.extend(issue_metrics)
     
     # SonarQube issues by severity
     issues_by_severity = sonarqube_metrics.get('issues_by_severity', {})
@@ -439,6 +488,10 @@ def collect_all_metrics():
         f'tests_passed{{repository="{repository}"}} 0',
         f'tests_failed{{repository="{repository}"}} 0'
     ])
+
+    # Fetch and push per-issue metrics
+    # issue_metrics = fetch_sonarqube_issues(repository) # This line is now redundant as it's integrated above
+    # prom_metrics.extend(issue_metrics) # This line is now redundant as it's integrated above
     
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
