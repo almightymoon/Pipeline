@@ -796,6 +796,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
     repo_branch = repo_info['branch']
     scan_type = repo_info['scan_type']
     
+    # Ensure current-run instance label is defined for single-run filtering
+    github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
+    instance_run = f"{repo_name}-run-{github_run_id}"
+    
     # Fetch SonarQube metrics
     sonar_metrics = fetch_sonarqube_metrics(repo_name)
     
