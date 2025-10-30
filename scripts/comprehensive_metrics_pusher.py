@@ -81,6 +81,9 @@ def read_quality_results():
 if __name__ == "__main__":
     main()
 
+if __name__ == "__main__":
+    main()
+
 def read_trivy_results():
     """Read security metrics from Trivy results"""
     metrics = {
