@@ -876,7 +876,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 0, "y": 8},
                     "targets": [
                         {
-                            "expr": f'pipeline_run_status{{job="pipeline-metrics",instance="{instance_run}"}}',
+                            "expr": f'pipeline_run_status{{job="pipeline-metrics",instance="{instance_run}"}} or pipeline_run_status{{repository="{repo_name}"}} or vector(0)',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -884,20 +884,14 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "custom": {
-                                "displayMode": "color-background",
-                                "align": "center"
-                            },
+                            "custom": {"displayMode": "color-background", "align": "center"},
                             "mappings": [
                                 {"type": "value", "value": 1, "text": "Success", "color": "green"},
                                 {"type": "value", "value": 0, "text": "Failed", "color": "red"}
                             ]
                         }
                     },
-                    "options": {
-                        "showHeader": True,
-                        "sortBy": []
-                    }
+                    "options": {"showHeader": True, "sortBy": []}
                 },
                 # Panel 2: Build Number (Simplified - Single Value)
                 {
@@ -939,7 +933,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 8},
                     "targets": [
                         {
-                            "expr": f'(external_repo_scan_duration_seconds_sum{{job="pipeline-metrics",instance="{instance_run}"}} / external_repo_scan_duration_seconds_count{{job="pipeline-metrics",instance="{instance_run}"}}) / 60',
+                            "expr": f'((external_repo_scan_duration_seconds_sum{{job="pipeline-metrics",instance="{instance_run}"}} / external_repo_scan_duration_seconds_count{{job="pipeline-metrics",instance="{instance_run}"}}) / 60) or ((external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}}) / 60) or vector(0)',
                             "legendFormat": "Duration (min)",
                             "refId": "A",
                             "instant": True
@@ -948,27 +942,18 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "mode": "absolute",
-                                "steps": [
-                                    {"color": "green", "value": None},
-                                    {"color": "yellow", "value": 5},
-                                    {"color": "orange", "value": 10},
-                                    {"color": "red", "value": 15}
-                                ]
-                            },
+                            "thresholds": {"mode": "absolute", "steps": [
+                                {"color": "green", "value": None},
+                                {"color": "yellow", "value": 5},
+                                {"color": "orange", "value": 10},
+                                {"color": "red", "value": 15}
+                            ]},
                             "unit": "m",
                             "min": 0,
                             "max": None
                         }
                     },
-                    "options": {
-                        "graphMode": "none",
-                        "colorMode": "background",
-                        "orientation": "auto",
-                        "textMode": "value",
-                        "textSize": {}
-                    }
+                    "options": {"graphMode": "none", "colorMode": "background", "orientation": "auto", "textMode": "value", "textSize": {}}
                 },
                 # Panel 4: Quality Score (Simplified - Single Value with Threshold Colors)
                 {
@@ -1018,24 +1003,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 8},
                     "targets": [
-                        {
-                            "expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",instance="{instance_run}"}}) or max(tests_coverage_percent{{job="pipeline-metrics",instance="{instance_run}"}}) or max(sonarqube_coverage{{project="{repo_name}"}})',
-                            "legendFormat": "Coverage %",
-                            "refId": "A",
-                            "instant": True
-                        }
+                        {"expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",instance="{instance_run}"}}) or max(tests_coverage_percent{{job="pipeline-metrics",instance="{instance_run}"}}) or max(sonarqube_coverage{{project="{repo_name}"}}) or vector(0)', "legendFormat": "Coverage %", "refId": "A", "instant": True}
                     ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "fixed", "fixedColor": "gray"},
-                            "unit": "percent"
-                        }
-                    },
-                    "options": {
-                        "graphMode": "area",
-                        "colorMode": "value",
-                        "orientation": "auto"
-                    }
+                    "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "gray"}, "unit": "percent"}},
+                    "options": {"graphMode": "area", "colorMode": "value", "orientation": "auto"}
                 },
                 # Panel 6: Security Vulnerabilities (Simplified - Single Value with Color Coding)
                 {
@@ -1045,38 +1016,16 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
                     "targets": [
-                        {
-                            "expr": f'max(security_vulnerabilities_total{{job="pipeline-metrics",instance="{instance_run}"}}) or sum(security_vulnerabilities_found{{job="pipeline-metrics",instance="{instance_run}",severity=~".+"}})',
-                            "legendFormat": "Total",
-                            "refId": "A",
-                            "instant": True
-                        }
+                        {"expr": f'max(security_vulnerabilities_total{{job="pipeline-metrics",instance="{instance_run}"}}) or sum(security_vulnerabilities_found{{job="pipeline-metrics",instance="{instance_run}",severity=~".+"}}) or max(security_vulnerabilities_total{{repository="{repo_name}"}}) or vector(0)', "legendFormat": "Total", "refId": "A", "instant": True}
                     ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "mode": "absolute",
-                                "steps": [
-                                    {"color": "green", "value": None},
-                                    {"color": "green", "value": 0},
-                                    {"color": "yellow", "value": 1},
-                                    {"color": "orange", "value": 10},
-                                    {"color": "red", "value": 50}
-                                ]
-                            },
-                            "unit": "short",
-                            "min": 0,
-                            "max": None
-                        }
-                    },
-                    "options": {
-                        "graphMode": "none",
-                        "colorMode": "background",
-                        "orientation": "auto",
-                        "textMode": "value",
-                        "textSize": {}
-                    }
+                    "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [
+                        {"color": "green", "value": None},
+                        {"color": "green", "value": 0},
+                        {"color": "yellow", "value": 1},
+                        {"color": "orange", "value": 10},
+                        {"color": "red", "value": 50}
+                    ]}, "unit": "short", "min": 0, "max": None}},
+                    "options": {"graphMode": "none", "colorMode": "background", "orientation": "auto", "textMode": "value", "textSize": {}}
                 },
                 # SECTION HEADER: SonarQube Code Quality Metrics
                 {
