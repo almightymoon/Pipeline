@@ -25,7 +25,7 @@ repositories:
     name: dockerized-hello-world-app
     branch: main 
     scan_type: full                 
-    
+      
   # - url: https://github.com/hamadkmehsud/qaicb
   #   name: qaicb
   #   branch: main  
