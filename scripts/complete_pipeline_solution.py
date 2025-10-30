@@ -1411,7 +1411,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         ]
                     }
                 },
-                # Panel 16: Vulnerability Breakdown (Clickable) Table
+                # Panel 16: Vulnerability Breakdown (Clickable)
                 {
                     "id": 16,
                     "title": "Vulnerability Breakdown (Clickable)",
@@ -1420,7 +1420,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'security_vulnerabilities_found{{repository="{repo_name}"}} or security_vulnerabilities_total{{repository="{repo_name}"}}',
+                            "expr": f'trivy_vulnerability_info{{project="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -1428,16 +1428,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "custom": {
-                                "align": "auto",
-                                "displayMode": "color-background"
-                            }
+                            "custom": {"align": "auto", "displayMode": "color-background"}
                         }
                     },
-                    "options": {
-                        "showHeader": True,
-                        "sortBy": []
-                    }
+                    "options": {"showHeader": True, "sortBy": []}
                 },
                 # SECTION HEADER: Trends & Historical Data
                 {

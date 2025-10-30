@@ -457,7 +457,12 @@ def collect_all_metrics():
         f'security_vulnerabilities_found{{repository="{repository}",severity="LOW"}} {security_metrics["LOW"]}',
         f'security_vulnerabilities_total{{repository="{repository}"}} {security_metrics["total"]}'
     ])
-    
+
+    # Trivy per-vulnerability info (plain English)
+    trivy_details = collect_trivy_vulnerability_details(repository)
+    if trivy_details:
+        prom_metrics.extend(trivy_details)
+
     # SonarQube metrics (use coverage calculated above which includes test file data)
     prom_metrics.extend([
         f'sonarqube_coverage{{project="{repository}"}} {coverage}',
@@ -654,4 +659,162 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def build_trivy_vulnerability_info_metrics(repository: str) -> list:
+    """Return per-vulnerability Prometheus metrics with readable labels.
+    security_vulnerability_info{repository, severity, id, pkg, installed, fixed, title} 1
+    """
+    metrics = []
+    paths = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+    for path in paths:
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+            if 'Results' not in data:
+                continue
+            for result in data['Results']:
+                vulns = result.get('Vulnerabilities') or []
+                for v in vulns:
+                    sev = (v.get('Severity') or '').upper()
+                    vid = v.get('VulnerabilityID', '')
+                    pkg = v.get('PkgName', '')
+                    inst = v.get('InstalledVersion', '')
+                    fix = v.get('FixedVersion', '') or v.get('PrimaryURL', '')
+                    title = v.get('Title', '') or v.get('Description', '')
+                    # sanitize quotes
+                    def esc(s: str) -> str:
+                        return str(s).replace('"', '\\"')
+                    metric = (
+                        f'security_vulnerability_info{{repository="{esc(repository)}",severity="{esc(sev)}",id="{esc(vid)}",'
+                        f'pkg="{esc(pkg)}",installed="{esc(inst)}",fixed="{esc(fix)}",title="{esc(title)}"}} 1'
+                    )
+                    metrics.append(metric)
+            break
+        except Exception as e:
+            print(f"⚠️  Error building vulnerability info from {path}: {e}")
+            continue
+    return metrics
+
+def collect_trivy_vuln_details(repository: str) -> list:
+    """Read Trivy results and emit per-vulnerability metrics with readable labels.
+    Metric: trivy_vuln_info{repository,id,package,installed,fixed,severity,title} 1
+    """
+    details = []
+    trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+    try:
+        for trivy_file in trivy_files:
+            if os.path.exists(trivy_file):
+                with open(trivy_file, 'r') as f:
+                    data = json.load(f)
+                if 'Results' in data:
+                    for result in data['Results']:
+                        for vuln in result.get('Vulnerabilities', []) or []:
+                            vid = (vuln.get('VulnerabilityID') or '').replace('"','\"')
+                            pkg = (vuln.get('PkgName') or '').replace('"','\"')
+                            installed = (vuln.get('InstalledVersion') or '').replace('"','\"')
+                            fixed = (vuln.get('FixedVersion') or '').replace('"','\"')
+                            severity = (vuln.get('Severity') or '').upper().replace('"','\"')
+                            title = (vuln.get('Title') or vuln.get('Description') or '').replace('"','\"')
+                            metric = (
+                                f'trivy_vuln_info{{repository="{repository}",id="{vid}",package="{pkg}",installed="{installed}",'
+                                f'fixed="{fixed}",severity="{severity}",title="{title}"}} 1'
+                            )
+                            details.append(metric)
+                break
+    except Exception as e:
+        print(f"⚠️  Error collecting Trivy vuln details: {e}")
+    return details
+
+def parse_trivy_vulnerabilities(repository: str) -> list:
+    """Parse trivy-results.json and emit per-issue metrics for human-readable dashboards.
+    Metric form: security_vulnerability_info{repository,id,severity,package,installed,title} 1
+    """
+    issue_metrics = []
+    trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+    try:
+        for trivy_file in trivy_files:
+            if os.path.exists(trivy_file):
+                with open(trivy_file, 'r') as f:
+                    data = json.load(f)
+                for result in data.get('Results', []):
+                    for vuln in result.get('Vulnerabilities', []) or []:
+                        vid = vuln.get('VulnerabilityID', '').replace('"', "'")
+                        sev = vuln.get('Severity', '')
+                        pkg = vuln.get('PkgName', '').replace('"', "'")
+                        installed = vuln.get('InstalledVersion', '').replace('"', "'")
+                        title = (vuln.get('Title') or vuln.get('Description') or 'Unknown').replace('"', "'")
+                        label = (
+                            f'security_vulnerability_info{{repository="{repository}",' 
+                            f'id="{vid}",severity="{sev}",package="{pkg}",installed="{installed}",title="{title}"}} 1'
+                        )
+                        issue_metrics.append(label)
+                break
+    except Exception as e:
+        print(f"⚠️  Error parsing per-issue vulnerabilities: {e}")
+    return issue_metrics
+
+def sanitize_label_value(value: str) -> str:
+    if value is None:
+        return ""
+    # Prometheus label values cannot contain newlines or quotes easily; sanitize
+    return str(value).replace('"', "'").replace('\n', ' ').replace('\r', ' ')[:200]
+
+def collect_trivy_issue_metrics() -> list:
+    """Create per-vulnerability metrics from Trivy results with human-readable labels."""
+    files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json']
+    metrics = []
+    for path in files:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                for result in data.get('Results', []):
+                    for vuln in result.get('Vulnerabilities', []) or []:
+                        vid = sanitize_label_value(vuln.get('VulnerabilityID', ''))
+                        pkg = sanitize_label_value(vuln.get('PkgName', ''))
+                        sev = sanitize_label_value(vuln.get('Severity', ''))
+                        title = sanitize_label_value(vuln.get('Title', ''))
+                        version = sanitize_label_value(vuln.get('InstalledVersion', ''))
+                        fixed = sanitize_label_value(vuln.get('FixedVersion', ''))
+                        metric = (
+                            f'trivy_vulnerability_info{{severity="{sev}",id="{vid}",package="{pkg}",version="{version}",fixed_version="{fixed}",title="{title}"}} 1'
+                        )
+                        metrics.append(metric)
+                break
+            except Exception as e:
+                print(f"⚠️  Error building per-vulnerability metrics from {path}: {e}")
+                continue
+    return metrics
+
+def collect_trivy_vulnerability_details(project_key: str) -> list:
+    """Return per-vulnerability metrics with readable labels from Trivy results.
+    Metric format:
+    trivy_vulnerability_info{project, severity, id, pkg, version, title} 1
+    """
+    metrics = []
+    trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json', '/tmp/scan-results/trivy-fs-results.json']
+    for path in trivy_files:
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+            for result in data.get('Results', []):
+                for vuln in result.get('Vulnerabilities', []) or []:
+                    vid = vuln.get('VulnerabilityID', 'UNKNOWN').replace('"', "'")
+                    pkg = vuln.get('PkgName', 'UNKNOWN').replace('"', "'")
+                    title = (vuln.get('Title') or vuln.get('Description') or 'No title').replace('"', "'")
+                    sev = vuln.get('Severity', 'UNKNOWN').upper()
+                    ver = vuln.get('InstalledVersion', 'UNKNOWN').replace('"', "'")
+                    metrics.append(
+                        f'trivy_vulnerability_info{{project="{project_key}",severity="{sev}",id="{vid}",pkg="{pkg}",version="{ver}",title="{title}"}} 1'
+                    )
+            if metrics:
+                break
+        except Exception as e:
+            print(f"⚠️  Error reading detailed Trivy vulnerabilities from {path}: {e}")
+            continue
+    return metrics
 

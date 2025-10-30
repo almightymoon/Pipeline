@@ -24,7 +24,7 @@ repositories:
   - url: https://github.com/almightymoon/dockerized-hello-world-app
     name: dockerized-hello-world-app
     branch: main 
-    scan_type: full         
+    scan_type: full          
 
   # - url: https://github.com/hamadkmehsud/qaicb
   #   name: qaicb
