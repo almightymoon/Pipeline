@@ -42,9 +42,9 @@ def create_real_data_dashboard():
         "quality": {
             "todo_comments": 0,
             "debug_statements": 0,
-            "large_files": 4,
-            "total_improvements": 4,
-            "quality_score": 80
+            "large_files": 0,  # Should come from actual scan results, not hardcoded
+            "total_improvements": 0,
+            "quality_score": 90
         },
         "tests": {
             "passed": 23,

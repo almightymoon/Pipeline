@@ -76,18 +76,14 @@ def get_repo_specific_metrics(repo_name):
             ]
         }
     elif 'neuropilot' in repo_name.lower():
+        # Don't hardcode large_files - should come from actual scan
         return {
             "pipeline_runs": {"total": 1, "successful": 1, "failed": 0},
             "security": {"critical": 0, "high": 0, "medium": 0, "low": 0, "total": 0},
-            "quality": {"todo_comments": 0, "debug_statements": 0, "large_files": 4, "total_improvements": 4, "quality_score": 80},
+            "quality": {"todo_comments": 0, "debug_statements": 0, "large_files": 0, "total_improvements": 0, "quality_score": 90},
             "tests": {"passed": 23, "failed": 0, "coverage": 85.2},
             "scan_info": {"files_scanned": 109, "repository_size": "166M", "pipeline_run": "#46", "scan_time": "2025-10-14 13:16:22 UTC"},
-            "large_files_list": [
-                {"name": "models/neural_network.pkl", "size": "45.2MB", "type": "ML Model"},
-                {"name": "data/training_dataset.h5", "size": "38.7MB", "type": "Dataset"},
-                {"name": "logs/debug_output.log", "size": "12.3MB", "type": "Log File"},
-                {"name": "cache/processed_data.npy", "size": "69.8MB", "type": "Cache File"}
-            ]
+            "large_files_list": []  # Will be populated from actual scan results
         }
     else:
         # Default metrics for unknown repositories

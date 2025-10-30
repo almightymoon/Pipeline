@@ -41,8 +41,8 @@ def create_neuropilot_dashboard():
         "quality": {
             "todo_comments": 0,      # No TODO/FIXME comments found ✅
             "debug_statements": 0,   # No debug statements found ✅
-            "large_files": 4,        # 4 large files found
-            "total_improvements": 4, # Total improvements suggested: 4
+            "large_files": 0,        # Should come from actual scan results, not hardcoded
+            "total_improvements": 0, # Will be calculated from actual scan
             "quality_score": 90      # High quality score
         },
         "tests": {"passed": 0, "failed": 0, "coverage": 0.0},
