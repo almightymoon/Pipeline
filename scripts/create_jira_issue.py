@@ -405,6 +405,12 @@ def get_quality_analysis():
                     count = int(large_match.group(1))
                     if count > 0:
                         analysis_lines.append(f"• {count} large files found (consider optimization)")
+                        # Also list their names (best-effort scan in repo)
+                        large_files_list = list_large_files()
+                        if large_files_list:
+                            analysis_lines.append("  Large file examples:")
+                            for path, size_str in large_files_list[:10]:
+                                analysis_lines.append(f"  • {path} ({size_str})")
                     else:
                         analysis_lines.append("• No large files found")
                 
@@ -423,6 +429,55 @@ def get_quality_analysis():
             
     except Exception as e:
         return "• Quality analysis error (check logs for details)"
+
+def list_large_files(min_bytes: int = 1_000_000) -> list:
+    """Find large files in the checked-out repository (best-effort).
+    Searches common locations: current directory and ./external-repo if present.
+    Returns list of tuples (relative_path, human_size) sorted by size desc.
+    """
+    roots = []
+    try:
+        roots.append(os.getcwd())
+    except Exception:
+        pass
+    # include external-repo if exists
+    if os.path.isdir('external-repo'):
+        roots.append(os.path.abspath('external-repo'))
+
+    seen = set()
+    results = []
+    ignore_dirs = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.idea', '.vscode'}
+    for root in roots:
+        for dirpath, dirnames, filenames in os.walk(root):
+            # prune ignored directories in-place
+            dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
+            for fname in filenames:
+                fpath = os.path.join(dirpath, fname)
+                try:
+                    if fpath in seen:
+                        continue
+                    size = os.path.getsize(fpath)
+                    if size >= min_bytes:
+                        seen.add(fpath)
+                        rel = os.path.relpath(fpath, root)
+                        results.append((rel if root.endswith('external-repo') else os.path.relpath(fpath, os.getcwd()), size))
+                except Exception:
+                    continue
+
+    # sort by size desc and map to human readable size
+    results.sort(key=lambda x: x[1], reverse=True)
+    return [(p, _format_size(s)) for p, s in results]
+
+def _format_size(num_bytes: int) -> str:
+    units = ['B', 'KB', 'MB', 'GB', 'TB']
+    size = float(num_bytes)
+    idx = 0
+    while size >= 1024 and idx < len(units) - 1:
+        size /= 1024.0
+        idx += 1
+    if idx == 0:
+        return f"{int(size)}{units[idx]}"
+    return f"{size:.2f}{units[idx]}"
 
 def get_priority_actions():
     """Get priority actions based on quality analysis"""
