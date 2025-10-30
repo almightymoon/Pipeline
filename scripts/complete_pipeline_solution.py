@@ -872,7 +872,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 0, "y": 8},
                     "targets": [
                         {
-                            "expr": f'sum(pipeline_runs_total{{repository="{repo_name}",status="success"}}) or sum(external_repo_scan_total{{repository="{repo_name}",status="completed"}}) or vector(1)',
+                            "expr": f'pipeline_run_status{{job="pipeline-metrics",instance="{instance_run}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -885,9 +885,8 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "align": "center"
                             },
                             "mappings": [
-                                {"type": "value", "value": "success", "text": "Success", "color": "green"},
-                                {"type": "value", "value": "completed", "text": "Success", "color": "green"},
-                                {"type": "value", "value": 1, "text": "Success", "color": "green"}
+                                {"type": "value", "value": 1, "text": "Success", "color": "green"},
+                                {"type": "value", "value": 0, "text": "Failed", "color": "red"}
                             ]
                         }
                     },
@@ -905,7 +904,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 4, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(pipeline_runs_total{{repository="{repo_name}",status="total"}})',
+                            "expr": f'max(pipeline_run_number{{job="pipeline-metrics",instance="{instance_run}"}}) or pipeline_run_number{{repository="{repo_name}"}}',
                             "legendFormat": "Build #",
                             "refId": "A",
                             "instant": True
@@ -936,8 +935,8 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 8, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(external_repo_scan_duration_seconds_sum{{repository="{repo_name}"}} / external_repo_scan_duration_seconds_count{{repository="{repo_name}"}})',
-                            "legendFormat": "Duration",
+                            "expr": f'(external_repo_scan_duration_seconds_sum{{job="pipeline-metrics",instance="{instance_run}"}} / external_repo_scan_duration_seconds_count{{job="pipeline-metrics",instance="{instance_run}"}}) / 60',
+                            "legendFormat": "Duration (min)",
                             "refId": "A",
                             "instant": True
                         }
@@ -949,9 +948,9 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "mode": "absolute",
                                 "steps": [
                                     {"color": "green", "value": None},
-                                    {"color": "yellow", "value": 300},
-                                    {"color": "orange", "value": 600},
-                                    {"color": "red", "value": 900}
+                                    {"color": "yellow", "value": 5},
+                                    {"color": "orange", "value": 10},
+                                    {"color": "red", "value": 15}
                                 ]
                             },
                             "unit": "m",
@@ -976,7 +975,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 12, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(code_quality_score{{repository="{repo_name}"}})',
+                            "expr": f'max(code_quality_score{{job="pipeline-metrics",instance="{instance_run}"}}) or max(code_quality_score{{repository="{repo_name}"}})',
                             "legendFormat": "Score",
                             "refId": "A",
                             "instant": True
@@ -1007,7 +1006,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "textSize": {}
                     }
                 },
-                # Panel 5: Test Coverage (Stat: "0%" with chart)
+                # Panel 5: Test Coverage
                 {
                     "id": 5,
                     "title": "Test Coverage",
@@ -1016,21 +1015,9 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 16, "y": 8},
                     "targets": [
                         {
-                            "expr": f'tests_coverage_percentage{{repository="{repo_name}"}}',
+                            "expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",instance="{instance_run}"}}) or max(tests_coverage_percent{{job="pipeline-metrics",instance="{instance_run}"}}) or max(sonarqube_coverage{{project="{repo_name}"}})',
                             "legendFormat": "Coverage %",
                             "refId": "A",
-                            "instant": True
-                        },
-                        {
-                            "expr": f'tests_coverage_percent{{repository="{repo_name}"}}',
-                            "legendFormat": "Coverage % (alt)",
-                            "refId": "B",
-                            "instant": True
-                        },
-                        {
-                            "expr": f'sonarqube_coverage{{project="{repo_name}"}}',
-                            "legendFormat": "SonarQube Coverage",
-                            "refId": "C",
                             "instant": True
                         }
                     ],
@@ -1055,7 +1042,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 4, "x": 20, "y": 8},
                     "targets": [
                         {
-                            "expr": f'max(security_vulnerabilities_total{{repository="{repo_name}"}}) or sum(security_vulnerabilities_found{{repository="{repo_name}",severity=~".+"}})',
+                            "expr": f'max(security_vulnerabilities_total{{job="pipeline-metrics",instance="{instance_run}"}}) or sum(security_vulnerabilities_found{{job="pipeline-metrics",instance="{instance_run}",severity=~".+"}})',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
@@ -1788,7 +1775,10 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
     repo_branch = repo_info['branch']
     scan_type = repo_info['scan_type']
     
-    github_run_id = os.environ.get('GITHUB_RUN_ID', 'Unknown')
+    # Identify current run for single-run filtering
+    github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
+    instance_run = f"{repo_name}-run-{github_run_id}"
+    
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     

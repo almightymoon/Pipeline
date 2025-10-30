@@ -293,6 +293,8 @@ def collect_all_metrics():
         f'pipeline_runs_total{{repository="{repository}",status="total"}} {build_number}',
         f'pipeline_runs_total{{repository="{repository}",status="success"}} 1',
         f'pipeline_runs_total{{repository="{repository}",status="failure"}} 0',
+        f'pipeline_run_number{{repository="{repository}"}} {build_number}',
+        f'pipeline_run_status{{repository="{repository}"}} 1',
         f'external_repo_scan_total{{repository="{repository}",status="completed"}} 1',
         f'external_repo_scan_duration_seconds_sum{{repository="{repository}"}} {build_duration}',
         f'external_repo_scan_duration_seconds_count{{repository="{repository}"}} 1',
