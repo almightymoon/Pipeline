@@ -11,6 +11,97 @@ import sys
 import hashlib
 from datetime import datetime
 
+def _format_size(num_bytes: int) -> str:
+    """Format bytes to human readable size"""
+    units = ['B', 'KB', 'MB', 'GB', 'TB']
+    size = float(num_bytes)
+    idx = 0
+    while size >= 1024 and idx < len(units) - 1:
+        size /= 1024.0
+        idx += 1
+    if idx == 0:
+        return f"{int(size)}{units[idx]}"
+    return f"{size:.2f}{units[idx]}"
+
+def list_large_files(min_bytes: int = 1_000_000) -> list:
+    """Find large files that are part of the actual repository content.
+    Returns list of tuples (relative_path, human_size) sorted by size desc.
+    """
+    repo_root = os.path.abspath('external-repo') if os.path.isdir('external-repo') else None
+    results: list[tuple[str, int]] = []
+    
+    if repo_root:
+        try:
+            import subprocess
+            completed = subprocess.run(
+                ['git', '-C', repo_root, 'ls-files', '-z'],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=False,
+            )
+            tracked = completed.stdout.split(b'\x00') if completed.stdout else []
+            for rel_b in tracked:
+                if not rel_b:
+                    continue
+                rel = rel_b.decode('utf-8', errors='ignore')
+                fpath = os.path.join(repo_root, rel)
+                try:
+                    if os.path.isfile(fpath):
+                        size = os.path.getsize(fpath)
+                        if size >= min_bytes:
+                            results.append((os.path.join('external-repo', rel), size))
+                except Exception:
+                    continue
+        except Exception:
+            pass
+    
+    # Fallback to filesystem scan
+    if not results:
+        roots = [repo_root] if repo_root else [os.getcwd()]
+        ignore_dirs = {
+            '.git', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.idea', '.vscode', '.cache',
+            'sonar-scanner', 'sonar-scanner-4.8.0.2856-linux', 'trivy', 'trivy-db'
+        }
+        ignore_name_prefixes = {'vault_',}
+        for root in roots:
+            if not root:
+                continue
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
+                for fname in filenames:
+                    low = fname.lower()
+                    if any(low.startswith(pfx) for pfx in ignore_name_prefixes):
+                        continue
+                    fpath = os.path.join(dirpath, fname)
+                    try:
+                        size = os.path.getsize(fpath)
+                        if size >= min_bytes:
+                            if repo_root:
+                                rel = os.path.relpath(fpath, repo_root)
+                                disp = os.path.join('external-repo', rel)
+                            else:
+                                disp = os.path.relpath(fpath, os.getcwd())
+                            results.append((disp, size))
+                    except Exception:
+                        continue
+    
+    results.sort(key=lambda x: x[1], reverse=True)
+    return [(p, _format_size(s)) for p, s in results]
+
+def get_large_files_list_for_jira() -> str:
+    """Get formatted list of large files for Jira description"""
+    try:
+        repo_large_files = list_large_files()
+        if repo_large_files:
+            files_list = "\n".join([f"  • {path} ({size_str})" for path, size_str in repo_large_files])
+            return f"• Large Files with Paths:\n{files_list}"
+        else:
+            return ""
+    except Exception as e:
+        print(f"Warning: Could not get large files list: {e}")
+        return ""
+
 # Grafana Configuration
 GRAFANA_URL = "http://213.109.162.134:30102"
 # Security: Use environment variables instead of hardcoded credentials
@@ -511,6 +602,9 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url, metrics):
     github_run_number = os.environ.get('GITHUB_RUN_NUMBER', 'Unknown')
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
     
+    # Get large files list for Jira
+    large_files_section = get_large_files_list_for_jira()
+    
     # Create detailed description
     description = f"""
 🔍 **EXTERNAL REPOSITORY SCAN REPORT**
@@ -551,6 +645,7 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url, metrics):
 • TODO/FIXME Comments: {metrics['quality']['todo_comments']}
 • Debug Statements: {metrics['quality']['debug_statements']}
 • Large Files (>1MB): {metrics['quality']['large_files']}
+{large_files_section}
 • Quality Score: {metrics['quality']['quality_score']}/100
 • Total Improvements Needed: {metrics['quality']['total_improvements']}
 

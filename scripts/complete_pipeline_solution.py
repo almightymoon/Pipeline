@@ -856,7 +856,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 24, "x": 0, "y": 2},
                     "targets": [
                         {
-                            "expr": f'group(pipeline_runs_total) by (repository)',
+                            "expr": f'group(pipeline_runs_total{{repository="{repo_name}"}}) by (repository)',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -1421,7 +1421,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}}',
+                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or trivy_vuln_info{{repository="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
