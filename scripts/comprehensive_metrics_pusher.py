@@ -59,6 +59,9 @@ def read_quality_results():
     
     return metrics
 
+if __name__ == "__main__":
+    main()
+
 def read_trivy_results():
     """Read security metrics from Trivy results"""
     metrics = {
@@ -694,9 +697,6 @@ def build_trivy_vulnerability_info_metrics(repository: str) -> list:
             print(f"⚠️  Error building vulnerability info from {path}: {e}")
             continue
     return metrics
-
-if __name__ == "__main__":
-    main()
 
 def collect_trivy_vuln_details(repository: str) -> list:
     """Read Trivy results and emit per-vulnerability metrics with readable labels.
