@@ -11,6 +11,25 @@ import requests
 import re
 from datetime import datetime
 
+def main():
+    """Main function"""
+    print("=" * 60)
+    print("🚀 Comprehensive Metrics Pusher for Prometheus")
+    print("=" * 60)
+    
+    pushgateway_url = os.environ.get('PROMETHEUS_PUSHGATEWAY_URL', 'http://213.109.162.134:30091')
+    
+    if not pushgateway_url.startswith(('http://', 'https://')):
+        pushgateway_url = 'http://' + pushgateway_url
+    
+    # Collect all metrics
+    metrics = collect_all_metrics()
+    
+    # Push to Prometheus
+    push_metrics(metrics, pushgateway_url)
+    
+    print("\n✅ Comprehensive metrics push completed!")
+
 def read_quality_results():
     """Read quality metrics from quality-results.txt"""
     metrics = {}
@@ -640,25 +659,6 @@ def push_metrics(metrics, pushgateway_url):
         print(f"   2. Verify network connectivity to {pushgateway_url}")
         print(f"   3. Check Pushgateway logs for errors")
         print(f"   4. Verify repository name: '{repository}'")
-
-def main():
-    """Main function"""
-    print("=" * 60)
-    print("🚀 Comprehensive Metrics Pusher for Prometheus")
-    print("=" * 60)
-    
-    pushgateway_url = os.environ.get('PROMETHEUS_PUSHGATEWAY_URL', 'http://213.109.162.134:30091')
-    
-    if not pushgateway_url.startswith(('http://', 'https://')):
-        pushgateway_url = 'http://' + pushgateway_url
-    
-    # Collect all metrics
-    metrics = collect_all_metrics()
-    
-    # Push to Prometheus
-    push_metrics(metrics, pushgateway_url)
-    
-    print("\n✅ Comprehensive metrics push completed!")
 
     
 def build_trivy_vulnerability_info_metrics(repository: str) -> list:
