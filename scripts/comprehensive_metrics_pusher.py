@@ -95,33 +95,123 @@ def read_trivy_results():
 def read_test_results():
     """Read test coverage from test results files"""
     coverage = 0.0
+    source = None
     
-    # Check for test result files
-    test_files = ['/tmp/test-results.json', '/tmp/scan-results/test-results.json', 'test-results.json']
-    
-    for test_file in test_files:
+    # JSON formats
+    json_files = [
+        '/tmp/test-results.json',
+        '/tmp/scan-results/test-results.json',
+        'test-results.json'
+    ]
+    for test_file in json_files:
         if os.path.exists(test_file):
             try:
                 with open(test_file, 'r') as f:
                     test_data = json.load(f)
-                    
-                # Extract coverage from different possible formats
                 if isinstance(test_data, dict):
-                    # Check for coverage in nested structure
                     if 'coverage' in test_data:
                         coverage = float(test_data['coverage'])
+                        source = test_file
                     elif 'tests' in test_data and isinstance(test_data['tests'], dict):
                         coverage = float(test_data['tests'].get('coverage', 0.0))
-                    elif 'summary' in test_data and 'coverage' in test_data['summary']:
+                        source = test_file
+                    elif 'summary' in test_data and isinstance(test_data['summary'], dict) and 'coverage' in test_data['summary']:
                         coverage = float(test_data['summary']['coverage'])
-                
+                        source = test_file
                 if coverage > 0:
-                    print(f"📊 Found test coverage: {coverage}% from {test_file}")
                     break
             except Exception as e:
-                print(f"⚠️  Error reading test results from {test_file}: {e}")
+                print(f"⚠️  Error reading test results JSON from {test_file}: {e}")
                 continue
     
+    # Cobertura / coverage.xml
+    if coverage == 0.0:
+        xml_files = [
+            '/tmp/coverage.xml',
+            '/tmp/scan-results/coverage.xml',
+            'coverage.xml'
+        ]
+        for xml_path in xml_files:
+            if os.path.exists(xml_path):
+                try:
+                    import xml.etree.ElementTree as ET
+                    tree = ET.parse(xml_path)
+                    root = tree.getroot()
+                    # Cobertura schema: coverage line-rate="0.82"
+                    line_rate = root.attrib.get('line-rate') or root.attrib.get('line_rate')
+                    if line_rate is not None:
+                        coverage = float(line_rate) * 100.0
+                        source = xml_path
+                        break
+                    # pytest-cov xml: packages/package/classes/class lines-valid / lines-covered
+                    lines_valid = root.attrib.get('lines-valid') or root.attrib.get('lines_valid')
+                    lines_covered = root.attrib.get('lines-covered') or root.attrib.get('lines_covered')
+                    if lines_valid and lines_covered:
+                        lv = float(lines_valid)
+                        lc = float(lines_covered)
+                        if lv > 0:
+                            coverage = (lc / lv) * 100.0
+                            source = xml_path
+                            break
+                except Exception as e:
+                    print(f"⚠️  Error parsing XML coverage from {xml_path}: {e}")
+                    continue
+    
+    # LCOV
+    if coverage == 0.0:
+        lcov_files = [
+            '/tmp/lcov.info',
+            '/tmp/scan-results/lcov.info',
+            'lcov.info'
+        ]
+        for lcov_path in lcov_files:
+            if os.path.exists(lcov_path):
+                try:
+                    lines_found = 0
+                    lines_hit = 0
+                    with open(lcov_path, 'r') as f:
+                        for line in f:
+                            if line.startswith('LF:'):
+                                lines_found += int(line.strip().split(':')[1])
+                            elif line.startswith('LH:'):
+                                lines_hit += int(line.strip().split(':')[1])
+                    if lines_found > 0:
+                        coverage = (lines_hit / lines_found) * 100.0
+                        source = lcov_path
+                        break
+                except Exception as e:
+                    print(f"⚠️  Error parsing LCOV from {lcov_path}: {e}")
+                    continue
+    
+    # Text summaries
+    if coverage == 0.0:
+        text_files = [
+            '/tmp/test-results.txt',
+            '/tmp/scan-results/test-results.txt',
+            '/tmp/quality-results.txt',
+            'test-results.txt'
+        ]
+        import re
+        for txt in text_files:
+            if os.path.exists(txt):
+                try:
+                    with open(txt, 'r') as f:
+                        content = f.read()
+                    m = re.search(r'(Coverage|TOTAL).*?([0-9]+\.?[0-9]*)%?', content, re.IGNORECASE)
+                    if m:
+                        coverage = float(m.group(2))
+                        source = txt
+                        break
+                except Exception as e:
+                    print(f"⚠️  Error parsing text coverage from {txt}: {e}")
+                    continue
+    
+    # Normalize and log
+    if coverage < 0:
+        coverage = 0.0
+    if coverage > 100:
+        coverage = 100.0
+    print(f"📊 Coverage resolved: {coverage:.2f}%{f' from {source}' if source else ''}")
     return coverage
 
 def get_sonarqube_metrics():
