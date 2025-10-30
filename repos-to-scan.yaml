@@ -21,7 +21,7 @@ repositories:
   #   scan_type: full   
   # # Testing updated Jira dashboard link   
 
-  - url: https://github.com/almightymoon/dockerized-hello-world-app
+  - url: https://github.com/almightymoon/dockerized-hello-world-app 
     name: dockerized-hello-world-app
     branch: main 
     scan_type: full                 

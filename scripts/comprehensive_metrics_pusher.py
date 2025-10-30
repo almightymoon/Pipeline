@@ -1319,3 +1319,6 @@ def collect_trivy_vulnerability_details(project_key: str) -> list:
             continue
     return metrics
 
+if __name__ == "__main__":
+    main()
+
