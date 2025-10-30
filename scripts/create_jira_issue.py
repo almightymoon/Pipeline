@@ -486,7 +486,8 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
             '.git', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.idea', '.vscode', '.cache',
             'sonar-scanner', 'sonar-scanner-4.8.0.2856-linux', 'trivy', 'trivy-db'
         }
-        ignore_exts = {'.zip', '.7z', '.tar', '.gz', '.tgz', '.db'}
+        # Do not exclude by extension; if a big artifact is tracked, we should report it.
+        ignore_exts = set()
         ignore_name_prefixes = {'vault_',}
         for root in roots:
             if not root:
@@ -685,6 +686,14 @@ def create_enhanced_description(base_description):
     else:
         repo_link = repo_name
     
+    # Compose repository large files section
+    repo_large_files = list_large_files()
+    if repo_large_files:
+        repo_large_files_section = "\n".join([f"• {path} ({size})" for path, size in repo_large_files[:15]])
+        repo_large_header = f"Large Files in Repository (top {min(15, len(repo_large_files))}):\n{repo_large_files_section}"
+    else:
+        repo_large_header = "No large files found in repository source"
+
     enhanced_description = f"""
 {base_description}
 
@@ -731,6 +740,9 @@ def create_enhanced_description(base_description):
 
 *Scan Metrics:*
 • {get_scan_metrics()}
+
+*Repository Large Files (Source Only):*
+{repo_large_header}
 
 *Next Steps:*
 1. Review the dedicated dashboard at {dashboard_url}
