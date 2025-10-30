@@ -1068,13 +1068,10 @@ def push_metrics(metrics, pushgateway_url):
     
     success_count = 0
     
-    # Push to BOTH instances:
-    # 1. Fixed instance with repository name (for current/latest metrics - easier to query)
-    # 2. Unique instance with run ID (for historical tracking)
-    
+    # Push only to the fixed "latest" instance to avoid metric inflation across runs.
+    # Historical pushes were causing Grafana queries without instance filters to sum over runs.
     instances_to_push = [
-        (instance_latest, "latest"),
-        (instance_run, "historical")
+        (instance_latest, "latest")
     ]
     
     for instance, instance_type in instances_to_push:
