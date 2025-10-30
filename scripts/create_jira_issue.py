@@ -401,18 +401,30 @@ def get_quality_analysis():
                 
                 # Large files
                 large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
+                repo_large_files = list_large_files()
+                repo_large_count = len(repo_large_files)
                 if large_match:
-                    count = int(large_match.group(1))
-                    if count > 0:
-                        analysis_lines.append(f"• {count} large files found (consider optimization)")
-                        # Also list their names (best-effort scan in repo)
-                        large_files_list = list_large_files()
-                        if large_files_list:
-                            analysis_lines.append("  Large file examples:")
-                            for path, size_str in large_files_list[:10]:
-                                analysis_lines.append(f"  • {path} ({size_str})")
+                    reported_count = int(large_match.group(1))
+                    # Prefer the live repository count; show discrepancy if any
+                    if repo_large_count > 0:
+                        if repo_large_count != reported_count:
+                            analysis_lines.append(
+                                f"• {repo_large_count} large files in repository source (quality report indicated {reported_count})"
+                            )
+                        else:
+                            analysis_lines.append(f"• {repo_large_count} large files found (consider optimization)")
+                        analysis_lines.append("  Large file examples:")
+                        for path, size_str in repo_large_files[:10]:
+                            analysis_lines.append(f"  • {path} ({size_str})")
                     else:
-                        analysis_lines.append("• No large files found")
+                        analysis_lines.append("• No large files found in repository source")
+                else:
+                    # No large count in quality file; still report repo-detected ones
+                    if repo_large_count > 0:
+                        analysis_lines.append(f"• {repo_large_count} large files found (consider optimization)")
+                        analysis_lines.append("  Large file examples:")
+                        for path, size_str in repo_large_files[:10]:
+                            analysis_lines.append(f"  • {path} ({size_str})")
                 
                 # Total suggestions
                 total_match = re.search(r'Total suggestions: (\d+)', content)
