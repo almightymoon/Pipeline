@@ -1241,7 +1241,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 0, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sum(sonarqube_coverage{{project="{repo_name}"}}) or sum(tests_coverage_percent{{repository="{repo_name}"}}) or sum(tests_coverage_percentage{{repository="{repo_name}"}})',
+                            "expr": f'max(tests_coverage_percentage{{job="pipeline-metrics",instance="{instance_run}"}}) or max(tests_coverage_percent{{job="pipeline-metrics",instance="{instance_run}"}}) or max(sonarqube_coverage{{project="{repo_name}"}}) or vector(0)',
                             "legendFormat": "Coverage",
                             "refId": "A",
                             "instant": True
@@ -1264,11 +1264,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     },
                     "options": {
                         "orientation": "auto",
-                        "reduceOptions": {
-                            "values": False,
-                            "calcs": ["lastNotNull"],
-                            "fields": ""
-                        },
+                        "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
                         "showThresholdLabels": False,
                         "showThresholdMarkers": True
                     }
@@ -1282,7 +1278,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 6, "w": 6, "x": 6, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_score{{repository="{repo_name}"}}) or sum(code_quality_total_improvements{{repository="{repo_name}"}})',
+                            "expr": f'max(code_quality_score{{job="pipeline-metrics",instance="{instance_run}"}}) or max(code_quality_score{{repository="{repo_name}"}}) or vector(0)',
                             "legendFormat": "Quality Score",
                             "refId": "A",
                             "instant": True
@@ -1291,13 +1287,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "fieldConfig": {
                         "defaults": {
                             "color": {"mode": "thresholds"},
-                            "thresholds": {
-                                "mode": "absolute",
-                                "steps": [
-                                    {"color": "red", "value": None},
-                                    {"color": "green", "value": 80}
-                                ]
-                            },
+                            "thresholds": {"mode": "absolute", "steps": [
+                                {"color": "red", "value": None},
+                                {"color": "green", "value": 80}
+                            ]},
                             "min": 0,
                             "max": 100,
                             "unit": "short"
@@ -1305,42 +1298,28 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     },
                     "options": {
                         "orientation": "auto",
-                        "reduceOptions": {
-                            "values": False,
-                            "calcs": ["lastNotNull"],
-                            "fields": ""
-                        },
+                        "reduceOptions": {"values": False, "calcs": ["lastNotNull"], "fields": ""},
                         "showThresholdLabels": False,
                         "showThresholdMarkers": True
                     }
                 },
-                # Panel 13: Code Quality Details (Clickable) Table
+                # Panel 13: SonarQube Issues (Clickable) Table
                 {
                     "id": 13,
-                    "title": "Code Quality Details (Clickable)",
+                    "title": "SonarQube Issues (Clickable)",
                     "type": "table",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 6, "w": 12, "x": 12, "y": 20},
                     "targets": [
                         {
-                            "expr": f'sum(code_quality_todo_comments{{repository="{repo_name}"}}) or sum(quality_todo_comments{{repository="{repo_name}"}}) or sum(code_quality_debug_statements{{repository="{repo_name}"}}) or sum(quality_debug_statements{{repository="{repo_name}"}}) or sum(code_quality_large_files{{repository="{repo_name}"}}) or sum(quality_large_files{{repository="{repo_name}"}})',
+                            "expr": f'sonarqube_bugs{{project="{repo_name}"}} or sonarqube_vulnerabilities{{project="{repo_name}"}} or sonarqube_code_smells{{project="{repo_name}"}} or sonarqube_issues_by_severity{{project="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
                         }
                     ],
-                    "fieldConfig": {
-                        "defaults": {
-                            "custom": {
-                                "align": "auto",
-                                "displayMode": "auto"
-                            }
-                        }
-                    },
-                    "options": {
-                        "showHeader": True,
-                        "sortBy": []
-                    }
+                    "fieldConfig": {"defaults": {"custom": {"align": "auto", "displayMode": "auto"}}},
+                    "options": {"showHeader": True, "sortBy": []}
                 },
                 # SECTION HEADER: Security & Vulnerability Analysis
                 {
