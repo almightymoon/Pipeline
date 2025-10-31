@@ -513,17 +513,21 @@ jobs:
         
         # Always create test results JSON file (even if all values are 0)
         # This ensures metrics are always available in Prometheus
-        cat > /tmp/unit-test-results.json <<EOF
-{
-  "unit_tests": {
-    "total": ${TOTAL},
-    "passed": ${PASSED},
-    "failed": ${FAILED},
-    "coverage": ${COVERAGE},
-    "duration": ${DURATION}
-  }
+        python3 -c "
+import json
+test_data = {
+    'unit_tests': {
+        'total': $TOTAL,
+        'passed': $PASSED,
+        'failed': $FAILED,
+        'coverage': $COVERAGE,
+        'duration': $DURATION
+    }
 }
-EOF
+with open('/tmp/unit-test-results.json', 'w') as f:
+    json.dump(test_data, f, indent=2)
+print('Created /tmp/unit-test-results.json')
+"
         
         echo "========================================="
         echo "FINAL TEST RESULTS"
@@ -702,20 +706,24 @@ EOF
         fi
         
         # Save performance test results to JSON
-        cat > /tmp/performance-test-results.json <<EOF
-        {
-          "performance_tests": {
-            "total": ${TOTAL},
-            "passed": ${PASSED},
-            "failed": ${FAILED},
-            "avg_response_time": ${AVG_RESPONSE_TIME},
-            "p95_response_time": ${P95_RESPONSE_TIME},
-            "p99_response_time": ${P99_RESPONSE_TIME},
-            "error_rate": ${ERROR_RATE},
-            "throughput": ${THROUGHPUT}
-          }
-        }
-        EOF
+        python3 -c "
+import json
+test_data = {
+    'performance_tests': {
+        'total': $TOTAL,
+        'passed': $PASSED,
+        'failed': $FAILED,
+        'avg_response_time': $AVG_RESPONSE_TIME,
+        'p95_response_time': $P95_RESPONSE_TIME,
+        'p99_response_time': $P99_RESPONSE_TIME,
+        'error_rate': $ERROR_RATE,
+        'throughput': $THROUGHPUT
+    }
+}
+with open('/tmp/performance-test-results.json', 'w') as f:
+    json.dump(test_data, f, indent=2)
+print('Created /tmp/performance-test-results.json')
+"
         
         echo "Performance tests completed"
         echo "Total: $TOTAL, Passed: $PASSED, Failed: $FAILED"
