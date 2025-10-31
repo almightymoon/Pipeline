@@ -1791,25 +1791,25 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 52},
                     "targets": [
                         {
-                            "expr": f'max(unit_tests_total{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(unit_tests_total{{repository="{repo_name}"}}) or max(unit_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
                         },
                         {
-                            "expr": f'max(unit_tests_passed{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(unit_tests_passed{{repository="{repo_name}"}}) or max(unit_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Passed",
                             "refId": "B",
                             "instant": True
                         },
                         {
-                            "expr": f'max(unit_tests_failed{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(unit_tests_failed{{repository="{repo_name}"}}) or max(unit_tests_failed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Failed",
                             "refId": "C",
                             "instant": True
                         },
                         {
-                            "expr": f'max(unit_tests_coverage_percentage{{repository="{repo_name}"}}) or max(tests_coverage_percentage{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(unit_tests_coverage_percentage{{repository="{repo_name}"}}) or max(unit_tests_coverage_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or max(tests_coverage_percentage{{repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Coverage %",
                             "refId": "D",
                             "instant": True
@@ -1858,7 +1858,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 12, "y": 52},
                     "targets": [
                         {
-                            "expr": f'max(unit_tests_duration_seconds{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(unit_tests_duration_seconds{{repository="{repo_name}"}}) or max(unit_tests_duration_seconds{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Duration (seconds)",
                             "refId": "A",
                             "instant": True
@@ -1907,25 +1907,25 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 62},
                     "targets": [
                         {
-                            "expr": f'max(performance_tests_total{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_tests_total{{repository="{repo_name}"}}) or max(performance_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
                         },
                         {
-                            "expr": f'max(performance_tests_passed{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_tests_passed{{repository="{repo_name}"}}) or max(performance_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Passed",
                             "refId": "B",
                             "instant": True
                         },
                         {
-                            "expr": f'max(performance_tests_failed{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_tests_failed{{repository="{repo_name}"}}) or max(performance_tests_failed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Failed",
                             "refId": "C",
                             "instant": True
                         },
                         {
-                            "expr": f'max(performance_error_rate_percentage{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_error_rate_percentage{{repository="{repo_name}"}}) or max(performance_error_rate_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Error Rate %",
                             "refId": "D",
                             "instant": True
@@ -1986,17 +1986,17 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 12, "y": 62},
                     "targets": [
                         {
-                            "expr": f'max(performance_avg_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_avg_response_time_ms{{repository="{repo_name}"}}) or max(performance_avg_response_time_ms{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Avg Response Time",
                             "refId": "A"
                         },
                         {
-                            "expr": f'max(performance_p95_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_p95_response_time_ms{{repository="{repo_name}"}}) or max(performance_p95_response_time_ms{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "P95 Response Time",
                             "refId": "B"
                         },
                         {
-                            "expr": f'max(performance_p99_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_p99_response_time_ms{{repository="{repo_name}"}}) or max(performance_p99_response_time_ms{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "P99 Response Time",
                             "refId": "C"
                         }
@@ -2048,7 +2048,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 70},
                     "targets": [
                         {
-                            "expr": f'max(performance_throughput_rps{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(performance_throughput_rps{{repository="{repo_name}"}}) or max(performance_throughput_rps{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Requests per Second",
                             "refId": "A",
                             "instant": True
@@ -2085,7 +2085,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 12, "y": 70},
                     "targets": [
                         {
-                            "expr": f'(max(unit_tests_passed{{repository="{repo_name}"}}) / max(unit_tests_total{{repository="{repo_name}"}})) * 100 or vector(0)',
+                            "expr": f'((max(unit_tests_passed{{repository="{repo_name}"}}) or max(unit_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0)) / (max(unit_tests_total{{repository="{repo_name}"}}) or max(unit_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(1))) * 100',
                             "legendFormat": "Success Rate",
                             "refId": "A",
                             "instant": True
