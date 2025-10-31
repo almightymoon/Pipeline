@@ -99,10 +99,8 @@ def extract_metrics_from_jira_report():
                 if debug_match:
                     metrics['quality']['debug_statements'] = int(debug_match.group(1))
                 
-                # Extract large files
-                large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-                if large_match:
-                    metrics['quality']['large_files'] = int(large_match.group(1))
+                # NOTE: We DON'T read large_files from quality-results.txt anymore
+                # We use the actual scan count from list_large_files() instead
                 
                 # Extract total improvements
                 total_match = re.search(r'Total suggestions: (\d+)', content)
@@ -125,18 +123,54 @@ def extract_metrics_from_jira_report():
             except Exception as e:
                 print(f"Warning: Could not read {file_path}: {e}")
     
+    # IMPORTANT: Get actual large file count from git-tracked files only
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        create_jira_path = os.path.join(script_dir, 'create_jira_issue.py')
+        if os.path.exists(create_jira_path):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("create_jira_issue", create_jira_path)
+            create_jira_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(create_jira_module)
+            list_large_files = create_jira_module.list_large_files
+            
+            actual_large_files = list_large_files()
+            metrics['quality']['large_files'] = len(actual_large_files)
+            print(f"📊 Actual large files count (git-tracked only): {metrics['quality']['large_files']}")
+            if metrics['quality']['large_files'] > 0:
+                print(f"   Large files found: {[f[0] for f in actual_large_files[:5]]}")
+        else:
+            metrics['quality']['large_files'] = 0
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        metrics['quality']['large_files'] = 0
+    
+    # Recalculate total_improvements based on actual counts
+    metrics['quality']['total_improvements'] = (
+        metrics['quality']['todo_comments'] + 
+        metrics['quality']['debug_statements'] + 
+        metrics['quality']['large_files']
+    )
+    
     # If no files found, use hardcoded values from your Jira report
+    # BUT don't override large_files if we already got it from actual scan
     if metrics['quality']['todo_comments'] == 0:
         print("⚠️ No scan files found, using values from Jira report")
         metrics['quality']['todo_comments'] = 407
         metrics['quality']['debug_statements'] = 770
-        metrics['quality']['large_files'] = 19
-        metrics['quality']['total_improvements'] = 1196
+        # Only set large_files if we didn't get it from actual scan
+        if metrics['quality']['large_files'] == 0:
+            metrics['quality']['large_files'] = 19
+        metrics['quality']['total_improvements'] = (
+            metrics['quality']['todo_comments'] + 
+            metrics['quality']['debug_statements'] + 
+            metrics['quality']['large_files']
+        )
         metrics['scan_info']['files_scanned'] = 4056
         metrics['scan_info']['repository_size'] = "349M"
     
     # Calculate quality score based on issues
-    total_issues = metrics['quality']['todo_comments'] + metrics['quality']['debug_statements']
+    total_issues = metrics['quality']['todo_comments'] + metrics['quality']['debug_statements'] + metrics['quality']['large_files']
     if total_issues == 0:
         metrics['quality']['quality_score'] = 95
     elif total_issues < 100:

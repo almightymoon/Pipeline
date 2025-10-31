@@ -219,26 +219,46 @@ def get_repo_metrics_from_pipeline():
             if debug_match:
                 metrics['quality']['debug_statements'] = int(debug_match.group(1))
             
-            large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-            if large_match:
-                metrics['quality']['large_files'] = int(large_match.group(1))
+            # NOTE: We DON'T read large_files from quality-results.txt anymore
+            # We use the actual scan count from list_large_files() instead
             
             total_match = re.search(r'Total suggestions: (\d+)', content)
             if total_match:
                 metrics['quality']['total_improvements'] = int(total_match.group(1))
-            
-            # Calculate quality score
-            total_issues = metrics['quality']['todo_comments'] + metrics['quality']['debug_statements']
-            if total_issues == 0:
-                metrics['quality']['quality_score'] = 95
-            elif total_issues < 10:
-                metrics['quality']['quality_score'] = 85
-            elif total_issues < 50:
-                metrics['quality']['quality_score'] = 70
-            else:
-                metrics['quality']['quality_score'] = 50
     except Exception as e:
         print(f"Warning: Could not read quality results: {e}")
+    
+    # IMPORTANT: Get actual large file count from git-tracked files only
+    try:
+        actual_large_files = list_large_files()
+        metrics['quality']['large_files'] = len(actual_large_files)
+        print(f"📊 Actual large files count (git-tracked only): {metrics['quality']['large_files']}")
+        if metrics['quality']['large_files'] > 0:
+            print(f"   Large files found: {[f[0] for f in actual_large_files[:5]]}")
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        metrics['quality']['large_files'] = 0
+    
+    # Recalculate total_improvements based on actual counts
+    metrics['quality']['total_improvements'] = (
+        metrics['quality']['todo_comments'] + 
+        metrics['quality']['debug_statements'] + 
+        metrics['quality']['large_files']
+    )
+    
+    # Calculate quality score
+    try:
+        total_issues = metrics['quality']['todo_comments'] + metrics['quality']['debug_statements'] + metrics['quality']['large_files']
+        if total_issues == 0:
+            metrics['quality']['quality_score'] = 95
+        elif total_issues < 10:
+            metrics['quality']['quality_score'] = 85
+        elif total_issues < 50:
+            metrics['quality']['quality_score'] = 70
+        else:
+            metrics['quality']['quality_score'] = 50
+    except Exception as e:
+        print(f"Warning: Could not calculate quality score: {e}")
     
     # Try to read test results
     try:

@@ -132,9 +132,9 @@ def extract_real_metrics_from_pipeline():
                 if debug_match:
                     metrics['quality']['debug_statements'] = int(debug_match.group(1))
                 
-                large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-                if large_match:
-                    metrics['quality']['large_files'] = int(large_match.group(1))
+                # NOTE: We DON'T read large_files from quality-results.txt anymore
+                # We use the actual scan count from list_large_files() instead
+                # to ensure we only count files that are actually in the repo
                 
                 total_match = re.search(r'Total suggestions: (\d+)', content)
                 if total_match:
@@ -158,6 +158,39 @@ def extract_real_metrics_from_pipeline():
                 
             except Exception as e:
                 print(f"⚠️ Could not parse quality results from {quality_file}: {e}")
+    
+    # IMPORTANT: Get actual large file count from git-tracked files only
+    try:
+        # Import here to avoid circular imports
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        create_jira_path = os.path.join(script_dir, 'create_jira_issue.py')
+        if os.path.exists(create_jira_path):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("create_jira_issue", create_jira_path)
+            create_jira_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(create_jira_module)
+            list_large_files = create_jira_module.list_large_files
+            
+            actual_large_files = list_large_files()
+            metrics['quality']['large_files'] = len(actual_large_files)
+            print(f"📊 Actual large files count (git-tracked only): {metrics['quality']['large_files']}")
+            if metrics['quality']['large_files'] > 0:
+                print(f"   Large files found: {[f[0] for f in actual_large_files[:5]]}")
+        else:
+            metrics['quality']['large_files'] = 0
+            print(f"⚠️  Could not find create_jira_issue.py to get actual large files count")
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        import traceback
+        traceback.print_exc()
+        metrics['quality']['large_files'] = 0
+    
+    # Recalculate total_improvements based on actual counts
+    metrics['quality']['total_improvements'] = (
+        metrics['quality']['todo_comments'] + 
+        metrics['quality']['debug_statements'] + 
+        metrics['quality']['large_files']
+    )
     
     # 3. Read test results
     test_files = ['/tmp/test-results.json', 'test-results.json', '/tmp/test-results.txt', '/tmp/scan-results/test-results.json']
@@ -259,13 +292,7 @@ def extract_real_metrics_from_pipeline():
             except Exception as e:
                 print(f"⚠️ Could not parse secret results from {secret_file}: {e}")
     
-    # Calculate total improvements if not set
-    if metrics['quality']['total_improvements'] == 0:
-        metrics['quality']['total_improvements'] = (
-            metrics['quality']['todo_comments'] + 
-            metrics['quality']['debug_statements'] + 
-            metrics['quality']['large_files']
-        )
+    # Total improvements already calculated above with actual large files count
     
     # If no files found, use repository-specific defaults
     # Get repo name from repos-to-scan.yaml or environment
@@ -1421,10 +1448,28 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or security_vulnerability_info{{repository="{repo_name}"}} or trivy_vuln_info{{repository="{repo_name}"}}',
+                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
+                        },
+                        {
+                            "expr": f'trivy_vulnerability_info{{project="{repo_name}"}}',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'security_vulnerability_info{{repository="{repo_name}"}}',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "C"
+                        },
+                        {
+                            "expr": f'trivy_vuln_info{{repository="{repo_name}"}}',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "D"
                         }
                     ],
                     "fieldConfig": {
@@ -1581,19 +1626,19 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "job": True,
                                     "repository": True,
                                     "project": True,
-                                    "Value": True,
-                                    "version": True,
-                                    "installed": True,
-                                    "fixed": True,
-                                    "fixed_version": True
+                                    "Value": True
                                 },
                                 "indexByName": {
-                                    "emoji": 0,
-                                    "severity": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3,
-                                    "title": 4
+                                    "severity": 0,
+                                    "id": 1,
+                                    "package": 2,
+                                    "pkg": 2,
+                                    "version": 3,
+                                    "installed": 3,
+                                    "title": 4,
+                                    "formatted": 5,
+                                    "fixed": 6,
+                                    "fixed_version": 6
                                 },
                                 "renameByName": {
                                     "emoji": "Emoji",
@@ -1622,19 +1667,19 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "job": True,
                                     "repository": True,
                                     "project": True,
-                                    "Value": True,
-                                    "version": True,
-                                    "installed": True,
-                                    "fixed": True,
-                                    "fixed_version": True
+                                    "Value": True
                                 },
                                 "indexByName": {
-                                    "emoji": 0,
-                                    "severity": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3,
-                                    "title": 4
+                                    "severity": 0,
+                                    "id": 1,
+                                    "package": 2,
+                                    "pkg": 2,
+                                    "version": 3,
+                                    "installed": 3,
+                                    "title": 4,
+                                    "formatted": 5,
+                                    "fixed": 6,
+                                    "fixed_version": 6
                                 },
                                 "renameByName": {
                                     "emoji": "Emoji",
@@ -2098,14 +2143,92 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 {
                     "id": 244,
                     "title": "Performance Tests Failed Logs",
-                    "type": "logs",
-                    "datasource": {"type": "loki", "uid": "loki"},
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 10, "w": 24, "x": 0, "y": 70},
                     "targets": [
                         {
-                            "expr": '{job=~".*"} |~ "(?i)(performance|load|stress|artillery|k6|gatling|pytest.*perf|test.*performance)" |~ "(?i)(fail|error|timeout|exception|failed|ERROR|FAILED|timeout)" | line_format "{{.timestamp}} [{{.level}}] {{.message}}"',
+                            "expr": f'(max(performance_tests_failed{{repository="{repo_name}"}}) or max(performance_tests_failed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "format": "table",
+                            "instant": True,
                             "refId": "A",
-                            "legendFormat": "Failed Performance Test Logs"
+                            "legendFormat": "Failed Count"
+                        },
+                        {
+                            "expr": f'(max(performance_error_rate_percentage{{repository="{repo_name}"}}) or max(performance_error_rate_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "B",
+                            "legendFormat": "Error Rate"
+                        }
+                    ],
+                    "options": {
+                        "showHeader": True,
+                        "footer": {
+                            "show": False,
+                            "reducer": ["sum"],
+                            "countRows": False
+                        }
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "auto"
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Failed Count"},
+                                "properties": [
+                                    {"id": "color", "value": {"mode": "thresholds"}},
+                                    {"id": "thresholds", "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {"color": "green", "value": None},
+                                            {"color": "yellow", "value": 1},
+                                            {"color": "red", "value": 5}
+                                        ]
+                                    }}
+                                ]
+                            }
+                        ]
+                    },
+                    "transformations": [
+                        {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": True,
+                                    "__name__": True,
+                                    "job": True,
+                                    "instance": True
+                                },
+                                "indexByName": {
+                                    "Failed Count": 0,
+                                    "Error Rate": 1,
+                                    "repository": 2
+                                },
+                                "renameByName": {
+                                    "Failed Count": "Failed Tests",
+                                    "Error Rate": "Error Rate %"
+                                }
+                            }
+                        }
+                    ]
+                },
+                # Panel 24.6: Performance Test Failure Details (Logs from Loki)
+                {
+                    "id": 245,
+                    "title": "Performance Test Failure Details (Logs)",
+                    "type": "logs",
+                    "datasource": {"type": "loki", "uid": "loki"},
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 80},
+                    "targets": [
+                        {
+                            "expr": "{} |~ \"(?i)(performance|load|stress|artillery|k6|gatling)\" |~ \"(?i)(fail|error|timeout|exception|failed|ERROR|FAILED|timeout|❌|🚨)\"",
+                            "refId": "A",
+                            "legendFormat": "All Failed Performance Logs"
                         }
                     ],
                     "options": {
@@ -2195,7 +2318,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Performance Throughput",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 80},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 90},
                     "targets": [
                         {
                             "expr": f'(max(performance_throughput_rps{{repository="{repo_name}"}}) or max(performance_throughput_rps{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
@@ -2232,7 +2355,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Unit Tests Success Rate",
                     "type": "gauge",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 80},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 90},
                     "targets": [
                         {
                             "expr": f'((max(unit_tests_passed{{repository="{repo_name}"}}) or max(unit_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0)) / (max(unit_tests_total{{repository="{repo_name}"}}) or max(unit_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(1))) * 100',
@@ -2275,7 +2398,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "📋 Test Execution Logs & Failure Details",
                     "type": "text",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 14, "w": 24, "x": 0, "y": 88},
+                    "gridPos": {"h": 14, "w": 24, "x": 0, "y": 98},
                     "options": {
                         "mode": "markdown",
                         "content": f"""## 📋 Test Execution Logs & Failure Details

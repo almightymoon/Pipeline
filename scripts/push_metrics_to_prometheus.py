@@ -125,9 +125,9 @@ def collect_quality_metrics(repository):
             if debug_match:
                 debug_count = int(debug_match.group(1))
             
-            large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-            if large_match:
-                large_files = int(large_match.group(1))
+            # NOTE: We DON'T read large_files from quality-results.txt anymore
+            # We use the actual scan count from list_large_files() instead
+            # to ensure we only count files that are actually in the repo
             
             total_match = re.search(r'Total suggestions: (\d+)', content)
             if total_match:
@@ -136,7 +136,36 @@ def collect_quality_metrics(repository):
         except Exception as e:
             print(f"Error reading quality results: {e}")
     
-    # Always add quality metrics (use real values from Jira report)
+    # IMPORTANT: Get actual large file count from git-tracked files only
+    try:
+        # Import here to avoid circular imports
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        create_jira_path = os.path.join(script_dir, 'create_jira_issue.py')
+        if os.path.exists(create_jira_path):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("create_jira_issue", create_jira_path)
+            create_jira_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(create_jira_module)
+            list_large_files = create_jira_module.list_large_files
+            
+            actual_large_files = list_large_files()
+            large_files = len(actual_large_files)
+            print(f"📊 Actual large files count (git-tracked only): {large_files}")
+            if large_files > 0:
+                print(f"   Large files found: {[f[0] for f in actual_large_files[:5]]}")
+        else:
+            large_files = 0
+            print(f"⚠️  Could not find create_jira_issue.py to get actual large files count")
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        import traceback
+        traceback.print_exc()
+        large_files = 0
+    
+    # Recalculate total_improvements based on actual counts
+    total_improvements = todo_count + debug_count + large_files
+    
+    # Always add quality metrics (use real values from actual scan)
     metrics.extend([
         f'code_quality_todo_comments_total{{repository="{repository}"}} {todo_count}',
         f'code_quality_debug_statements_total{{repository="{repository}"}} {debug_count}',

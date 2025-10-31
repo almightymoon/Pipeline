@@ -149,14 +149,34 @@ def read_quality_file():
                 if debug_match:
                     metrics['debug_statements'] = int(debug_match.group(1))
                 
-                large_match = re.search(r'Large.*?:\s*(\d+)', content, re.IGNORECASE)
-                if large_match:
-                    metrics['large_files'] = int(large_match.group(1))
-                
-                metrics['total'] = metrics['todo_comments'] + metrics['debug_statements'] + metrics['large_files']
+                # NOTE: We DON'T read large_files from quality-results.txt anymore
+                # We use the actual scan count from list_large_files() instead
                 break
             except Exception as e:
                 print(f"⚠️  Error reading quality file {quality_file}: {e}")
+    
+    # IMPORTANT: Get actual large file count from git-tracked files only
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        create_jira_path = os.path.join(script_dir, 'create_jira_issue.py')
+        if os.path.exists(create_jira_path):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("create_jira_issue", create_jira_path)
+            create_jira_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(create_jira_module)
+            list_large_files = create_jira_module.list_large_files
+            
+            actual_large_files = list_large_files()
+            metrics['large_files'] = len(actual_large_files)
+            print(f"📊 Actual large files count (git-tracked only): {metrics['large_files']}")
+        else:
+            metrics['large_files'] = 0
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        metrics['large_files'] = 0
+    
+    # Recalculate total based on actual counts
+    metrics['total'] = metrics['todo_comments'] + metrics['debug_statements'] + metrics['large_files']
     
     return metrics
 
