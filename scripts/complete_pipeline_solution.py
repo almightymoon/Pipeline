@@ -2118,6 +2118,45 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "showThresholdMarkers": True
                     }
                 },
+                # Panel 29: Test Execution Logs
+                {
+                    "id": 29,
+                    "title": "📋 Test Execution Logs & Summary",
+                    "type": "text",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 88},
+                    "options": {
+                        "mode": "markdown",
+                        "content": f"""## 📋 Test Execution Logs & Summary
+
+**Repository:** {repo_name}
+
+**Test Execution Status:**
+- Tests are automatically executed during pipeline runs
+- If repository has no tests, universal test suite is executed
+- Test results are captured and pushed to Prometheus
+
+**Test Metrics (from Prometheus):**
+- **Total Tests:** Query: `max(unit_tests_total{{repository="{repo_name}"}})`
+- **Passed:** Query: `max(unit_tests_passed{{repository="{repo_name}"}})`
+- **Failed:** Query: `max(unit_tests_failed{{repository="{repo_name}"}})`
+- **Coverage:** Query: `max(unit_tests_coverage_percentage{{repository="{repo_name}"}})`
+- **Duration:** Query: `max(unit_tests_duration_seconds{{repository="{repo_name}"}})`
+
+**Performance Test Metrics:**
+- **Total:** Query: `max(performance_tests_total{{repository="{repo_name}"}})`
+- **Throughput:** Query: `max(performance_throughput_rps{{repository="{repo_name}"}})`
+- **Avg Response Time:** Query: `max(performance_avg_response_time_ms{{repository="{repo_name}"}})`
+
+**Test Log Files:**
+- Unit test logs: `/tmp/test-logs.txt`
+- Unit test results: `/tmp/unit-test-results.json`
+- Performance test results: `/tmp/performance-test-results.json`
+
+**Note:** Check GitHub Actions logs for detailed test output during execution.
+"""
+                    }
+                },
                 # Panel 20: Code Quality Metrics Trend (with TODO, Debug, Large Files)
                 {
                     "id": 28,

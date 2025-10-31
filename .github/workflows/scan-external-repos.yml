@@ -446,6 +446,82 @@ jobs:
           fi
         fi
         
+        # If no tests were found, run universal test suite
+        if [ $TOTAL -eq 0 ]; then
+          echo "========================================="
+          echo "No repository-specific tests found, running universal test suite..."
+          echo "========================================="
+          cd ..
+          
+          # Install pytest and PyYAML if not already installed
+          pip install pytest pytest-json-report pyyaml 2>/dev/null || echo "Dependencies installation completed"
+          
+          # Run universal tests
+          if python -m pytest tests/universal_repo_tests.py -v --tb=short --json-report --json-report-file=/tmp/pytest-report.json 2>&1 | tee /tmp/universal-test-output.txt; then
+            if [ -f "/tmp/pytest-report.json" ]; then
+              PYTEST_TOTAL=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('total', 0))" 2>/dev/null || echo "0")
+              PYTEST_PASSED=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('passed', 0))" 2>/dev/null || echo "0")
+              PYTEST_FAILED=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('failed', 0))" 2>/dev/null || echo "0")
+              TOTAL=$((TOTAL + PYTEST_TOTAL))
+              PASSED=$((PASSED + PYTEST_PASSED))
+              FAILED=$((FAILED + PYTEST_FAILED))
+              
+              # Extract coverage if available
+              if [ -f "/tmp/universal-test-output.txt" ]; then
+                COVERAGE_LINE=$(grep -E "TOTAL|total" /tmp/universal-test-output.txt | grep -E "[0-9]+%" | head -1)
+                if [ -n "$COVERAGE_LINE" ]; then
+                  COVERAGE=$(echo "$COVERAGE_LINE" | grep -oE "[0-9]+%" | head -1 | sed 's/%//' || echo "0")
+                fi
+              fi
+            fi
+          fi
+          
+          cd external-repo
+        fi
+        
+        # Save test logs
+        echo "=========================================" > /tmp/test-logs.txt
+        echo "TEST EXECUTION LOGS" >> /tmp/test-logs.txt
+        echo "=========================================" >> /tmp/test-logs.txt
+        echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> /tmp/test-logs.txt
+        echo "Repository: ${{ steps.read_config.outputs.repo_name }}" >> /tmp/test-logs.txt
+        echo "" >> /tmp/test-logs.txt
+        
+        # Combine all test outputs
+        if [ -f "/tmp/pytest-output.txt" ]; then
+          echo "--- Python Test Output ---" >> /tmp/test-logs.txt
+          cat /tmp/pytest-output.txt >> /tmp/test-logs.txt
+          echo "" >> /tmp/test-logs.txt
+        fi
+        if [ -f "/tmp/unittest-output.txt" ]; then
+          echo "--- Unittest Output ---" >> /tmp/test-logs.txt
+          cat /tmp/unittest-output.txt >> /tmp/test-logs.txt
+          echo "" >> /tmp/test-logs.txt
+        fi
+        if [ -f "/tmp/npm-test-output.txt" ]; then
+          echo "--- NPM Test Output ---" >> /tmp/test-logs.txt
+          cat /tmp/npm-test-output.txt >> /tmp/test-logs.txt
+          echo "" >> /tmp/test-logs.txt
+        fi
+        if [ -f "/tmp/go-test-output.txt" ]; then
+          echo "--- Go Test Output ---" >> /tmp/test-logs.txt
+          cat /tmp/go-test-output.txt >> /tmp/test-logs.txt
+          echo "" >> /tmp/test-logs.txt
+        fi
+        if [ -f "/tmp/universal-test-output.txt" ]; then
+          echo "--- Universal Test Suite Output ---" >> /tmp/test-logs.txt
+          cat /tmp/universal-test-output.txt >> /tmp/test-logs.txt
+          echo "" >> /tmp/test-logs.txt
+        fi
+        
+        echo "=========================================" >> /tmp/test-logs.txt
+        echo "SUMMARY" >> /tmp/test-logs.txt
+        echo "Total Tests: $TOTAL" >> /tmp/test-logs.txt
+        echo "Passed: $PASSED" >> /tmp/test-logs.txt
+        echo "Failed: $FAILED" >> /tmp/test-logs.txt
+        echo "Coverage: ${COVERAGE}%" >> /tmp/test-logs.txt
+        echo "Duration: ${DURATION}s" >> /tmp/test-logs.txt
+        
         # Calculate duration
         END_TIME=$(date +%s)
         DURATION=$((END_TIME - START_TIME))
@@ -465,6 +541,7 @@ jobs:
         
         echo "Test execution completed"
         echo "Total: $TOTAL, Passed: $PASSED, Failed: $FAILED, Coverage: ${COVERAGE}%, Duration: ${DURATION}s"
+        echo "Test logs saved to /tmp/test-logs.txt"
     
     - name: Test Execution - Integration Tests
       if: steps.read_config.outputs.has_repos == 'true'
@@ -822,6 +899,7 @@ jobs:
       run: |
         pip install requests
         python scripts/comprehensive_metrics_pusher.py
+        python scripts/push_test_logs_to_prometheus.py
       env:
         PROMETHEUS_PUSHGATEWAY_URL: http://213.109.162.134:30091
         SONARQUBE_URL: ${{ secrets.SONARQUBE_URL }}
