@@ -390,8 +390,8 @@ def get_quality_analysis():
                         analysis_lines.append(f"• {todo_count} TODO/FIXME comments found (consider addressing)")
                     else:
                         analysis_lines.append("• No TODO/FIXME comments found")
-                    else:
-                        analysis_lines.append("• No TODO/FIXME comments found")
+                else:
+                    analysis_lines.append("• No TODO/FIXME comments found")
                 
                 # Debug statements
                 debug_match = re.search(r'Debug statements: (\d+)', content)
@@ -402,8 +402,8 @@ def get_quality_analysis():
                         analysis_lines.append(f"• {debug_count} debug statements found (remove before production)")
                     else:
                         analysis_lines.append("• No debug statements found")
-                    else:
-                        analysis_lines.append("• No debug statements found")
+                else:
+                    analysis_lines.append("• No debug statements found")
                 
                 # Large files - use actual scan results, not quality file count
                 large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
@@ -411,15 +411,15 @@ def get_quality_analysis():
                 repo_large_count = len(repo_large_files)
                 
                 # Always use actual scan count, not quality file count
-                    if repo_large_count > 0:
-                            analysis_lines.append(f"• {repo_large_count} large files found (consider optimization)")
+                if repo_large_count > 0:
+                    analysis_lines.append(f"• {repo_large_count} large files found (consider optimization)")
                     analysis_lines.append("  Large files with paths:")
                     # Show ALL large files, not just examples
                     for path, size_str in repo_large_files:
-                            analysis_lines.append(f"  • {path} ({size_str})")
-                    else:
+                        analysis_lines.append(f"  • {path} ({size_str})")
+                else:
                     # Only say "no large files" if actual scan found none
-                        analysis_lines.append("• No large files found in repository source")
+                    analysis_lines.append("• No large files found in repository source")
                 
                 # Calculate total improvements from actual counts (not from file)
                 actual_total = todo_count + debug_count + repo_large_count
