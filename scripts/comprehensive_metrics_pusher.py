@@ -595,7 +595,12 @@ def main():
     print("\n✅ Comprehensive metrics push completed!")
 
 def read_quality_results():
-    """Read quality metrics from quality-results.txt"""
+    """Read quality metrics from quality-results.txt
+    
+    IMPORTANT: For large files, we use the actual scan count from list_large_files()
+    instead of reading from quality-results.txt, because quality-results.txt may
+    include tool artifacts that should be excluded.
+    """
     metrics = {}
     quality_files = ['/tmp/quality-results.txt', '/tmp/scan-results/quality-results.txt', 'quality-results.txt']
     
@@ -619,12 +624,9 @@ def read_quality_results():
                 if debug_match:
                     metrics['debug_statements'] = int(debug_match.group(1))
                 
-                # Extract large files (try multiple patterns)
-                large_files_match = re.search(r'Large files?.*?\(>1MB\):\s*(\d+)', content, re.IGNORECASE)
-                if not large_files_match:
-                    large_files_match = re.search(r'Large files?.*?:\s*(\d+)', content, re.IGNORECASE)
-                if large_files_match:
-                    metrics['large_files'] = int(large_files_match.group(1))
+                # NOTE: We DON'T read large_files from quality-results.txt anymore
+                # We use the actual scan count from list_large_files() instead
+                # to exclude tool artifacts
                 
                 # If we found at least one metric, we can stop looking
                 if metrics:
@@ -638,14 +640,38 @@ def read_quality_results():
     # Set defaults if not found
     metrics.setdefault('todo_comments', 0)
     metrics.setdefault('debug_statements', 0)
+    
+    # IMPORTANT: Get actual large file count from scan (excluding tool artifacts)
+    try:
+        # Import here to avoid circular imports
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        create_jira_path = os.path.join(script_dir, 'create_jira_issue.py')
+        if os.path.exists(create_jira_path):
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("create_jira_issue", create_jira_path)
+            create_jira_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(create_jira_module)
+            list_large_files = create_jira_module.list_large_files
+            
+            actual_large_files = list_large_files()
+            metrics['large_files'] = len(actual_large_files)
+            print(f"📊 Actual large files count (excluding tool artifacts): {metrics['large_files']}")
+            if metrics['large_files'] > 0:
+                print(f"   Large files found: {[f[0] for f in actual_large_files[:5]]}")
+        else:
+            metrics['large_files'] = 0
+            print(f"⚠️  Could not find create_jira_issue.py to get actual large files count")
+    except Exception as e:
+        print(f"⚠️  Error getting actual large files count: {e}")
+        import traceback
+        traceback.print_exc()
+        metrics['large_files'] = 0
+    
     metrics.setdefault('large_files', 0)
     
     return metrics
 
-
-
 def read_trivy_results():
-    """Read security metrics from Trivy results"""
     metrics = {
         'CRITICAL': 0,
         'HIGH': 0,
@@ -1470,7 +1496,8 @@ def collect_trivy_issue_metrics() -> list:
 def collect_trivy_vulnerability_details(project_key: str) -> list:
     """Return per-vulnerability metrics with readable labels from Trivy results.
     Metric format:
-    trivy_vulnerability_info{project, severity, id, pkg, version, title} 1
+    trivy_vulnerability_info{repository, severity, id, pkg, version, title} 1
+    Also pushes with repository label for compatibility
     """
     metrics = []
     trivy_files = ['trivy-results.json', '/tmp/trivy-results.json', '/tmp/scan-results/trivy-results.json', '/tmp/scan-results/trivy-fs-results.json']
@@ -1502,6 +1529,10 @@ def collect_trivy_vulnerability_details(project_key: str) -> list:
                     # Escape quotes for Prometheus label
                     formatted_escaped = formatted.replace('"', '\\"').replace('\\', '\\\\')
                     
+                    # Push with BOTH repository and project labels for compatibility
+                    metrics.append(
+                        f'trivy_vulnerability_info{{repository="{project_key}",severity="{sev}",id="{vid}",pkg="{pkg}",version="{ver}",title="{title}",formatted="{formatted_escaped}"}} 1'
+                    )
                     metrics.append(
                         f'trivy_vulnerability_info{{project="{project_key}",severity="{sev}",id="{vid}",pkg="{pkg}",version="{ver}",title="{title}",formatted="{formatted_escaped}"}} 1'
                     )

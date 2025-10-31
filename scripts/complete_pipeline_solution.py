@@ -1421,7 +1421,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or trivy_vuln_info{{repository="{repo_name}"}}',
+                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",project="{repo_name}"}} or trivy_vulnerability_info{{instance="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",instance="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -2236,16 +2236,16 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "showThresholdMarkers": True
                     }
                 },
-                # Panel 29: Test Execution Logs
+                # Panel 29: Test Execution Logs & Failure Details
                 {
                     "id": 29,
-                    "title": "📋 Test Execution Logs & Summary",
+                    "title": "📋 Test Execution Logs & Failure Details",
                     "type": "text",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 12, "w": 24, "x": 0, "y": 88},
+                    "gridPos": {"h": 14, "w": 24, "x": 0, "y": 88},
                     "options": {
                         "mode": "markdown",
-                        "content": f"""## 📋 Test Execution Logs & Summary
+                        "content": f"""## 📋 Test Execution Logs & Failure Details
 
 **Repository:** {repo_name}
 
@@ -2254,7 +2254,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
 - If repository has no tests, universal test suite is executed
 - Test results are captured and pushed to Prometheus
 
-**Test Metrics (from Prometheus):**
+**Current Test Metrics:**
 - **Total Tests:** Query: `max(unit_tests_total{{repository="{repo_name}"}})`
 - **Passed:** Query: `max(unit_tests_passed{{repository="{repo_name}"}})`
 - **Failed:** Query: `max(unit_tests_failed{{repository="{repo_name}"}})`
@@ -2263,15 +2263,29 @@ def create_dashboard_with_real_data(repo_info, metrics):
 
 **Performance Test Metrics:**
 - **Total:** Query: `max(performance_tests_total{{repository="{repo_name}"}})`
+- **Passed:** Query: `max(performance_tests_passed{{repository="{repo_name}"}})`
+- **Failed:** Query: `max(performance_tests_failed{{repository="{repo_name}"}})`
 - **Throughput:** Query: `max(performance_throughput_rps{{repository="{repo_name}"}})`
 - **Avg Response Time:** Query: `max(performance_avg_response_time_ms{{repository="{repo_name}"}})`
+- **Error Rate:** Query: `max(performance_error_rate_percentage{{repository="{repo_name}"}})`
 
-**Test Log Files:**
-- Unit test logs: `/tmp/test-logs.txt`
-- Unit test results: `/tmp/unit-test-results.json`
-- Performance test results: `/tmp/performance-test-results.json`
+**Test Log Files Location:**
+- **Unit test logs:** `/tmp/test-logs.txt` (contains full test output including failures)
+- **Unit test results:** `/tmp/unit-test-results.json` (contains summary)
+- **Performance test results:** `/tmp/performance-test-results.json`
+- **Pytest report:** `/tmp/pytest-report.json` (if pytest was used)
 
-**Note:** Check GitHub Actions logs for detailed test output during execution.
+**How to View Failure Details:**
+1. **Check GitHub Actions logs:** Navigate to the pipeline run and look for the "Test Execution" or "Performance Testing" sections
+2. **Check test log files:** The logs contain detailed error messages, stack traces, and failure reasons
+3. **Common failure reasons:**
+   - Test assertions failed (expected vs actual values)
+   - Network connectivity issues
+   - Missing dependencies or modules
+   - Timeout errors
+   - Configuration errors
+
+**Note:** If tests show as failed, check the GitHub Actions workflow logs for the specific error messages. The test log files (`/tmp/test-logs.txt`) contain the full output including stack traces and error details.
 """
                     }
                 },
@@ -2294,7 +2308,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "refId": "B"
                         },
                         {
-                            "expr": f'max(quality_large_files{{repository="{repo_name}"}}) or max(code_quality_large_files{{repository="{repo_name}"}}) or vector(0)',
+                            "expr": f'(max(quality_large_files{{repository="{repo_name}"}}) or max(quality_large_files{{job="pipeline-metrics",repository="{repo_name}"}}) or max(code_quality_large_files{{repository="{repo_name}"}}) or max(code_quality_large_files{{job="pipeline-metrics",repository="{repo_name}"}}) or max(quality_large_files{{job="pipeline-metrics",instance="{repo_name}"}}) or max(code_quality_large_files{{job="pipeline-metrics",instance="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Large Files",
                             "refId": "C"
                         }
