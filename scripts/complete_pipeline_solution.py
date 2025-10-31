@@ -1922,25 +1922,25 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 8, "w": 12, "x": 0, "y": 62},
                     "targets": [
                         {
-                            "expr": f'(max(performance_tests_total{{repository="{repo_name}"}}) or max(performance_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "expr": f'(max(performance_tests_total{{repository="{repo_name}",exported_job="pipeline-metrics",exported_instance="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Total",
                             "refId": "A",
                             "instant": True
                         },
                         {
-                            "expr": f'(max(performance_tests_passed{{repository="{repo_name}"}}) or max(performance_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "expr": f'(max(performance_tests_passed{{repository="{repo_name}",exported_job="pipeline-metrics",exported_instance="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Passed",
                             "refId": "B",
                             "instant": True
                         },
                         {
-                            "expr": f'(max(performance_tests_failed{{repository="{repo_name}"}}) or max(performance_tests_failed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "expr": f'(max(performance_tests_failed{{repository="{repo_name}",exported_job="pipeline-metrics",exported_instance="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Failed",
                             "refId": "C",
                             "instant": True
                         },
                         {
-                            "expr": f'(max(performance_error_rate_percentage{{repository="{repo_name}"}}) or max(performance_error_rate_percentage{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
+                            "expr": f'(max(performance_error_rate_percentage{{repository="{repo_name}",exported_job="pipeline-metrics",exported_instance="{repo_name}"}}) or vector(0))',
                             "legendFormat": "Error Rate %",
                             "refId": "D",
                             "instant": True
