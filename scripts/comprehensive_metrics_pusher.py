@@ -494,20 +494,24 @@ def collect_all_metrics():
         f'tests_failed{{repository="{repository}"}} 0'
     ])
     
-    # Unit test metrics
+    # Unit test metrics - ALWAYS push, even if 0
     unit_test_metrics = read_unit_test_metrics()
-    prom_metrics.extend([
+    unit_metrics_to_push = [
         f'unit_tests_total{{repository="{repository}"}} {unit_test_metrics["total"]}',
         f'unit_tests_passed{{repository="{repository}"}} {unit_test_metrics["passed"]}',
         f'unit_tests_failed{{repository="{repository}"}} {unit_test_metrics["failed"]}',
         f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_test_metrics["coverage"]}',
         f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_test_metrics["duration"]}'
-    ])
+    ]
+    prom_metrics.extend(unit_metrics_to_push)
     print(f"📊 Unit Test Metrics: Total={unit_test_metrics['total']}, Passed={unit_test_metrics['passed']}, Failed={unit_test_metrics['failed']}, Coverage={unit_test_metrics['coverage']}%, Duration={unit_test_metrics['duration']}s")
+    print(f"📤 Will push unit test metrics:")
+    for metric in unit_metrics_to_push:
+        print(f"   {metric}")
     
-    # Performance test metrics
+    # Performance test metrics - ALWAYS push, even if 0
     performance_test_metrics = read_performance_test_metrics()
-    prom_metrics.extend([
+    perf_metrics_to_push = [
         f'performance_tests_total{{repository="{repository}"}} {performance_test_metrics["total"]}',
         f'performance_tests_passed{{repository="{repository}"}} {performance_test_metrics["passed"]}',
         f'performance_tests_failed{{repository="{repository}"}} {performance_test_metrics["failed"]}',
@@ -516,8 +520,12 @@ def collect_all_metrics():
         f'performance_p99_response_time_ms{{repository="{repository}"}} {performance_test_metrics["p99_response_time"]}',
         f'performance_error_rate_percentage{{repository="{repository}"}} {performance_test_metrics["error_rate"]}',
         f'performance_throughput_rps{{repository="{repository}"}} {performance_test_metrics["throughput"]}'
-    ])
+    ]
+    prom_metrics.extend(perf_metrics_to_push)
     print(f"📊 Performance Test Metrics: Total={performance_test_metrics['total']}, Passed={performance_test_metrics['passed']}, Failed={performance_test_metrics['failed']}, Avg Response={performance_test_metrics['avg_response_time']}ms, Throughput={performance_test_metrics['throughput']}rps")
+    print(f"📤 Will push performance test metrics:")
+    for metric in perf_metrics_to_push:
+        print(f"   {metric}")
     
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
@@ -1170,6 +1178,11 @@ def push_metrics(metrics, pushgateway_url):
         print(f"\n📋 Dashboard queries to verify (use these in Grafana/Prometheus):")
         print(f"   pipeline_runs_total{{repository=\"{repository}\",status=\"total\"}}")
         print(f"   code_quality_score{{repository=\"{repository}\"}}")
+        print(f"   unit_tests_total{{repository=\"{repository}\"}}")
+        print(f"   unit_tests_passed{{repository=\"{repository}\"}}")
+        print(f"   unit_tests_failed{{repository=\"{repository}\"}}")
+        print(f"   unit_tests_coverage_percentage{{repository=\"{repository}\"}}")
+        print(f"   unit_tests_duration_seconds{{repository=\"{repository}\"}}")
         print(f"   tests_coverage_percentage{{repository=\"{repository}\"}}")
         print(f"   security_vulnerabilities_total{{repository=\"{repository}\"}}")
         print(f"   external_repo_scan_duration_seconds_sum{{repository=\"{repository}\"}}")
@@ -1412,6 +1425,7 @@ def read_unit_test_metrics():
     if metrics['total'] == 0:
         text_files = [
             '/tmp/test-results.txt',
+            '/tmp/test-logs.txt',  # Test logs file created by workflow
             '/tmp/unit-test-results.txt',
             'test-results.txt'
         ]
@@ -1423,10 +1437,16 @@ def read_unit_test_metrics():
                         content = f.read()
                     
                     import re
-                    # Parse test results
-                    total_match = re.search(r'Tests\s+total:?\s*(\d+)', content, re.IGNORECASE)
-                    passed_match = re.search(r'Tests\s+passed:?\s*(\d+)', content, re.IGNORECASE)
-                    failed_match = re.search(r'Tests\s+failed:?\s*(\d+)', content, re.IGNORECASE)
+                    # Parse test results - try multiple patterns
+                    total_match = re.search(r'Total Tests?:?\s*(\d+)', content, re.IGNORECASE)
+                    if not total_match:
+                        total_match = re.search(r'Tests\s+total:?\s*(\d+)', content, re.IGNORECASE)
+                    passed_match = re.search(r'Passed:?\s*(\d+)', content, re.IGNORECASE)
+                    if not passed_match:
+                        passed_match = re.search(r'Tests\s+passed:?\s*(\d+)', content, re.IGNORECASE)
+                    failed_match = re.search(r'Failed:?\s*(\d+)', content, re.IGNORECASE)
+                    if not failed_match:
+                        failed_match = re.search(r'Tests\s+failed:?\s*(\d+)', content, re.IGNORECASE)
                     coverage_match = re.search(r'Coverage:?\s*([\d.]+)%?', content, re.IGNORECASE)
                     duration_match = re.search(r'Duration:?\s*([\d.]+)\s*(s|sec|seconds)', content, re.IGNORECASE)
                     
@@ -1452,10 +1472,13 @@ def read_unit_test_metrics():
                     print(f"⚠️  Error reading unit test metrics from {text_file}: {e}")
                     continue
     
+    # Always ensure we return metrics, even if 0
     if metrics['total'] == 0:
         print(f"⚠️  No unit test metrics found - test files may not exist or tests weren't run")
+        print(f"💡 Creating default metrics with 0 values to ensure they appear in Prometheus")
     else:
         print(f"✅ Successfully read unit test metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
+    
     return metrics
 
 def read_performance_test_metrics():
@@ -1563,8 +1586,10 @@ def read_performance_test_metrics():
                     print(f"⚠️  Error reading performance test metrics from {text_file}: {e}")
                     continue
     
+    # Always ensure we return metrics, even if 0
     if metrics['total'] == 0 and metrics['avg_response_time'] == 0:
         print(f"⚠️  No performance test metrics found - test files may not exist or tests weren't run")
+        print(f"💡 Creating default metrics with 0 values to ensure they appear in Prometheus")
     else:
         print(f"✅ Successfully read performance test metrics: Total={metrics['total']}, Avg={metrics['avg_response_time']}ms, P95={metrics['p95_response_time']}ms, P99={metrics['p99_response_time']}ms, Error Rate={metrics['error_rate']}%, Throughput={metrics['throughput']}rps")
     return metrics
