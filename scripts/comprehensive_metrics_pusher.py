@@ -495,7 +495,9 @@ def collect_all_metrics():
     ])
     
     # Unit test metrics - ALWAYS push, even if 0
+    print(f"\n🔍 STEP: Reading unit test metrics...")
     unit_test_metrics = read_unit_test_metrics()
+    print(f"📊 Unit test metrics returned: {unit_test_metrics}")
     
     # Ensure we have valid values (handle None or missing keys)
     unit_total = int(unit_test_metrics.get('total', 0) or 0)
@@ -504,6 +506,8 @@ def collect_all_metrics():
     unit_coverage = float(unit_test_metrics.get('coverage', 0.0) or 0.0)
     unit_duration = float(unit_test_metrics.get('duration', 0.0) or 0.0)
     
+    print(f"📊 Parsed unit test values: Total={unit_total}, Passed={unit_passed}, Failed={unit_failed}, Coverage={unit_coverage}%, Duration={unit_duration}s")
+    
     unit_metrics_to_push = [
         f'unit_tests_total{{repository="{repository}"}} {unit_total}',
         f'unit_tests_passed{{repository="{repository}"}} {unit_passed}',
@@ -511,7 +515,13 @@ def collect_all_metrics():
         f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_coverage}',
         f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_duration}'
     ]
+    
+    print(f"📤 About to add {len(unit_metrics_to_push)} unit test metrics to prom_metrics list...")
+    print(f"   Current prom_metrics count: {len(prom_metrics)}")
+    
     prom_metrics.extend(unit_metrics_to_push)
+    
+    print(f"   New prom_metrics count: {len(prom_metrics)}")
     print(f"📊 Unit Test Metrics: Total={unit_total}, Passed={unit_passed}, Failed={unit_failed}, Coverage={unit_coverage}%, Duration={unit_duration}s")
     print(f"📤 Will push unit test metrics:")
     for metric in unit_metrics_to_push:
@@ -521,7 +531,7 @@ def collect_all_metrics():
     
     # CRITICAL: Verify metrics are in the list before pushing
     unit_test_count_in_payload = sum(1 for m in prom_metrics if 'unit_tests' in m)
-    print(f"🔍 Verification: Found {unit_test_count_in_payload} unit test metrics in payload (should be 5)")
+    print(f"🔍 Verification: Found {unit_test_count_in_payload} unit test metrics in prom_metrics list (should be 5)")
     if unit_test_count_in_payload != 5:
         print(f"   ⚠️  ERROR: Expected 5 unit test metrics but found {unit_test_count_in_payload}!")
         print(f"   Available metrics with 'unit' in name:")
@@ -1118,6 +1128,52 @@ def push_metrics(metrics, pushgateway_url):
         print(f"\n⚠️  WARNING: No unit test metrics found in payload!")
         print(f"   Total metrics in payload: {len(metrics)}")
         print(f"   Sample metric names: {[m.split('{')[0] for m in metrics[:5]]}")
+        print(f"   🔧 FORCING unit test metrics to be added...")
+        
+        # Force add unit test metrics if they're missing
+        repository = os.environ.get('REPO_NAME', 'unknown')
+        unit_test_metrics = read_unit_test_metrics()
+        
+        unit_total = int(unit_test_metrics.get('total', 0) or 0)
+        unit_passed = int(unit_test_metrics.get('passed', 0) or 0)
+        unit_failed = int(unit_test_metrics.get('failed', 0) or 0)
+        unit_coverage = float(unit_test_metrics.get('coverage', 0.0) or 0.0)
+        unit_duration = float(unit_test_metrics.get('duration', 0.0) or 0.0)
+        
+        forced_unit_metrics = [
+            f'unit_tests_total{{repository="{repository}"}} {unit_total}',
+            f'unit_tests_passed{{repository="{repository}"}} {unit_passed}',
+            f'unit_tests_failed{{repository="{repository}"}} {unit_failed}',
+            f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_coverage}',
+            f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_duration}'
+        ]
+        metrics.extend(forced_unit_metrics)
+        print(f"   ✅ Added {len(forced_unit_metrics)} unit test metrics to payload")
+        for metric in forced_unit_metrics:
+            print(f"      {metric}")
+        
+        # Also add performance test metrics if missing
+        perf_test_lines = [m for m in metrics if 'performance_tests' in m]
+        if not perf_test_lines:
+            print(f"   🔧 FORCING performance test metrics to be added...")
+            performance_test_metrics = read_performance_test_metrics()
+            forced_perf_metrics = [
+                f'performance_tests_total{{repository="{repository}"}} {performance_test_metrics.get("total", 0)}',
+                f'performance_tests_passed{{repository="{repository}"}} {performance_test_metrics.get("passed", 0)}',
+                f'performance_tests_failed{{repository="{repository}"}} {performance_test_metrics.get("failed", 0)}',
+                f'performance_avg_response_time_ms{{repository="{repository}"}} {performance_test_metrics.get("avg_response_time", 0.0)}',
+                f'performance_p95_response_time_ms{{repository="{repository}"}} {performance_test_metrics.get("p95_response_time", 0.0)}',
+                f'performance_p99_response_time_ms{{repository="{repository}"}} {performance_test_metrics.get("p99_response_time", 0.0)}',
+                f'performance_error_rate_percentage{{repository="{repository}"}} {performance_test_metrics.get("error_rate", 0.0)}',
+                f'performance_throughput_rps{{repository="{repository}"}} {performance_test_metrics.get("throughput", 0.0)}'
+            ]
+            metrics.extend(forced_perf_metrics)
+            print(f"   ✅ Added {len(forced_perf_metrics)} performance test metrics to payload")
+        
+        # Rebuild payload after adding forced metrics
+        metrics_payload = '\n'.join(metrics) + '\n'
+        print(f"   📊 Payload rebuilt. New size: {len(metrics_payload)} bytes")
+        print(f"   📊 Total metrics count: {len(metrics)}")
     
     # Determine job and instance
     repository = os.environ.get('REPO_NAME', 'unknown')
