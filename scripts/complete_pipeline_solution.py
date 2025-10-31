@@ -1421,7 +1421,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'sum by (severity, id, pkg, version, title, formatted) (trivy_vulnerability_info{{repository="{repo_name}"}}) or sum by (severity, id, pkg, version, title, formatted) (trivy_vulnerability_info{{project="{repo_name}"}}) or sum by (severity, id, pkg, installed, fixed, title) (security_vulnerability_info{{repository="{repo_name}"}}) or sum by (id, package, installed, fixed, severity, title) (trivy_vuln_info{{repository="{repo_name}"}})',
+                            "expr": f'sum by (severity, id, pkg, version, title, formatted) (trivy_vulnerability_info{{repository="{repo_name}", exported_instance="{repo_name}"}}) or sum by (severity, id, pkg, version, title, formatted) (trivy_vulnerability_info{{project="{repo_name}", exported_instance="{repo_name}"}}) or sum by (severity, id, pkg, installed, fixed, title) (security_vulnerability_info{{repository="{repo_name}"}}) or sum by (id, package, installed, fixed, severity, title) (trivy_vuln_info{{repository="{repo_name}"}})',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
