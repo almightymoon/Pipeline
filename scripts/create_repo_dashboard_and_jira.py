@@ -25,6 +25,7 @@ def _format_size(num_bytes: int) -> str:
 
 def list_large_files(min_bytes: int = 1_000_000) -> list:
     """Find large files that are part of the actual repository content.
+    ONLY uses git-tracked files to ensure we only report files that are actually in the repo.
     Returns list of tuples (relative_path, human_size) sorted by size desc.
     Excludes tool artifacts like sonar-scanner, trivy, etc.
     """
@@ -68,9 +69,11 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
         
         return False
     
+    # ONLY use git-tracked files - this ensures we only count files that are actually in the repo
     if repo_root:
         try:
             import subprocess
+            # Use git ls-files to ONLY get tracked files
             completed = subprocess.run(
                 ['git', '-C', repo_root, 'ls-files', '-z'],
                 check=True,
@@ -96,43 +99,12 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
                             results.append((os.path.join('external-repo', rel), size))
                 except Exception:
                     continue
-        except Exception:
-            pass
-    
-    # Fallback to filesystem scan only if git-tracked didn't find anything
-    if not results:
-        roots = [repo_root] if repo_root else [os.getcwd()]
-        ignore_dirs = {
-            '.git', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.idea', '.vscode', '.cache',
-            'sonar-scanner', 'sonar-scanner-4.8.0.2856-linux', 'trivy', 'trivy-db'
-        }
-        ignore_name_prefixes = {'vault_',}
-        for root in roots:
-            if not root:
-                continue
-            for dirpath, dirnames, filenames in os.walk(root):
-                dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
-                for fname in filenames:
-                    low = fname.lower()
-                    if any(low.startswith(pfx) for pfx in ignore_name_prefixes):
-                        continue
-                    
-                    # Skip tool artifacts
-                    if should_exclude_file(os.path.join(dirpath, fname), fname):
-                        continue
-                    
-                    fpath = os.path.join(dirpath, fname)
-                    try:
-                        size = os.path.getsize(fpath)
-                        if size >= min_bytes:
-                            if repo_root:
-                                rel = os.path.relpath(fpath, repo_root)
-                                disp = os.path.join('external-repo', rel)
-                            else:
-                                disp = os.path.relpath(fpath, os.getcwd())
-                            results.append((disp, size))
-                    except Exception:
-                        continue
+        except Exception as e:
+            # If git isn't available or fails, return empty list
+            # We should NOT fall back to filesystem scan as it might include untracked files
+            print(f"Warning: Could not use git to list tracked files: {e}")
+            print("Returning empty list to ensure we only report files actually in the repo")
+            return []
     
     results.sort(key=lambda x: x[1], reverse=True)
     return [(p, _format_size(s)) for p, s in results]

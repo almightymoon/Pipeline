@@ -440,8 +440,7 @@ def get_quality_analysis():
 
 def list_large_files(min_bytes: int = 1_000_000) -> list:
     """Find large files that are part of the actual repository content.
-    Priority: use git-tracked files under ./external-repo. Fall back to a
-    cautious filesystem scan with strong exclusions to avoid tool caches.
+    ONLY uses git-tracked files to ensure we only report files that are actually in the repo.
     Returns list of tuples (relative_path, human_size) sorted by size desc.
     """
     repo_root = os.path.abspath('external-repo') if os.path.isdir('external-repo') else None
@@ -483,11 +482,12 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
         
         return False
 
-    # 1) Prefer git-tracked files (most accurate representation of repo content)
+    # ONLY use git-tracked files - this ensures we only count files that are actually in the repo
     results: list[tuple[str, int]] = []
     if repo_root:
         try:
             import subprocess
+            # Use git ls-files to ONLY get tracked files
             completed = subprocess.run(
                 ['git', '-C', repo_root, 'ls-files', '-z'],
                 check=True,
@@ -513,48 +513,12 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
                             results.append((os.path.join('external-repo', rel), size))
                 except Exception:
                     continue
-        except Exception:
-            # fall back to cautious scan below
-            pass
-
-    # 2) If git-based detection yielded nothing, do a cautious scan
-    if not results:
-        roots = [repo_root] if repo_root else [os.getcwd()]
-        ignore_dirs = {
-            '.git', 'node_modules', '.venv', 'venv', '__pycache__', '.pytest_cache', '.idea', '.vscode', '.cache',
-            'sonar-scanner', 'sonar-scanner-4.8.0.2856-linux', 'trivy', 'trivy-db'
-        }
-        # Do not exclude by extension; if a big artifact is tracked, we should report it.
-        ignore_exts = set()
-        ignore_name_prefixes = {'vault_',}
-        for root in roots:
-            if not root:
-                continue
-            for dirpath, dirnames, filenames in os.walk(root):
-                # prune ignored directories in-place
-                dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
-                for fname in filenames:
-                    # extension/name filters to avoid build artifacts and caches
-                    low = fname.lower()
-                    if any(low.endswith(ext) for ext in ignore_exts) or any(low.startswith(pfx) for pfx in ignore_name_prefixes):
-                        continue
-                    
-                    # Skip tool artifacts
-                    if should_exclude_file(os.path.join(dirpath, fname), fname):
-                        continue
-                    
-                    fpath = os.path.join(dirpath, fname)
-                    try:
-                        size = os.path.getsize(fpath)
-                        if size >= min_bytes:
-                            if repo_root:
-                                rel = os.path.relpath(fpath, repo_root)
-                                disp = os.path.join('external-repo', rel)
-                            else:
-                                disp = os.path.relpath(fpath, os.getcwd())
-                            results.append((disp, size))
-                    except Exception:
-                        continue
+        except Exception as e:
+            # If git isn't available or fails, return empty list
+            # We should NOT fall back to filesystem scan as it might include untracked files
+            print(f"Warning: Could not use git to list tracked files: {e}")
+            print("Returning empty list to ensure we only report files actually in the repo")
+            return []
 
     # sort by size desc and map to human readable size
     results.sort(key=lambda x: x[1], reverse=True)

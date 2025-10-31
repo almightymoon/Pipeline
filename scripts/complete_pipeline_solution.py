@@ -1421,7 +1421,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 16, "x": 8, "y": 28},
                     "targets": [
                         {
-                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",project="{repo_name}"}} or trivy_vulnerability_info{{instance="{repo_name}"}} or trivy_vulnerability_info{{job="pipeline-metrics",instance="{repo_name}"}}',
+                            "expr": f'trivy_vulnerability_info{{repository="{repo_name}"}} or trivy_vulnerability_info{{project="{repo_name}"}} or security_vulnerability_info{{repository="{repo_name}"}} or trivy_vuln_info{{repository="{repo_name}"}}',
                             "format": "table",
                             "instant": True,
                             "refId": "A"
@@ -2094,6 +2094,39 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         "textMode": "value_and_name"
                     }
                 },
+                # Panel 24.5: Performance Tests Failed Logs
+                {
+                    "id": 244,
+                    "title": "Performance Tests Failed Logs",
+                    "type": "logs",
+                    "datasource": {"type": "loki", "uid": "loki"},
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 70},
+                    "targets": [
+                        {
+                            "expr": '{job=~".*"} |~ "(?i)(performance|load|stress|artillery|k6|gatling|pytest.*perf|test.*performance)" |~ "(?i)(fail|error|timeout|exception|failed|ERROR|FAILED|timeout)" | line_format "{{.timestamp}} [{{.level}}] {{.message}}"',
+                            "refId": "A",
+                            "legendFormat": "Failed Performance Test Logs"
+                        }
+                    ],
+                    "options": {
+                        "showTime": True,
+                        "showLabels": True,
+                        "showCommonLabels": False,
+                        "wrapLogMessage": True,
+                        "prettifyLogMessage": True,
+                        "enableLogDetails": True,
+                        "dedupStrategy": "none",
+                        "sortOrder": "Descending",
+                        "enableExplore": True
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "filterByValue": False
+                            }
+                        }
+                    }
+                },
                 # Panel 25: Performance Response Times
                 {
                     "id": 25,
@@ -2162,7 +2195,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Performance Throughput",
                     "type": "stat",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 70},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 80},
                     "targets": [
                         {
                             "expr": f'(max(performance_throughput_rps{{repository="{repo_name}"}}) or max(performance_throughput_rps{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0))',
@@ -2199,7 +2232,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "title": "Unit Tests Success Rate",
                     "type": "gauge",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 70},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 80},
                     "targets": [
                         {
                             "expr": f'((max(unit_tests_passed{{repository="{repo_name}"}}) or max(unit_tests_passed{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(0)) / (max(unit_tests_total{{repository="{repo_name}"}}) or max(unit_tests_total{{job="pipeline-metrics",repository="{repo_name}"}}) or vector(1))) * 100',
