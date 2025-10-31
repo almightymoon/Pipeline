@@ -1502,45 +1502,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "properties": [{"id": "custom.hidden", "value": True}]
                             },
                         {
-                            "matcher": {"id": "byName", "options": "severity"},
-                            "properties": [
-                                {"id": "custom.hidden", "value": False},
-                                {"id": "custom.width", "value": 120}
-                            ]
-                        },
-                        {
-                            "matcher": {"id": "byName", "options": "id"},
-                            "properties": [
-                                {"id": "custom.hidden", "value": False},
-                                {"id": "custom.width", "value": 150}
-                            ]
-                        },
-                        {
-                            "matcher": {"id": "byName", "options": "package"},
-                            "properties": [
-                                {"id": "custom.hidden", "value": False},
-                                {"id": "custom.width", "value": 150}
-                            ]
-                        },
-                        {
-                            "matcher": {"id": "byName", "options": "pkg"},
-                            "properties": [
-                                {"id": "custom.hidden", "value": False},
-                                {"id": "custom.width", "value": 150}
-                            ]
-                        },
-                        {
                             "matcher": {"id": "byName", "options": "title"},
                             "properties": [
-                                {"id": "custom.hidden", "value": False},
-                                {"id": "custom.width", "value": 400}
-                            ]
-                        },
-                        {
-                            "matcher": {"id": "byName", "options": "formatted"},
-                            "properties": [
-                                {"id": "displayName", "value": "Vulnerability Details"},
-                                {"id": "custom.width", "value": 800},
+                                {"id": "displayName", "value": "Vulnerability Description"},
+                                {"id": "custom.width", "value": 500},
                                 {"id": "custom.cellOptions", "value": {"type": "auto"}}
                             ]
                         },
@@ -1621,6 +1586,22 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "installed": True,
                                     "fixed": True,
                                     "fixed_version": True
+                                },
+                                "indexByName": {
+                                    "emoji": 0,
+                                    "severity": 1,
+                                    "id": 2,
+                                    "package": 3,
+                                    "pkg": 3,
+                                    "title": 4
+                                },
+                                "renameByName": {
+                                    "emoji": "Emoji",
+                                    "severity": "Severity",
+                                    "title": "Vulnerability Description",
+                                    "id": "CVE ID",
+                                    "package": "Package",
+                                    "pkg": "Package"
                                 }
                             }
                         },
@@ -1628,41 +1609,6 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "id": "merge",
                             "options": {}
                         },
-                        {
-                            "id": "groupBy",
-                            "options": {
-                                "fields": {
-                                    "id": {
-                                        "aggregations": ["firstNotNull"],
-                                        "operation": "groupby"
-                                    }
-                                },
-                                "aggregations": []
-                            }
-                        },
-                        {
-                            "id": "sortBy",
-                            "options": {
-                                "fields": {
-                                    "severity": {
-                                        "desc": False,
-                                        "index": 0
-                                    }
-                                },
-                                "sort": [
-                                    {
-                                        "field": "severity",
-                                        "desc": False
-                                    },
-                                    {
-                                        "field": "id",
-                                        "desc": False
-                                    }
-                                ]
-                            }
-                        }
-                    ],
-                    "transformations": [
                         {
                             "id": "organize",
                             "options": {
@@ -1681,6 +1627,22 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "installed": True,
                                     "fixed": True,
                                     "fixed_version": True
+                                },
+                                "indexByName": {
+                                    "emoji": 0,
+                                    "severity": 1,
+                                    "id": 2,
+                                    "package": 3,
+                                    "pkg": 3,
+                                    "title": 4
+                                },
+                                "renameByName": {
+                                    "emoji": "Emoji",
+                                    "severity": "Severity",
+                                    "title": "Vulnerability Description",
+                                    "id": "CVE ID",
+                                    "package": "Package",
+                                    "pkg": "Package"
                                 }
                             }
                         },
@@ -1689,45 +1651,62 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "options": {}
                         },
                         {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": True,
+                                    "__name__": True,
+                                    "container": True,
+                                    "endpoint": True,
+                                    "exporter": True,
+                                    "instance": True,
+                                    "job": True,
+                                    "repository": True,
+                                    "project": True,
+                                    "Value": True,
+                                    "version": True,
+                                    "installed": True,
+                                    "fixed": True,
+                                    "fixed_version": True,
+                                    "emoji": True,
+                                    "severity": True,
+                                    "id": True,
+                                    "package": True,
+                                    "pkg": True,
+                                    "title": True
+                                },
+                                "indexByName": {
+                                    "formatted": 0,
+                                    "title": 1,
+                                    "id": 2,
+                                    "package": 3,
+                                    "pkg": 3
+                                },
+                                "renameByName": {
+                                    "formatted": "Vulnerability Details",
+                                    "title": "Vulnerability Description",
+                                    "id": "CVE ID",
+                                    "package": "Package",
+                                    "pkg": "Package"
+                                }
+                            }
+                        },
+                        {
                             "id": "groupBy",
                             "options": {
                                 "fields": {
-                                    "id": {
+                                    "CVE ID": {
                                         "aggregations": ["firstNotNull"],
                                         "operation": "groupby"
                                     }
                                 },
                                 "aggregations": []
                             }
-                        },
-                        {
-                            "id": "addFieldsFromCalculation",
-                            "options": {
-                                "mode": "binary",
-                                "binary": {
-                                    "left": "severity",
-                                    "reducer": "sum",
-                                    "operator": "+"
-                                },
-                                "replaceFields": False,
-                                "alias": "temp"
-                            }
-                        },
-                        {
-                            "id": "formatString",
-                            "options": {
-                                "string": {
-                                    "formatted": {
-                                        "mode": "template",
-                                        "template": "• ${severity_emoji} *${severity}* | ${id} in ${package}: ${title}"
-                                    }
-                                }
-                            }
                         }
                     ],
                     "options": {
-                        "showHeader": True,
-                        "sortBy": [{"desc": False, "displayName": "Vulnerability Details"}],
+                        "showHeader": False,
+                        "sortBy": [{"desc": False, "displayName": "Severity"}],
                         "footer": {
                             "show": False
                         },
@@ -1736,18 +1715,49 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "fieldConfig": {
                         "defaults": {
                             "custom": {
-                                "displayMode": "color-text",
+                                "displayMode": "list",
                                 "inspect": False,
                                 "align": "left"
                             }
                         },
                         "overrides": [
                             {
+                                "matcher": {"id": "byName", "options": "Severity"},
+                                "properties": [
+                                    {"id": "custom.hidden", "value": True}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "CVE ID"},
+                                "properties": [
+                                    {"id": "custom.hidden", "value": True}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Package"},
+                                "properties": [
+                                    {"id": "custom.hidden", "value": True}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Vulnerability Description"},
+                                "properties": [
+                                    {"id": "custom.hidden", "value": True}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Emoji"},
+                                "properties": [
+                                    {"id": "custom.hidden", "value": True}
+                                ]
+                            },
+                            {
                                 "matcher": {"id": "byName", "options": "Vulnerability Details"},
                                 "properties": [
                                     {"id": "displayName", "value": "Vulnerability Details"},
-                                    {"id": "custom.width", "value": 1000},
-                                    {"id": "custom.cellOptions", "value": {"type": "auto"}}
+                                    {"id": "custom.width", "value": 900},
+                                    {"id": "custom.cellOptions", "value": {"type": "auto"}},
+                                    {"id": "custom.displayMode", "value": "markdown"}
                                 ]
                             }
                         ]
