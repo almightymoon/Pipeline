@@ -1346,25 +1346,25 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     "gridPos": {"h": 10, "w": 8, "x": 0, "y": 28},
                     "targets": [
                         {
-                            "expr": f'max(security_vulnerabilities_found{{repository="{repo_name}",severity="CRITICAL"}}) or max(security_vulnerabilities_total{{repository="{repo_name}",severity="CRITICAL"}}) or vector(0)',
+                            "expr": f'sum(trivy_vulnerability_info{{repository="{repo_name}",exported_instance="{repo_name}",severity="CRITICAL"}}) or sum(trivy_vulnerability_info{{project="{repo_name}",exported_instance="{repo_name}",severity="CRITICAL"}}) or vector(0)',
                             "legendFormat": "CRITICAL",
                             "refId": "A",
                             "instant": True
                         },
                         {
-                            "expr": f'max(security_vulnerabilities_found{{repository="{repo_name}",severity="HIGH"}}) or max(security_vulnerabilities_total{{repository="{repo_name}",severity="HIGH"}}) or vector(0)',
+                            "expr": f'sum(trivy_vulnerability_info{{repository="{repo_name}",exported_instance="{repo_name}",severity="HIGH"}}) or sum(trivy_vulnerability_info{{project="{repo_name}",exported_instance="{repo_name}",severity="HIGH"}}) or vector(0)',
                             "legendFormat": "HIGH",
                             "refId": "B",
                             "instant": True
                         },
                         {
-                            "expr": f'max(security_vulnerabilities_found{{repository="{repo_name}",severity="MEDIUM"}}) or max(security_vulnerabilities_total{{repository="{repo_name}",severity="MEDIUM"}}) or vector(0)',
+                            "expr": f'sum(trivy_vulnerability_info{{repository="{repo_name}",exported_instance="{repo_name}",severity="MEDIUM"}}) or sum(trivy_vulnerability_info{{project="{repo_name}",exported_instance="{repo_name}",severity="MEDIUM"}}) or vector(0)',
                             "legendFormat": "MEDIUM",
                             "refId": "C",
                             "instant": True
                         },
                         {
-                            "expr": f'max(security_vulnerabilities_found{{repository="{repo_name}",severity="LOW"}}) or max(security_vulnerabilities_total{{repository="{repo_name}",severity="LOW"}}) or vector(0)',
+                            "expr": f'sum(trivy_vulnerability_info{{repository="{repo_name}",exported_instance="{repo_name}",severity="LOW"}}) or sum(trivy_vulnerability_info{{project="{repo_name}",exported_instance="{repo_name}",severity="LOW"}}) or vector(0)',
                             "legendFormat": "LOW",
                             "refId": "D",
                             "instant": True
