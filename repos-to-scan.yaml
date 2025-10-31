@@ -10,10 +10,10 @@ repositories:
   #   scan_type: full  # options: full, security-only, quick
   
   # Add your repositories below:
-  # - url: https://github.com/almightymoon/docker-test-app-1 
-  #   name: docker-test-app-1
-  #   branch: main  
-  #   scan_type: full   
+  - url: https://github.com/almightymoon/docker-test-app-1 
+    name: docker-test-app-1
+    branch: main  
+    scan_type: full   
 
   # - url: https://github.com/almightymoon/sample-docker-app.git
   #   name: sample-docker-app
@@ -32,10 +32,10 @@ repositories:
   #   branch: main  
   #   scan_type: full      
 
-  - url: https://github.com/almightymoon/qaicb
-    name: my-qaicb-repo
-    branch: main        
-    scan_type: full                     
+  # - url: https://github.com/almightymoon/qaicb
+  #   name: my-qaicb-repo
+  #   branch: main        
+  #   scan_type: full                     
                                         
                                   
 # Scan types:  
