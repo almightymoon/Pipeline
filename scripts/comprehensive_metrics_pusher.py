@@ -496,20 +496,38 @@ def collect_all_metrics():
     
     # Unit test metrics - ALWAYS push, even if 0
     unit_test_metrics = read_unit_test_metrics()
+    
+    # Ensure we have valid values (handle None or missing keys)
+    unit_total = int(unit_test_metrics.get('total', 0) or 0)
+    unit_passed = int(unit_test_metrics.get('passed', 0) or 0)
+    unit_failed = int(unit_test_metrics.get('failed', 0) or 0)
+    unit_coverage = float(unit_test_metrics.get('coverage', 0.0) or 0.0)
+    unit_duration = float(unit_test_metrics.get('duration', 0.0) or 0.0)
+    
     unit_metrics_to_push = [
-        f'unit_tests_total{{repository="{repository}"}} {unit_test_metrics["total"]}',
-        f'unit_tests_passed{{repository="{repository}"}} {unit_test_metrics["passed"]}',
-        f'unit_tests_failed{{repository="{repository}"}} {unit_test_metrics["failed"]}',
-        f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_test_metrics["coverage"]}',
-        f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_test_metrics["duration"]}'
+        f'unit_tests_total{{repository="{repository}"}} {unit_total}',
+        f'unit_tests_passed{{repository="{repository}"}} {unit_passed}',
+        f'unit_tests_failed{{repository="{repository}"}} {unit_failed}',
+        f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_coverage}',
+        f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_duration}'
     ]
     prom_metrics.extend(unit_metrics_to_push)
-    print(f"📊 Unit Test Metrics: Total={unit_test_metrics['total']}, Passed={unit_test_metrics['passed']}, Failed={unit_test_metrics['failed']}, Coverage={unit_test_metrics['coverage']}%, Duration={unit_test_metrics['duration']}s")
+    print(f"📊 Unit Test Metrics: Total={unit_total}, Passed={unit_passed}, Failed={unit_failed}, Coverage={unit_coverage}%, Duration={unit_duration}s")
     print(f"📤 Will push unit test metrics:")
     for metric in unit_metrics_to_push:
         print(f"   {metric}")
     print(f"🔍 IMPORTANT: These metrics will be pushed to Pushgateway and should be queryable in Prometheus")
     print(f"   Example query: unit_tests_total{{repository=\"{repository}\"}}")
+    
+    # CRITICAL: Verify metrics are in the list before pushing
+    unit_test_count_in_payload = sum(1 for m in prom_metrics if 'unit_tests' in m)
+    print(f"🔍 Verification: Found {unit_test_count_in_payload} unit test metrics in payload (should be 5)")
+    if unit_test_count_in_payload != 5:
+        print(f"   ⚠️  ERROR: Expected 5 unit test metrics but found {unit_test_count_in_payload}!")
+        print(f"   Available metrics with 'unit' in name:")
+        for m in prom_metrics:
+            if 'unit' in m.lower():
+                print(f"      {m}")
     
     # Performance test metrics - ALWAYS push, even if 0
     performance_test_metrics = read_performance_test_metrics()
@@ -1141,6 +1159,11 @@ def push_metrics(metrics, pushgateway_url):
                 except:
                     pass  # Ignore delete errors, proceed with PUT
             
+            print(f"   📤 Pushing to: {push_url}")
+            print(f"   📊 Payload size: {len(metrics_payload)} bytes")
+            print(f"   📋 Sample payload (first 500 chars):")
+            print(f"      {metrics_payload[:500]}...")
+            
             response = requests.put(
                 push_url,
                 data=metrics_payload,
@@ -1148,14 +1171,38 @@ def push_metrics(metrics, pushgateway_url):
                 timeout=30
             )
             
+            print(f"   📡 Response status: {response.status_code}")
+            print(f"   📄 Response text: {response.text[:200]}")
+            
             if response.status_code == 200:
                 success_count += 1
                 print(f"   ✅ Pushed to {instance_type} instance successfully")
+                
+                # Immediately verify the push worked
+                verify_get = requests.get(push_url, timeout=10)
+                if verify_get.status_code == 200:
+                    verify_content = verify_get.text
+                    if 'unit_tests_total' in verify_content:
+                        print(f"   ✅ Verified: unit_tests_total found in Pushgateway!")
+                        # Extract sample metric
+                        lines = verify_content.split('\n')
+                        unit_test_lines = [l for l in lines if 'unit_tests' in l][:3]
+                        for line in unit_test_lines:
+                            print(f"      {line[:100]}...")
+                    else:
+                        print(f"   ⚠️  Warning: unit_tests_total NOT found in Pushgateway response")
+                        print(f"   📄 Available metrics (sample):")
+                        sample_lines = [l for l in lines if repository in l][:5]
+                        for line in sample_lines:
+                            print(f"      {line[:100]}...")
             else:
                 print(f"   ⚠️  Failed to push to {instance_type} instance: HTTP {response.status_code}")
+                print(f"   📄 Full response: {response.text}")
                 
         except Exception as e:
             print(f"   ⚠️  Error pushing to {instance_type} instance: {e}")
+            import traceback
+            traceback.print_exc()
     
     if success_count > 0:
         print(f"\n✅ Successfully pushed {len(metrics)} metrics to Prometheus")
