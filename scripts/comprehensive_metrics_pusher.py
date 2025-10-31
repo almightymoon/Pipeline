@@ -1362,12 +1362,24 @@ def build_trivy_vulnerability_info_metrics(repository: str) -> list:
                     inst = v.get('InstalledVersion', '')
                     fix = v.get('FixedVersion', '') or v.get('PrimaryURL', '')
                     title = v.get('Title', '') or v.get('Description', '')
+                    
+                    # Create formatted vulnerability string
+                    severity_emoji = {
+                        'CRITICAL': '🔴',
+                        'HIGH': '🟠',
+                        'MEDIUM': '🟡',
+                        'LOW': '🟢'
+                    }.get(sev, '⚪')
+                    
+                    formatted = f"• {severity_emoji} *{sev}* | {vid} in {pkg}: {title}"
+                    formatted_escaped = formatted.replace('"', '\\"').replace('\n', ' ').replace('\r', ' ')
+                    
                     # sanitize quotes
                     def esc(s: str) -> str:
                         return str(s).replace('"', '\\"')
                     metric = (
                         f'security_vulnerability_info{{repository="{esc(repository)}",severity="{esc(sev)}",id="{esc(vid)}",'
-                        f'pkg="{esc(pkg)}",installed="{esc(inst)}",fixed="{esc(fix)}",title="{esc(title)}"}} 1'
+                        f'pkg="{esc(pkg)}",installed="{esc(inst)}",fixed="{esc(fix)}",title="{esc(title)}",formatted="{esc(formatted_escaped)}"}} 1'
                     )
                     metrics.append(metric)
             break
@@ -1487,8 +1499,23 @@ def collect_trivy_vulnerability_details(project_key: str) -> list:
                     title = (vuln.get('Title') or vuln.get('Description') or 'No title').replace('"', "'")
                     sev = vuln.get('Severity', 'UNKNOWN').upper()
                     ver = vuln.get('InstalledVersion', 'UNKNOWN').replace('"', "'")
+                    
+                    # Create emoji based on severity
+                    emoji_map = {
+                        'CRITICAL': '🔴',
+                        'HIGH': '🟠',
+                        'MEDIUM': '🟡',
+                        'LOW': '🟢'
+                    }
+                    emoji = emoji_map.get(sev, '⚪')
+                    
+                    # Create formatted vulnerability string
+                    formatted = f"• {emoji} *{sev}* | {vid} in {pkg}: {title}"
+                    # Escape quotes for Prometheus label
+                    formatted_escaped = formatted.replace('"', '\\"').replace('\\', '\\\\')
+                    
                     metrics.append(
-                        f'trivy_vulnerability_info{{project="{project_key}",severity="{sev}",id="{vid}",pkg="{pkg}",version="{ver}",title="{title}"}} 1'
+                        f'trivy_vulnerability_info{{project="{project_key}",severity="{sev}",id="{vid}",pkg="{pkg}",version="{ver}",title="{title}",formatted="{formatted_escaped}"}} 1'
                     )
             if metrics:
                 break

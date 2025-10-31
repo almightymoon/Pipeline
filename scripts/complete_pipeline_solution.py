@@ -1501,14 +1501,56 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "matcher": {"id": "byName", "options": "Value"},
                                 "properties": [{"id": "custom.hidden", "value": True}]
                             },
-                            {
-                                "matcher": {"id": "byName", "options": "title"},
-                                "properties": [
-                                    {"id": "displayName", "value": "Vulnerability Description"},
-                                    {"id": "custom.width", "value": 500},
-                                    {"id": "custom.cellOptions", "value": {"type": "auto"}}
-                                ]
-                            },
+                        {
+                            "matcher": {"id": "byName", "options": "severity"},
+                            "properties": [
+                                {"id": "custom.hidden", "value": False},
+                                {"id": "custom.width", "value": 120}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "id"},
+                            "properties": [
+                                {"id": "custom.hidden", "value": False},
+                                {"id": "custom.width", "value": 150}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "package"},
+                            "properties": [
+                                {"id": "custom.hidden", "value": False},
+                                {"id": "custom.width", "value": 150}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "pkg"},
+                            "properties": [
+                                {"id": "custom.hidden", "value": False},
+                                {"id": "custom.width", "value": 150}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "title"},
+                            "properties": [
+                                {"id": "custom.hidden", "value": False},
+                                {"id": "custom.width", "value": 400}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "formatted"},
+                            "properties": [
+                                {"id": "displayName", "value": "Vulnerability Details"},
+                                {"id": "custom.width", "value": 800},
+                                {"id": "custom.cellOptions", "value": {"type": "auto"}}
+                            ]
+                        },
+                        {
+                            "matcher": {"id": "byName", "options": "Emoji"},
+                            "properties": [
+                                {"id": "displayName", "value": "Emoji"},
+                                {"id": "custom.width", "value": 50}
+                            ]
+                        },
                             {
                                 "matcher": {"id": "byName", "options": "id"},
                                 "properties": [
@@ -1574,29 +1616,11 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "job": True,
                                     "repository": True,
                                     "project": True,
-                                    "Value": True
-                                },
-                                "indexByName": {
-                                    "severity": 0,
-                                    "title": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3,
-                                    "version": 4,
-                                    "installed": 4,
-                                    "fixed": 5,
-                                    "fixed_version": 5
-                                },
-                                "renameByName": {
-                                    "severity": "Severity",
-                                    "title": "Vulnerability Description",
-                                    "id": "CVE ID",
-                                    "package": "Package",
-                                    "pkg": "Package",
-                                    "version": "Installed Version",
-                                    "installed": "Installed Version",
-                                    "fixed": "Fixed Version",
-                                    "fixed_version": "Fixed Version"
+                                    "Value": True,
+                                    "version": True,
+                                    "installed": True,
+                                    "fixed": True,
+                                    "fixed_version": True
                                 }
                             }
                         },
@@ -1608,7 +1632,7 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "id": "groupBy",
                             "options": {
                                 "fields": {
-                                    "CVE ID": {
+                                    "id": {
                                         "aggregations": ["firstNotNull"],
                                         "operation": "groupby"
                                     }
@@ -1620,30 +1644,113 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             "id": "sortBy",
                             "options": {
                                 "fields": {
-                                    "Severity": {
+                                    "severity": {
                                         "desc": False,
                                         "index": 0
                                     }
                                 },
                                 "sort": [
                                     {
-                                        "field": "Severity",
+                                        "field": "severity",
                                         "desc": False
                                     },
                                     {
-                                        "field": "CVE ID",
+                                        "field": "id",
                                         "desc": False
                                     }
                                 ]
                             }
                         }
                     ],
+                    "transformations": [
+                        {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": True,
+                                    "__name__": True,
+                                    "container": True,
+                                    "endpoint": True,
+                                    "exporter": True,
+                                    "instance": True,
+                                    "job": True,
+                                    "repository": True,
+                                    "project": True,
+                                    "Value": True,
+                                    "version": True,
+                                    "installed": True,
+                                    "fixed": True,
+                                    "fixed_version": True
+                                }
+                            }
+                        },
+                        {
+                            "id": "merge",
+                            "options": {}
+                        },
+                        {
+                            "id": "groupBy",
+                            "options": {
+                                "fields": {
+                                    "id": {
+                                        "aggregations": ["firstNotNull"],
+                                        "operation": "groupby"
+                                    }
+                                },
+                                "aggregations": []
+                            }
+                        },
+                        {
+                            "id": "addFieldsFromCalculation",
+                            "options": {
+                                "mode": "binary",
+                                "binary": {
+                                    "left": "severity",
+                                    "reducer": "sum",
+                                    "operator": "+"
+                                },
+                                "replaceFields": False,
+                                "alias": "temp"
+                            }
+                        },
+                        {
+                            "id": "formatString",
+                            "options": {
+                                "string": {
+                                    "formatted": {
+                                        "mode": "template",
+                                        "template": "• ${severity_emoji} *${severity}* | ${id} in ${package}: ${title}"
+                                    }
+                                }
+                            }
+                        }
+                    ],
                     "options": {
                         "showHeader": True,
-                        "sortBy": [{"desc": False, "displayName": "Severity"}],
+                        "sortBy": [{"desc": False, "displayName": "Vulnerability Details"}],
                         "footer": {
                             "show": False
-                        }
+                        },
+                        "cellHeight": "sm"
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "custom": {
+                                "displayMode": "color-text",
+                                "inspect": False,
+                                "align": "left"
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Vulnerability Details"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Vulnerability Details"},
+                                    {"id": "custom.width", "value": 1000},
+                                    {"id": "custom.cellOptions", "value": {"type": "auto"}}
+                                ]
+                            }
+                        ]
                     }
                 },
                 # SECTION HEADER: Trends & Historical Data
