@@ -1406,22 +1406,26 @@ def read_unit_test_metrics():
     
     # Try to read from JSON test results
     test_files = [
+        '/tmp/unit-test-results.json',  # Check this first - it's created by workflow
         '/tmp/test-results.json',
-        '/tmp/unit-test-results.json',
         '/tmp/scan-results/test-results.json',
         'test-results.json',
         'unit-test-results.json'
     ]
     
+    print(f"🔍 Reading unit test metrics from test result files...")
     for test_file in test_files:
         if os.path.exists(test_file):
+            print(f"   ✅ Found test file: {test_file}")
             try:
                 with open(test_file, 'r') as f:
                     test_data = json.load(f)
                 
+                print(f"   📄 File content: {json.dumps(test_data, indent=2)}")
+                
                 # Handle different JSON structures
                 if isinstance(test_data, dict):
-                    # Check for unit_tests nested structure
+                    # Check for unit_tests nested structure (most common)
                     if 'unit_tests' in test_data:
                         unit_tests = test_data['unit_tests']
                         metrics['total'] = unit_tests.get('total', 0)
@@ -1429,6 +1433,7 @@ def read_unit_test_metrics():
                         metrics['failed'] = unit_tests.get('failed', 0)
                         metrics['coverage'] = float(unit_tests.get('coverage', 0.0))
                         metrics['duration'] = float(unit_tests.get('duration', 0.0))
+                        print(f"   ✅ Parsed unit_tests structure: {metrics}")
                     # Check for tests nested structure
                     elif 'tests' in test_data:
                         tests = test_data['tests']
@@ -1440,12 +1445,14 @@ def read_unit_test_metrics():
                                 metrics['failed'] = unit_tests.get('failed', 0)
                                 metrics['coverage'] = float(unit_tests.get('coverage', 0.0))
                                 metrics['duration'] = float(unit_tests.get('duration', 0.0))
+                                print(f"   ✅ Parsed tests.unit_tests structure: {metrics}")
                             else:
                                 metrics['total'] = tests.get('total', tests.get('passed', 0) + tests.get('failed', 0))
                                 metrics['passed'] = tests.get('passed', 0)
                                 metrics['failed'] = tests.get('failed', 0)
                                 metrics['coverage'] = float(tests.get('coverage', 0.0))
                                 metrics['duration'] = float(tests.get('duration', 0.0))
+                                print(f"   ✅ Parsed tests structure: {metrics}")
                     # Check for direct structure
                     else:
                         metrics['total'] = test_data.get('total', test_data.get('tests_total', 0))
@@ -1453,63 +1460,90 @@ def read_unit_test_metrics():
                         metrics['failed'] = test_data.get('failed', test_data.get('tests_failed', 0))
                         metrics['coverage'] = float(test_data.get('coverage', test_data.get('coverage_percentage', 0.0)))
                         metrics['duration'] = float(test_data.get('duration', test_data.get('test_duration', 0.0)))
+                        print(f"   ✅ Parsed direct structure: {metrics}")
                 
                 if metrics['total'] > 0 or metrics['passed'] > 0 or metrics['failed'] > 0:
-                    print(f"✅ Read unit test metrics from {test_file}")
+                    print(f"✅ Successfully read unit test metrics from {test_file}")
+                    print(f"   Metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
                     break
+                else:
+                    print(f"   ⚠️  File exists but metrics are all zero, checking other files...")
             except Exception as e:
                 print(f"⚠️  Error reading unit test metrics from {test_file}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
+        else:
+            print(f"   ❌ Not found: {test_file}")
     
     # Try to read from text test results
-    if metrics['total'] == 0:
+    if metrics['total'] == 0 and metrics['passed'] == 0 and metrics['failed'] == 0:
+        print(f"   🔍 No metrics found in JSON files, checking text files...")
         text_files = [
+            '/tmp/test-logs.txt',  # Test logs file created by workflow - check this first
             '/tmp/test-results.txt',
-            '/tmp/test-logs.txt',  # Test logs file created by workflow
             '/tmp/unit-test-results.txt',
             'test-results.txt'
         ]
         
         for text_file in text_files:
             if os.path.exists(text_file):
+                print(f"   ✅ Found text file: {text_file}")
                 try:
                     with open(text_file, 'r') as f:
                         content = f.read()
+                    
+                    print(f"   📄 File size: {len(content)} bytes")
+                    print(f"   📄 Preview: {content[:500]}...")
                     
                     import re
                     # Parse test results - try multiple patterns
                     total_match = re.search(r'Total Tests?:?\s*(\d+)', content, re.IGNORECASE)
                     if not total_match:
                         total_match = re.search(r'Tests\s+total:?\s*(\d+)', content, re.IGNORECASE)
+                    if not total_match:
+                        total_match = re.search(r'Total:?\s*(\d+)', content, re.IGNORECASE)
+                    
                     passed_match = re.search(r'Passed:?\s*(\d+)', content, re.IGNORECASE)
                     if not passed_match:
                         passed_match = re.search(r'Tests\s+passed:?\s*(\d+)', content, re.IGNORECASE)
+                    
                     failed_match = re.search(r'Failed:?\s*(\d+)', content, re.IGNORECASE)
                     if not failed_match:
                         failed_match = re.search(r'Tests\s+failed:?\s*(\d+)', content, re.IGNORECASE)
+                    
                     coverage_match = re.search(r'Coverage:?\s*([\d.]+)%?', content, re.IGNORECASE)
-                    duration_match = re.search(r'Duration:?\s*([\d.]+)\s*(s|sec|seconds)', content, re.IGNORECASE)
+                    duration_match = re.search(r'Duration:?\s*(\d+)\s*(s|sec|seconds)', content, re.IGNORECASE)
                     
                     if total_match:
                         metrics['total'] = int(total_match.group(1))
+                        print(f"   ✅ Found total: {metrics['total']}")
                     if passed_match:
                         metrics['passed'] = int(passed_match.group(1))
+                        print(f"   ✅ Found passed: {metrics['passed']}")
                     if failed_match:
                         metrics['failed'] = int(failed_match.group(1))
+                        print(f"   ✅ Found failed: {metrics['failed']}")
                     if coverage_match:
                         metrics['coverage'] = float(coverage_match.group(1))
+                        print(f"   ✅ Found coverage: {metrics['coverage']}%")
                     if duration_match:
                         metrics['duration'] = float(duration_match.group(1))
+                        print(f"   ✅ Found duration: {metrics['duration']}s")
                     
                     # Calculate total if not found
                     if metrics['total'] == 0 and (metrics['passed'] > 0 or metrics['failed'] > 0):
                         metrics['total'] = metrics['passed'] + metrics['failed']
+                        print(f"   ✅ Calculated total from passed+failed: {metrics['total']}")
                     
                     if metrics['total'] > 0:
-                        print(f"✅ Read unit test metrics from {text_file}")
+                        print(f"✅ Successfully read unit test metrics from {text_file}")
+                        print(f"   Metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
                         break
                 except Exception as e:
                     print(f"⚠️  Error reading unit test metrics from {text_file}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
     
     # Always ensure we return metrics, even if 0
@@ -1563,22 +1597,26 @@ def read_performance_test_metrics():
     
     # Try to read from JSON performance test results
     perf_files = [
-        '/tmp/performance-test-results.json',
+        '/tmp/performance-test-results.json',  # Check this first - it's created by workflow
         '/tmp/perf-results.json',
         '/tmp/scan-results/performance-test-results.json',
         'performance-test-results.json',
         'perf-results.json'
     ]
     
+    print(f"🔍 Reading performance test metrics from result files...")
     for perf_file in perf_files:
         if os.path.exists(perf_file):
+            print(f"   ✅ Found performance test file: {perf_file}")
             try:
                 with open(perf_file, 'r') as f:
                     perf_data = json.load(f)
                 
+                print(f"   📄 File content: {json.dumps(perf_data, indent=2)}")
+                
                 # Handle different JSON structures
                 if isinstance(perf_data, dict):
-                    # Check for performance_tests nested structure
+                    # Check for performance_tests nested structure (most common)
                     if 'performance_tests' in perf_data:
                         perf_tests = perf_data['performance_tests']
                         metrics['total'] = perf_tests.get('total', 0)
@@ -1589,6 +1627,7 @@ def read_performance_test_metrics():
                         metrics['p99_response_time'] = float(perf_tests.get('p99_response_time', perf_tests.get('p99_response_time_ms', 0.0)))
                         metrics['error_rate'] = float(perf_tests.get('error_rate', perf_tests.get('error_rate_percentage', 0.0)))
                         metrics['throughput'] = float(perf_tests.get('throughput', perf_tests.get('throughput_rps', 0.0)))
+                        print(f"   ✅ Parsed performance_tests structure: {metrics}")
                     # Check for direct structure
                     else:
                         metrics['total'] = perf_data.get('total', perf_data.get('tests_total', 0))
@@ -1599,13 +1638,21 @@ def read_performance_test_metrics():
                         metrics['p99_response_time'] = float(perf_data.get('p99_response_time', perf_data.get('p99_response_time_ms', 0.0)))
                         metrics['error_rate'] = float(perf_data.get('error_rate', perf_data.get('error_rate_percentage', 0.0)))
                         metrics['throughput'] = float(perf_data.get('throughput', perf_data.get('throughput_rps', 0.0)))
+                        print(f"   ✅ Parsed direct structure: {metrics}")
                 
                 if metrics['total'] > 0 or metrics['avg_response_time'] > 0:
-                    print(f"✅ Read performance test metrics from {perf_file}")
+                    print(f"✅ Successfully read performance test metrics from {perf_file}")
+                    print(f"   Metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Avg Response={metrics['avg_response_time']}ms, Throughput={metrics['throughput']}rps")
                     break
+                else:
+                    print(f"   ⚠️  File exists but metrics are all zero")
             except Exception as e:
                 print(f"⚠️  Error reading performance test metrics from {perf_file}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
+        else:
+            print(f"   ❌ Not found: {perf_file}")
     
     # Try to read from text performance test results
     if metrics['total'] == 0 and metrics['avg_response_time'] == 0:
