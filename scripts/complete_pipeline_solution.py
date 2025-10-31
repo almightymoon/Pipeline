@@ -1585,88 +1585,6 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "version": True,
                                     "installed": True,
                                     "fixed": True,
-                                    "fixed_version": True
-                                },
-                                "indexByName": {
-                                    "emoji": 0,
-                                    "severity": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3,
-                                    "title": 4
-                                },
-                                "renameByName": {
-                                    "emoji": "Emoji",
-                                    "severity": "Severity",
-                                    "title": "Vulnerability Description",
-                                    "id": "CVE ID",
-                                    "package": "Package",
-                                    "pkg": "Package"
-                                }
-                            }
-                        },
-                        {
-                            "id": "merge",
-                            "options": {}
-                        },
-                        {
-                            "id": "organize",
-                            "options": {
-                                "excludeByName": {
-                                    "Time": True,
-                                    "__name__": True,
-                                    "container": True,
-                                    "endpoint": True,
-                                    "exporter": True,
-                                    "instance": True,
-                                    "job": True,
-                                    "repository": True,
-                                    "project": True,
-                                    "Value": True,
-                                    "version": True,
-                                    "installed": True,
-                                    "fixed": True,
-                                    "fixed_version": True
-                                },
-                                "indexByName": {
-                                    "emoji": 0,
-                                    "severity": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3,
-                                    "title": 4
-                                },
-                                "renameByName": {
-                                    "emoji": "Emoji",
-                                    "severity": "Severity",
-                                    "title": "Vulnerability Description",
-                                    "id": "CVE ID",
-                                    "package": "Package",
-                                    "pkg": "Package"
-                                }
-                            }
-                        },
-                        {
-                            "id": "merge",
-                            "options": {}
-                        },
-                        {
-                            "id": "organize",
-                            "options": {
-                                "excludeByName": {
-                                    "Time": True,
-                                    "__name__": True,
-                                    "container": True,
-                                    "endpoint": True,
-                                    "exporter": True,
-                                    "instance": True,
-                                    "job": True,
-                                    "repository": True,
-                                    "project": True,
-                                    "Value": True,
-                                    "version": True,
-                                    "installed": True,
-                                    "fixed": True,
                                     "fixed_version": True,
                                     "emoji": True,
                                     "severity": True,
@@ -1676,31 +1594,11 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                     "title": True
                                 },
                                 "indexByName": {
-                                    "formatted": 0,
-                                    "title": 1,
-                                    "id": 2,
-                                    "package": 3,
-                                    "pkg": 3
+                                    "formatted": 0
                                 },
                                 "renameByName": {
-                                    "formatted": "Vulnerability Details",
-                                    "title": "Vulnerability Description",
-                                    "id": "CVE ID",
-                                    "package": "Package",
-                                    "pkg": "Package"
+                                    "formatted": "Vulnerability Details"
                                 }
-                            }
-                        },
-                        {
-                            "id": "groupBy",
-                            "options": {
-                                "fields": {
-                                    "CVE ID": {
-                                        "aggregations": ["firstNotNull"],
-                                        "operation": "groupby"
-                                    }
-                                },
-                                "aggregations": []
                             }
                         }
                     ],
