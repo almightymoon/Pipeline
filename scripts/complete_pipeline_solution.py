@@ -1996,33 +1996,77 @@ def create_dashboard_with_real_data(repo_info, metrics):
                 {
                     "id": 244,
                     "title": "Performance Tests Failed Logs",
-                    "type": "logs",
-                    "datasource": {"type": "loki", "uid": "loki"},
+                    "type": "table",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
                     "gridPos": {"h": 10, "w": 24, "x": 0, "y": 70},
                     "targets": [
                         {
-                            "expr": '{job=~".*"} |~ "(?i)(performance|load|stress|artillery|k6|gatling|pytest.*perf|test.*performance)" |~ "(?i)(fail|error|timeout|exception|failed|ERROR|FAILED|timeout)" | line_format "{{.timestamp}} [{{.level}}] {{.message}}"',
-                            "refId": "A",
-                            "legendFormat": "Failed Performance Test Logs"
+                            "expr": f'performance_test_failure_info{{repository="{repo_name}"}}',
+                            "format": "table",
+                            "instant": True,
+                            "refId": "A"
                         }
                     ],
-                    "options": {
-                        "showTime": True,
-                        "showLabels": True,
-                        "showCommonLabels": False,
-                        "wrapLogMessage": True,
-                        "prettifyLogMessage": True,
-                        "enableLogDetails": True,
-                        "dedupStrategy": "none",
-                        "sortOrder": "Descending",
-                        "enableExplore": True
-                    },
                     "fieldConfig": {
                         "defaults": {
                             "custom": {
-                                "filterByValue": False
+                                "displayMode": "auto",
+                                "inspect": False
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Time"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "__name__"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Value"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "repository"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "source"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Source"},
+                                    {"id": "custom.width", "value": 150}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "message"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Failure Detail"},
+                                    {"id": "custom.width", "value": 900}
+                                ]
+                            }
+                        ]
+                    },
+                    "transformations": [
+                        {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": True,
+                                    "__name__": True,
+                                    "Value": True,
+                                    "repository": True
+                                },
+                                "indexByName": {
+                                    "source": 0,
+                                    "message": 1
+                                }
                             }
                         }
+                    ],
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": []
                     }
                 },
                 # Panel 25: Performance Response Times

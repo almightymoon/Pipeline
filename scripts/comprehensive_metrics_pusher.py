@@ -556,6 +556,11 @@ def collect_all_metrics():
     print(f"📤 Will push performance test metrics:")
     for metric in perf_metrics_to_push:
         print(f"   {metric}")
+
+    failure_details = collect_performance_failure_details(repository, performance_test_metrics)
+    if failure_details:
+        prom_metrics.extend(failure_details)
+        print(f"📋 Added {len(failure_details)} performance test failure detail metrics")
     
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
@@ -1856,6 +1861,83 @@ def read_performance_test_metrics():
     else:
         print(f"✅ Successfully read performance test metrics: Total={metrics['total']}, Avg={metrics['avg_response_time']}ms, P95={metrics['p95_response_time']}ms, P99={metrics['p99_response_time']}ms, Error Rate={metrics['error_rate']}%, Throughput={metrics['throughput']}rps")
     return metrics
+
+
+def collect_performance_failure_details(repository: str, performance_metrics: dict) -> list:
+    """Collect failure log snippets for performance tests and convert them into Prometheus metrics."""
+    log_files = [
+        ("locust", "/tmp/locust-output.txt"),
+        ("pytest_benchmark", "/tmp/benchmark-output.txt"),
+        ("npm_perf", "/tmp/npm-perf-output.txt"),
+        ("npm_bench", "/tmp/npm-bench-output.txt"),
+        ("performance_json", "/tmp/performance-test-results.json"),
+        ("performance_json_scan", "/tmp/scan-results/performance-test-results.json"),
+        ("performance_txt", "/tmp/performance-test-results.txt"),
+    ]
+    failure_pattern = re.compile(r"(fail|error|timeout|exception|traceback)", re.IGNORECASE)
+    metrics = []
+    max_entries_per_file = 5
+
+    def add_metric(source: str, message: str):
+        sanitized_source = sanitize_label_value(source)
+        sanitized_message = sanitize_label_value(message)
+        if sanitized_message:
+            metrics.append(
+                f'performance_test_failure_info{{repository="{repository}",source="{sanitized_source}",message="{sanitized_message}"}} 1'
+            )
+
+    for source, path in log_files:
+        if not os.path.exists(path):
+            continue
+        try:
+            if path.endswith('.json'):
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                failed = int(performance_metrics.get('failed', 0) or 0)
+                error_rate = float(performance_metrics.get('error_rate', 0.0) or 0.0)
+                avg = float(performance_metrics.get('avg_response_time', 0.0) or 0.0)
+                throughput = float(performance_metrics.get('throughput', 0.0) or 0.0)
+                if isinstance(data, dict):
+                    nested = data.get('performance_tests') if 'performance_tests' in data else data
+                    failed = int(nested.get('failed', failed) or failed)
+                    error_rate = float(nested.get('error_rate', nested.get('error_rate_percentage', error_rate)) or error_rate)
+                    avg = float(nested.get('avg_response_time', nested.get('avg_response_time_ms', avg)) or avg)
+                    throughput = float(nested.get('throughput', nested.get('throughput_rps', throughput)) or throughput)
+                summary_parts = []
+                if failed:
+                    summary_parts.append(f"failed tests={failed}")
+                if error_rate:
+                    summary_parts.append(f"error rate={error_rate}%")
+                if avg:
+                    summary_parts.append(f"avg response={avg}ms")
+                if throughput:
+                    summary_parts.append(f"throughput={throughput}rps")
+                if summary_parts:
+                    summary = f"Performance summary ({os.path.basename(path)}): " + ", ".join(summary_parts)
+                    add_metric(source, summary)
+                continue
+
+            with open(path, 'r', errors='ignore') as f:
+                lines = f.readlines()
+
+            matches = [line.strip() for line in lines if failure_pattern.search(line)]
+            if not matches:
+                matches = [line.strip() for line in lines[-max_entries_per_file:] if line.strip()]
+
+            for entry in matches[:max_entries_per_file]:
+                add_metric(source, entry)
+        except Exception as e:
+            print(f"⚠️  Error processing performance log {path}: {e}")
+            continue
+
+    if not metrics and int(performance_metrics.get('failed', 0) or 0) > 0:
+        add_metric(
+            "summary",
+            f"{int(performance_metrics.get('failed', 0))} performance tests reported failures, but no log details were captured."
+        )
+
+    return metrics
+
 
 if __name__ == "__main__":
     main()
