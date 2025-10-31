@@ -1429,10 +1429,201 @@ def create_dashboard_with_real_data(repo_info, metrics):
                     ],
                     "fieldConfig": {
                         "defaults": {
-                            "custom": {"align": "auto", "displayMode": "color-background"}
-                        }
+                            "custom": {
+                                "align": "auto",
+                                "displayMode": "color-background",
+                                "inspect": False
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "severity"},
+                                "properties": [
+                                    {
+                                        "id": "custom.cellOptions",
+                                        "value": {
+                                            "type": "color-background"
+                                        }
+                                    },
+                                    {
+                                        "id": "mappings",
+                                        "value": [
+                                            {
+                                                "options": {
+                                                    "CRITICAL": {"text": "CRITICAL", "color": "red"},
+                                                    "HIGH": {"text": "HIGH", "color": "orange"},
+                                                    "MEDIUM": {"text": "MEDIUM", "color": "yellow"},
+                                                    "LOW": {"text": "LOW", "color": "green"}
+                                                },
+                                                "type": "value"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Time"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "__name__"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "container"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "endpoint"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "exporter"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "instance"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "job"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "repository"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "project"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Value"},
+                                "properties": [{"id": "custom.hidden", "value": True}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "id"},
+                                "properties": [
+                                    {"id": "displayName", "value": "CVE ID"},
+                                    {"id": "custom.width", "value": 150}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "title"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Vulnerability Title"},
+                                    {"id": "custom.width", "value": 400}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "package"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Package"},
+                                    {"id": "custom.width", "value": 150}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "pkg"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Package"},
+                                    {"id": "custom.width", "value": 150}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "version"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Version"},
+                                    {"id": "custom.width", "value": 120}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "installed"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Installed Version"},
+                                    {"id": "custom.width", "value": 120}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "fixed"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Fixed Version"},
+                                    {"id": "custom.width", "value": 120}
+                                ]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "fixed_version"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Fixed Version"},
+                                    {"id": "custom.width", "value": 120}
+                                ]
+                            }
+                        ]
                     },
-                    "options": {"showHeader": True, "sortBy": []}
+                    "transformations": [
+                        {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": True,
+                                    "__name__": True,
+                                    "container": True,
+                                    "endpoint": True,
+                                    "exporter": True,
+                                    "instance": True,
+                                    "job": True,
+                                    "repository": True,
+                                    "project": True,
+                                    "Value": True
+                                },
+                                "indexByName": {
+                                    "severity": 0,
+                                    "id": 1,
+                                    "title": 2,
+                                    "package": 3,
+                                    "pkg": 3,
+                                    "version": 4,
+                                    "installed": 4,
+                                    "fixed": 5,
+                                    "fixed_version": 5
+                                },
+                                "renameByName": {
+                                    "severity": "Severity",
+                                    "id": "CVE ID",
+                                    "title": "Vulnerability Title",
+                                    "package": "Package",
+                                    "pkg": "Package",
+                                    "version": "Installed Version",
+                                    "installed": "Installed Version",
+                                    "fixed": "Fixed Version",
+                                    "fixed_version": "Fixed Version"
+                                }
+                            }
+                        },
+                        {
+                            "id": "sortBy",
+                            "options": {
+                                "fields": {
+                                    "Severity": {
+                                        "desc": False,
+                                        "index": 0
+                                    }
+                                },
+                                "sort": [
+                                    {
+                                        "field": "Severity",
+                                        "desc": False
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "options": {
+                        "showHeader": True,
+                        "sortBy": [{"desc": False, "displayName": "Severity"}],
+                        "footer": {
+                            "show": False
+                        }
+                    }
                 },
                 # SECTION HEADER: Trends & Historical Data
                 {
@@ -1558,13 +1749,362 @@ def create_dashboard_with_real_data(repo_info, metrics):
                         }
                     }
                 },
-                # Panel 20: Code Quality Metrics Trend (with TODO, Debug, Large Files)
+                # SECTION HEADER: Unit Testing Metrics
                 {
                     "id": 20,
+                    "title": "",
+                    "type": "text",
+                    "gridPos": {"h": 2, "w": 24, "x": 0, "y": 50},
+                    "options": {
+                        "mode": "markdown",
+                        "content": "## 🧪 Unit Testing Metrics"
+                    },
+                    "transparent": True
+                },
+                # Panel 21: Unit Tests Overview
+                {
+                    "id": 21,
+                    "title": "Unit Tests Overview",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 52},
+                    "targets": [
+                        {
+                            "expr": f'max(unit_tests_total{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Total",
+                            "refId": "A",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(unit_tests_passed{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Passed",
+                            "refId": "B",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(unit_tests_failed{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Failed",
+                            "refId": "C",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(unit_tests_coverage_percentage{{repository="{repo_name}"}}) or max(tests_coverage_percentage{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Coverage %",
+                            "refId": "D",
+                            "instant": True
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "red", "value": 1}
+                                ]
+                            },
+                            "unit": "short"
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Passed"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Failed"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Coverage %"},
+                                "properties": [{"id": "unit", "value": "percent"}, {"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "graphMode": "area",
+                        "colorMode": "background",
+                        "orientation": "horizontal",
+                        "textMode": "value_and_name"
+                    }
+                },
+                # Panel 22: Unit Tests Duration
+                {
+                    "id": 22,
+                    "title": "Unit Tests Duration",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 52},
+                    "targets": [
+                        {
+                            "expr": f'max(unit_tests_duration_seconds{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Duration (seconds)",
+                            "refId": "A",
+                            "instant": True
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "yellow", "value": 30},
+                                    {"color": "orange", "value": 60},
+                                    {"color": "red", "value": 120}
+                                ]
+                            },
+                            "unit": "s"
+                        }
+                    },
+                    "options": {
+                        "graphMode": "none",
+                        "colorMode": "background",
+                        "orientation": "auto",
+                        "textMode": "value"
+                    }
+                },
+                # SECTION HEADER: Performance Testing Metrics
+                {
+                    "id": 23,
+                    "title": "",
+                    "type": "text",
+                    "gridPos": {"h": 2, "w": 24, "x": 0, "y": 60},
+                    "options": {
+                        "mode": "markdown",
+                        "content": "## ⚡ Performance Testing Metrics"
+                    },
+                    "transparent": True
+                },
+                # Panel 24: Performance Tests Overview
+                {
+                    "id": 24,
+                    "title": "Performance Tests Overview",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 62},
+                    "targets": [
+                        {
+                            "expr": f'max(performance_tests_total{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Total",
+                            "refId": "A",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(performance_tests_passed{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Passed",
+                            "refId": "B",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(performance_tests_failed{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Failed",
+                            "refId": "C",
+                            "instant": True
+                        },
+                        {
+                            "expr": f'max(performance_error_rate_percentage{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Error Rate %",
+                            "refId": "D",
+                            "instant": True
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "green", "value": None},
+                                    {"color": "red", "value": 1}
+                                ]
+                            },
+                            "unit": "short"
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Passed"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Failed"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Error Rate %"},
+                                "properties": [
+                                    {"id": "unit", "value": "percent"},
+                                    {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}},
+                                    {"id": "thresholds", "value": {
+                                        "mode": "absolute",
+                                        "steps": [
+                                            {"color": "green", "value": None},
+                                            {"color": "yellow", "value": 1},
+                                            {"color": "orange", "value": 5},
+                                            {"color": "red", "value": 10}
+                                        ]
+                                    }}
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "graphMode": "area",
+                        "colorMode": "background",
+                        "orientation": "horizontal",
+                        "textMode": "value_and_name"
+                    }
+                },
+                # Panel 25: Performance Response Times
+                {
+                    "id": 25,
+                    "title": "Performance Response Times",
+                    "type": "timeseries",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 62},
+                    "targets": [
+                        {
+                            "expr": f'max(performance_avg_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Avg Response Time",
+                            "refId": "A"
+                        },
+                        {
+                            "expr": f'max(performance_p95_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "P95 Response Time",
+                            "refId": "B"
+                        },
+                        {
+                            "expr": f'max(performance_p99_response_time_ms{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "P99 Response Time",
+                            "refId": "C"
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "palette-classic"},
+                            "unit": "ms",
+                            "custom": {
+                                "drawStyle": "line",
+                                "lineInterpolation": "linear",
+                                "fillOpacity": 10
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {"id": "byName", "options": "Avg Response Time"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "P95 Response Time"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "P99 Response Time"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "bottom",
+                            "calcs": ["last", "max", "min", "mean"],
+                            "showLegend": True
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "none"
+                        }
+                    }
+                },
+                # Panel 26: Performance Throughput
+                {
+                    "id": 26,
+                    "title": "Performance Throughput",
+                    "type": "stat",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 0, "y": 70},
+                    "targets": [
+                        {
+                            "expr": f'max(performance_throughput_rps{{repository="{repo_name}"}}) or vector(0)',
+                            "legendFormat": "Requests per Second",
+                            "refId": "A",
+                            "instant": True
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "orange", "value": 50},
+                                    {"color": "yellow", "value": 100},
+                                    {"color": "green", "value": 200}
+                                ]
+                            },
+                            "unit": "reqps"
+                        }
+                    },
+                    "options": {
+                        "graphMode": "area",
+                        "colorMode": "background",
+                        "orientation": "auto",
+                        "textMode": "value"
+                    }
+                },
+                # Panel 27: Unit Tests Success Rate
+                {
+                    "id": 27,
+                    "title": "Unit Tests Success Rate",
+                    "type": "gauge",
+                    "datasource": {"type": "prometheus", "uid": "prometheus"},
+                    "gridPos": {"h": 8, "w": 12, "x": 12, "y": 70},
+                    "targets": [
+                        {
+                            "expr": f'(max(unit_tests_passed{{repository="{repo_name}"}}) / max(unit_tests_total{{repository="{repo_name}"}})) * 100 or vector(0)',
+                            "legendFormat": "Success Rate",
+                            "refId": "A",
+                            "instant": True
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {
+                            "color": {"mode": "thresholds"},
+                            "thresholds": {
+                                "mode": "absolute",
+                                "steps": [
+                                    {"color": "red", "value": None},
+                                    {"color": "red", "value": 50},
+                                    {"color": "yellow", "value": 80},
+                                    {"color": "green", "value": 95}
+                                ]
+                            },
+                            "unit": "percent",
+                            "min": 0,
+                            "max": 100
+                        }
+                    },
+                    "options": {
+                        "orientation": "auto",
+                        "reduceOptions": {
+                            "values": False,
+                            "calcs": ["lastNotNull"],
+                            "fields": ""
+                        },
+                        "showThresholdLabels": False,
+                        "showThresholdMarkers": True
+                    }
+                },
+                # Panel 20: Code Quality Metrics Trend (with TODO, Debug, Large Files)
+                {
+                    "id": 28,
                     "title": "Code Quality Metrics Trend",
                     "type": "timeseries",
                     "datasource": {"type": "prometheus", "uid": "prometheus"},
-                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 50},
+                    "gridPos": {"h": 10, "w": 24, "x": 0, "y": 78},
                     "targets": [
                         {
                             "expr": f'max(quality_todo_comments{{repository="{repo_name}"}}) or max(code_quality_todo_comments{{repository="{repo_name}"}}) or vector(0)',
@@ -1589,18 +2129,20 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "drawStyle": "line",
                                 "lineInterpolation": "linear",
                                 "fillOpacity": 0
-                            },
-                            "min": 0,
-                            "unit": "short"
+                            }
                         },
                         "overrides": [
                             {
-                                "matcher": {"id": "byName", "options": "Debug Statements"},
-                                "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]
-                            },
-                            {
                                 "matcher": {"id": "byName", "options": "TODO Comments"},
                                 "properties": [{"id": "color", "value": {"fixedColor": "yellow", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Debug Statements"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+                            },
+                            {
+                                "matcher": {"id": "byName", "options": "Large Files"},
+                                "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
                             }
                         ]
                     },

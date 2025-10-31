@@ -26,9 +26,47 @@ def _format_size(num_bytes: int) -> str:
 def list_large_files(min_bytes: int = 1_000_000) -> list:
     """Find large files that are part of the actual repository content.
     Returns list of tuples (relative_path, human_size) sorted by size desc.
+    Excludes tool artifacts like sonar-scanner, trivy, etc.
     """
     repo_root = os.path.abspath('external-repo') if os.path.isdir('external-repo') else None
     results: list[tuple[str, int]] = []
+    
+    # Patterns to exclude tool artifacts and build files
+    ignore_patterns = [
+        'sonar-scanner',
+        'trivy',
+        'node_modules',
+        '.cache',
+        '__pycache__',
+        '.pytest_cache',
+        '.git',
+        '.venv',
+        'venv',
+        '.idea',
+        '.vscode'
+    ]
+    
+    # File extensions to exclude (only tool artifacts)
+    ignore_extensions = ['.zip', '.tar.gz', '.deb', '.rpm']
+    
+    def should_exclude_file(filepath: str, filename: str) -> bool:
+        """Check if file should be excluded based on path or name patterns"""
+        filepath_lower = filepath.lower()
+        filename_lower = filename.lower()
+        
+        # Check if path or filename contains any ignore patterns
+        for pattern in ignore_patterns:
+            if pattern in filepath_lower or pattern in filename_lower:
+                return True
+        
+        # Exclude archive files only if they match tool artifact patterns
+        for ext in ignore_extensions:
+            if filename_lower.endswith(ext):
+                # Exclude if it's a tool artifact (sonar-scanner, trivy, etc.)
+                if any(tool in filepath_lower for tool in ['sonar-scanner', 'trivy', 'scanner', 'tool']):
+                    return True
+        
+        return False
     
     if repo_root:
         try:
@@ -45,6 +83,11 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
                 if not rel_b:
                     continue
                 rel = rel_b.decode('utf-8', errors='ignore')
+                
+                # Skip tool artifacts
+                if should_exclude_file(rel, os.path.basename(rel)):
+                    continue
+                
                 fpath = os.path.join(repo_root, rel)
                 try:
                     if os.path.isfile(fpath):
@@ -56,7 +99,7 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
         except Exception:
             pass
     
-    # Fallback to filesystem scan
+    # Fallback to filesystem scan only if git-tracked didn't find anything
     if not results:
         roots = [repo_root] if repo_root else [os.getcwd()]
         ignore_dirs = {
@@ -73,6 +116,11 @@ def list_large_files(min_bytes: int = 1_000_000) -> list:
                     low = fname.lower()
                     if any(low.startswith(pfx) for pfx in ignore_name_prefixes):
                         continue
+                    
+                    # Skip tool artifacts
+                    if should_exclude_file(os.path.join(dirpath, fname), fname):
+                        continue
+                    
                     fpath = os.path.join(dirpath, fname)
                     try:
                         size = os.path.getsize(fpath)

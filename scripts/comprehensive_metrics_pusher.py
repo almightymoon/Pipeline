@@ -494,6 +494,29 @@ def collect_all_metrics():
         f'tests_failed{{repository="{repository}"}} 0'
     ])
     
+    # Unit test metrics
+    unit_test_metrics = read_unit_test_metrics()
+    prom_metrics.extend([
+        f'unit_tests_total{{repository="{repository}"}} {unit_test_metrics["total"]}',
+        f'unit_tests_passed{{repository="{repository}"}} {unit_test_metrics["passed"]}',
+        f'unit_tests_failed{{repository="{repository}"}} {unit_test_metrics["failed"]}',
+        f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_test_metrics["coverage"]}',
+        f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_test_metrics["duration"]}'
+    ])
+    
+    # Performance test metrics
+    performance_test_metrics = read_performance_test_metrics()
+    prom_metrics.extend([
+        f'performance_tests_total{{repository="{repository}"}} {performance_test_metrics["total"]}',
+        f'performance_tests_passed{{repository="{repository}"}} {performance_test_metrics["passed"]}',
+        f'performance_tests_failed{{repository="{repository}"}} {performance_test_metrics["failed"]}',
+        f'performance_avg_response_time_ms{{repository="{repository}"}} {performance_test_metrics["avg_response_time"]}',
+        f'performance_p95_response_time_ms{{repository="{repository}"}} {performance_test_metrics["p95_response_time"]}',
+        f'performance_p99_response_time_ms{{repository="{repository}"}} {performance_test_metrics["p99_response_time"]}',
+        f'performance_error_rate_percentage{{repository="{repository}"}} {performance_test_metrics["error_rate"]}',
+        f'performance_throughput_rps{{repository="{repository}"}} {performance_test_metrics["throughput"]}'
+    ])
+    
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
     print(f"  - Security: CRITICAL={security_metrics['CRITICAL']}, HIGH={security_metrics['HIGH']}, Total={security_metrics['total']}")
@@ -1314,6 +1337,228 @@ def collect_trivy_vulnerability_details(project_key: str) -> list:
         except Exception as e:
             print(f"⚠️  Error reading detailed Trivy vulnerabilities from {path}: {e}")
             continue
+    return metrics
+
+def read_unit_test_metrics():
+    """Read unit test metrics from test result files"""
+    metrics = {
+        'total': 0,
+        'passed': 0,
+        'failed': 0,
+        'coverage': 0.0,
+        'duration': 0.0
+    }
+    
+    # Try to read from JSON test results
+    test_files = [
+        '/tmp/test-results.json',
+        '/tmp/unit-test-results.json',
+        '/tmp/scan-results/test-results.json',
+        'test-results.json',
+        'unit-test-results.json'
+    ]
+    
+    for test_file in test_files:
+        if os.path.exists(test_file):
+            try:
+                with open(test_file, 'r') as f:
+                    test_data = json.load(f)
+                
+                # Handle different JSON structures
+                if isinstance(test_data, dict):
+                    # Check for unit_tests nested structure
+                    if 'unit_tests' in test_data:
+                        unit_tests = test_data['unit_tests']
+                        metrics['total'] = unit_tests.get('total', 0)
+                        metrics['passed'] = unit_tests.get('passed', 0)
+                        metrics['failed'] = unit_tests.get('failed', 0)
+                        metrics['coverage'] = float(unit_tests.get('coverage', 0.0))
+                        metrics['duration'] = float(unit_tests.get('duration', 0.0))
+                    # Check for tests nested structure
+                    elif 'tests' in test_data:
+                        tests = test_data['tests']
+                        if isinstance(tests, dict):
+                            if 'unit_tests' in tests:
+                                unit_tests = tests['unit_tests']
+                                metrics['total'] = unit_tests.get('total', 0)
+                                metrics['passed'] = unit_tests.get('passed', 0)
+                                metrics['failed'] = unit_tests.get('failed', 0)
+                                metrics['coverage'] = float(unit_tests.get('coverage', 0.0))
+                                metrics['duration'] = float(unit_tests.get('duration', 0.0))
+                            else:
+                                metrics['total'] = tests.get('total', tests.get('passed', 0) + tests.get('failed', 0))
+                                metrics['passed'] = tests.get('passed', 0)
+                                metrics['failed'] = tests.get('failed', 0)
+                                metrics['coverage'] = float(tests.get('coverage', 0.0))
+                                metrics['duration'] = float(tests.get('duration', 0.0))
+                    # Check for direct structure
+                    else:
+                        metrics['total'] = test_data.get('total', test_data.get('tests_total', 0))
+                        metrics['passed'] = test_data.get('passed', test_data.get('tests_passed', 0))
+                        metrics['failed'] = test_data.get('failed', test_data.get('tests_failed', 0))
+                        metrics['coverage'] = float(test_data.get('coverage', test_data.get('coverage_percentage', 0.0)))
+                        metrics['duration'] = float(test_data.get('duration', test_data.get('test_duration', 0.0)))
+                
+                if metrics['total'] > 0 or metrics['passed'] > 0 or metrics['failed'] > 0:
+                    print(f"✅ Read unit test metrics from {test_file}")
+                    break
+            except Exception as e:
+                print(f"⚠️  Error reading unit test metrics from {test_file}: {e}")
+                continue
+    
+    # Try to read from text test results
+    if metrics['total'] == 0:
+        text_files = [
+            '/tmp/test-results.txt',
+            '/tmp/unit-test-results.txt',
+            'test-results.txt'
+        ]
+        
+        for text_file in text_files:
+            if os.path.exists(text_file):
+                try:
+                    with open(text_file, 'r') as f:
+                        content = f.read()
+                    
+                    import re
+                    # Parse test results
+                    total_match = re.search(r'Tests\s+total:?\s*(\d+)', content, re.IGNORECASE)
+                    passed_match = re.search(r'Tests\s+passed:?\s*(\d+)', content, re.IGNORECASE)
+                    failed_match = re.search(r'Tests\s+failed:?\s*(\d+)', content, re.IGNORECASE)
+                    coverage_match = re.search(r'Coverage:?\s*([\d.]+)%?', content, re.IGNORECASE)
+                    duration_match = re.search(r'Duration:?\s*([\d.]+)\s*(s|sec|seconds)', content, re.IGNORECASE)
+                    
+                    if total_match:
+                        metrics['total'] = int(total_match.group(1))
+                    if passed_match:
+                        metrics['passed'] = int(passed_match.group(1))
+                    if failed_match:
+                        metrics['failed'] = int(failed_match.group(1))
+                    if coverage_match:
+                        metrics['coverage'] = float(coverage_match.group(1))
+                    if duration_match:
+                        metrics['duration'] = float(duration_match.group(1))
+                    
+                    # Calculate total if not found
+                    if metrics['total'] == 0 and (metrics['passed'] > 0 or metrics['failed'] > 0):
+                        metrics['total'] = metrics['passed'] + metrics['failed']
+                    
+                    if metrics['total'] > 0:
+                        print(f"✅ Read unit test metrics from {text_file}")
+                        break
+                except Exception as e:
+                    print(f"⚠️  Error reading unit test metrics from {text_file}: {e}")
+                    continue
+    
+    print(f"📊 Unit test metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
+    return metrics
+
+def read_performance_test_metrics():
+    """Read performance test metrics from result files"""
+    metrics = {
+        'total': 0,
+        'passed': 0,
+        'failed': 0,
+        'avg_response_time': 0.0,
+        'p95_response_time': 0.0,
+        'p99_response_time': 0.0,
+        'error_rate': 0.0,
+        'throughput': 0.0
+    }
+    
+    # Try to read from JSON performance test results
+    perf_files = [
+        '/tmp/performance-test-results.json',
+        '/tmp/perf-results.json',
+        '/tmp/scan-results/performance-test-results.json',
+        'performance-test-results.json',
+        'perf-results.json'
+    ]
+    
+    for perf_file in perf_files:
+        if os.path.exists(perf_file):
+            try:
+                with open(perf_file, 'r') as f:
+                    perf_data = json.load(f)
+                
+                # Handle different JSON structures
+                if isinstance(perf_data, dict):
+                    # Check for performance_tests nested structure
+                    if 'performance_tests' in perf_data:
+                        perf_tests = perf_data['performance_tests']
+                        metrics['total'] = perf_tests.get('total', 0)
+                        metrics['passed'] = perf_tests.get('passed', 0)
+                        metrics['failed'] = perf_tests.get('failed', 0)
+                        metrics['avg_response_time'] = float(perf_tests.get('avg_response_time', perf_tests.get('avg_response_time_ms', 0.0)))
+                        metrics['p95_response_time'] = float(perf_tests.get('p95_response_time', perf_tests.get('p95_response_time_ms', 0.0)))
+                        metrics['p99_response_time'] = float(perf_tests.get('p99_response_time', perf_tests.get('p99_response_time_ms', 0.0)))
+                        metrics['error_rate'] = float(perf_tests.get('error_rate', perf_tests.get('error_rate_percentage', 0.0)))
+                        metrics['throughput'] = float(perf_tests.get('throughput', perf_tests.get('throughput_rps', 0.0)))
+                    # Check for direct structure
+                    else:
+                        metrics['total'] = perf_data.get('total', perf_data.get('tests_total', 0))
+                        metrics['passed'] = perf_data.get('passed', perf_data.get('tests_passed', 0))
+                        metrics['failed'] = perf_data.get('failed', perf_data.get('tests_failed', 0))
+                        metrics['avg_response_time'] = float(perf_data.get('avg_response_time', perf_data.get('avg_response_time_ms', 0.0)))
+                        metrics['p95_response_time'] = float(perf_data.get('p95_response_time', perf_data.get('p95_response_time_ms', 0.0)))
+                        metrics['p99_response_time'] = float(perf_data.get('p99_response_time', perf_data.get('p99_response_time_ms', 0.0)))
+                        metrics['error_rate'] = float(perf_data.get('error_rate', perf_data.get('error_rate_percentage', 0.0)))
+                        metrics['throughput'] = float(perf_data.get('throughput', perf_data.get('throughput_rps', 0.0)))
+                
+                if metrics['total'] > 0 or metrics['avg_response_time'] > 0:
+                    print(f"✅ Read performance test metrics from {perf_file}")
+                    break
+            except Exception as e:
+                print(f"⚠️  Error reading performance test metrics from {perf_file}: {e}")
+                continue
+    
+    # Try to read from text performance test results
+    if metrics['total'] == 0 and metrics['avg_response_time'] == 0:
+        text_files = [
+            '/tmp/performance-test-results.txt',
+            '/tmp/perf-results.txt',
+            'performance-test-results.txt'
+        ]
+        
+        for text_file in text_files:
+            if os.path.exists(text_file):
+                try:
+                    with open(text_file, 'r') as f:
+                        content = f.read()
+                    
+                    import re
+                    # Parse performance metrics
+                    avg_match = re.search(r'Average.*?response.*?time:?\s*([\d.]+)\s*(ms|s)', content, re.IGNORECASE)
+                    p95_match = re.search(r'P95.*?response.*?time:?\s*([\d.]+)\s*(ms|s)', content, re.IGNORECASE)
+                    p99_match = re.search(r'P99.*?response.*?time:?\s*([\d.]+)\s*(ms|s)', content, re.IGNORECASE)
+                    error_match = re.search(r'Error.*?rate:?\s*([\d.]+)%?', content, re.IGNORECASE)
+                    throughput_match = re.search(r'Throughput:?\s*([\d.]+)\s*(rps|req/s|requests)', content, re.IGNORECASE)
+                    
+                    if avg_match:
+                        value = float(avg_match.group(1))
+                        unit = avg_match.group(2).lower()
+                        metrics['avg_response_time'] = value * 1000 if unit == 's' else value
+                    if p95_match:
+                        value = float(p95_match.group(1))
+                        unit = p95_match.group(2).lower()
+                        metrics['p95_response_time'] = value * 1000 if unit == 's' else value
+                    if p99_match:
+                        value = float(p99_match.group(1))
+                        unit = p99_match.group(2).lower()
+                        metrics['p99_response_time'] = value * 1000 if unit == 's' else value
+                    if error_match:
+                        metrics['error_rate'] = float(error_match.group(1))
+                    if throughput_match:
+                        metrics['throughput'] = float(throughput_match.group(1))
+                    
+                    if metrics['avg_response_time'] > 0:
+                        print(f"✅ Read performance test metrics from {text_file}")
+                        break
+                except Exception as e:
+                    print(f"⚠️  Error reading performance test metrics from {text_file}: {e}")
+                    continue
+    
+    print(f"📊 Performance test metrics: Avg={metrics['avg_response_time']}ms, P95={metrics['p95_response_time']}ms, P99={metrics['p99_response_time']}ms, Error Rate={metrics['error_rate']}%, Throughput={metrics['throughput']}rps")
     return metrics
 
 if __name__ == "__main__":
