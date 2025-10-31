@@ -508,6 +508,8 @@ def collect_all_metrics():
     print(f"📤 Will push unit test metrics:")
     for metric in unit_metrics_to_push:
         print(f"   {metric}")
+    print(f"🔍 IMPORTANT: These metrics will be pushed to Pushgateway and should be queryable in Prometheus")
+    print(f"   Example query: unit_tests_total{{repository=\"{repository}\"}}")
     
     # Performance test metrics - ALWAYS push, even if 0
     performance_test_metrics = read_performance_test_metrics()
@@ -1081,6 +1083,24 @@ def push_metrics(metrics, pushgateway_url):
     # Prepare metrics payload
     metrics_payload = '\n'.join(metrics) + '\n'
     
+    # Debug: Print sample of metrics being pushed
+    print(f"\n📋 Sample of metrics being pushed (first 10 lines):")
+    sample_lines = metrics_payload.split('\n')[:10]
+    for line in sample_lines:
+        if line.strip():
+            print(f"   {line}")
+    
+    # Check specifically for unit test metrics in payload
+    unit_test_lines = [m for m in metrics if 'unit_tests' in m]
+    if unit_test_lines:
+        print(f"\n✅ Found {len(unit_test_lines)} unit test metrics in payload:")
+        for line in unit_test_lines:
+            print(f"   {line}")
+    else:
+        print(f"\n⚠️  WARNING: No unit test metrics found in payload!")
+        print(f"   Total metrics in payload: {len(metrics)}")
+        print(f"   Sample metric names: {[m.split('{')[0] for m in metrics[:5]]}")
+    
     # Determine job and instance
     repository = os.environ.get('REPO_NAME', 'unknown')
     github_run_id = os.environ.get('GITHUB_RUN_ID', 'unknown')
@@ -1148,30 +1168,51 @@ def push_metrics(metrics, pushgateway_url):
         
         # Verify metrics were actually stored in Pushgateway
         try:
-            verify_url = f"{pushgateway_url}/metrics"
-            verify_response = requests.get(verify_url, timeout=10)
+            # Check the specific instance endpoint
+            instance_verify_url = f"{pushgateway_url}/metrics/job/{job_name}/instance/{instance_latest}"
+            verify_response = requests.get(instance_verify_url, timeout=10)
             if verify_response.status_code == 200:
                 metrics_text = verify_response.text
-                # Check if our metrics are there
-                repo_metrics_found = [m for m in metrics if repository in m]
-                found_count = sum(1 for metric_line in repo_metrics_found if metric_line.split('{')[0].strip() in metrics_text)
+                print(f"   📊 Verifying metrics for job={job_name}, instance={instance_latest}")
                 
-                if found_count > 0:
-                    print(f"   ✅ Verified: Found {found_count} metrics in Pushgateway for repository '{repository}'")
-                    # Show a sample of found metrics
-                    sample_metric = repo_metrics_found[0].split('{')[0].strip()
-                    if sample_metric in metrics_text:
+                # Check for unit test metrics specifically
+                unit_test_metric_names = [
+                    'unit_tests_total',
+                    'unit_tests_passed', 
+                    'unit_tests_failed',
+                    'unit_tests_coverage_percentage',
+                    'unit_tests_duration_seconds'
+                ]
+                
+                found_unit_metrics = []
+                for metric_name in unit_test_metric_names:
+                    if f'{metric_name}{{repository="{repository}"}}' in metrics_text or f'{metric_name}{{repository="{repository}",' in metrics_text:
+                        # Extract the line
                         lines = metrics_text.split('\n')
-                        matching = [l for l in lines if repository in l and sample_metric in l]
-                        if matching:
-                            print(f"   📊 Sample metric found:")
-                            print(f"      {matching[0][:120]}...")
+                        matching_lines = [l.strip() for l in lines if metric_name in l and repository in l]
+                        if matching_lines:
+                            found_unit_metrics.append((metric_name, matching_lines[0]))
+                
+                if found_unit_metrics:
+                    print(f"   ✅ Verified: Found {len(found_unit_metrics)} unit test metrics in Pushgateway:")
+                    for metric_name, metric_line in found_unit_metrics:
+                        print(f"      {metric_name}: {metric_line[:100]}...")
                 else:
-                    print(f"   ⚠️  Warning: Metrics pushed but not found in Pushgateway yet (may need a moment to appear)")
+                    print(f"   ⚠️  WARNING: Unit test metrics not found in Pushgateway!")
+                    print(f"   🔍 Available metrics in Pushgateway (sample):")
+                    lines = metrics_text.split('\n')
+                    repo_lines = [l.strip() for l in lines if repository in l][:10]
+                    for line in repo_lines:
+                        print(f"      {line[:100]}...")
+                    if not repo_lines:
+                        print(f"      ❌ No metrics found for repository '{repository}'")
             else:
                 print(f"   ⚠️  Could not verify metrics (HTTP {verify_response.status_code})")
+                print(f"   Response: {verify_response.text[:200]}")
         except Exception as e:
             print(f"   ⚠️  Could not verify metrics: {e}")
+            import traceback
+            traceback.print_exc()
         
         print(f"\n🔍 Verification commands:")
         print(f"   curl -s '{pushgateway_url}/metrics' | grep 'repository=\"{repository}\"' | head -10")
@@ -1476,6 +1517,33 @@ def read_unit_test_metrics():
     if metrics['total'] == 0:
         print(f"⚠️  No unit test metrics found - test files may not exist or tests weren't run")
         print(f"💡 Creating default metrics with 0 values to ensure they appear in Prometheus")
+        # Debug: List available files
+        print(f"🔍 Debug: Checking for test files...")
+        test_files_to_check = [
+            '/tmp/test-results.json',
+            '/tmp/unit-test-results.json',
+            '/tmp/scan-results/test-results.json',
+            'test-results.json',
+            'unit-test-results.json',
+            '/tmp/test-results.txt',
+            '/tmp/test-logs.txt'
+        ]
+        for f in test_files_to_check:
+            if os.path.exists(f):
+                print(f"   ✅ Found: {f}")
+                try:
+                    if f.endswith('.json'):
+                        with open(f, 'r') as file:
+                            content = json.load(file)
+                            print(f"      Content preview: {str(content)[:200]}")
+                    else:
+                        with open(f, 'r') as file:
+                            content = file.read()
+                            print(f"      Size: {len(content)} bytes, Preview: {content[:200]}")
+                except Exception as e:
+                    print(f"      Error reading: {e}")
+            else:
+                print(f"   ❌ Not found: {f}")
     else:
         print(f"✅ Successfully read unit test metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
     

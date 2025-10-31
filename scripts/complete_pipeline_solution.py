@@ -1502,17 +1502,18 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "properties": [{"id": "custom.hidden", "value": True}]
                             },
                             {
+                                "matcher": {"id": "byName", "options": "title"},
+                                "properties": [
+                                    {"id": "displayName", "value": "Vulnerability Description"},
+                                    {"id": "custom.width", "value": 500},
+                                    {"id": "custom.cellOptions", "value": {"type": "auto"}}
+                                ]
+                            },
+                            {
                                 "matcher": {"id": "byName", "options": "id"},
                                 "properties": [
                                     {"id": "displayName", "value": "CVE ID"},
                                     {"id": "custom.width", "value": 150}
-                                ]
-                            },
-                            {
-                                "matcher": {"id": "byName", "options": "title"},
-                                "properties": [
-                                    {"id": "displayName", "value": "Vulnerability Title"},
-                                    {"id": "custom.width", "value": 400}
                                 ]
                             },
                             {
@@ -1577,8 +1578,8 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 },
                                 "indexByName": {
                                     "severity": 0,
-                                    "id": 1,
-                                    "title": 2,
+                                    "title": 1,
+                                    "id": 2,
                                     "package": 3,
                                     "pkg": 3,
                                     "version": 4,
@@ -1588,8 +1589,8 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 },
                                 "renameByName": {
                                     "severity": "Severity",
+                                    "title": "Vulnerability Description",
                                     "id": "CVE ID",
-                                    "title": "Vulnerability Title",
                                     "package": "Package",
                                     "pkg": "Package",
                                     "version": "Installed Version",
