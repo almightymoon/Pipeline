@@ -383,21 +383,27 @@ def get_quality_analysis():
                 
                 # TODO/FIXME comments
                 todo_match = re.search(r'TODO/FIXME comments: (\d+)', content)
+                todo_count = 0
                 if todo_match:
-                    count = int(todo_match.group(1))
-                    if count > 0:
-                        analysis_lines.append(f"• {count} TODO/FIXME comments found (consider addressing)")
+                    todo_count = int(todo_match.group(1))
+                    if todo_count > 0:
+                        analysis_lines.append(f"• {todo_count} TODO/FIXME comments found (consider addressing)")
                     else:
                         analysis_lines.append("• No TODO/FIXME comments found")
+                else:
+                    analysis_lines.append("• No TODO/FIXME comments found")
                 
                 # Debug statements
                 debug_match = re.search(r'Debug statements: (\d+)', content)
+                debug_count = 0
                 if debug_match:
-                    count = int(debug_match.group(1))
-                    if count > 0:
-                        analysis_lines.append(f"• {count} debug statements found (remove before production)")
+                    debug_count = int(debug_match.group(1))
+                    if debug_count > 0:
+                        analysis_lines.append(f"• {debug_count} debug statements found (remove before production)")
                     else:
                         analysis_lines.append("• No debug statements found")
+                else:
+                    analysis_lines.append("• No debug statements found")
                 
                 # Large files - use actual scan results, not quality file count
                 large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
@@ -415,11 +421,12 @@ def get_quality_analysis():
                     # Only say "no large files" if actual scan found none
                     analysis_lines.append("• No large files found in repository source")
                 
-                # Total suggestions
-                total_match = re.search(r'Total suggestions: (\d+)', content)
-                if total_match:
-                    total = int(total_match.group(1))
-                    analysis_lines.append(f"• **Total improvements suggested: {total}**")
+                # Calculate total improvements from actual counts (not from file)
+                actual_total = todo_count + debug_count + repo_large_count
+                if actual_total > 0:
+                    analysis_lines.append(f"• **Total improvements suggested: {actual_total}**")
+                else:
+                    analysis_lines.append("• **Total improvements suggested: 0**")
                 
                 if analysis_lines:
                     return f"*(Data source: {quality_file})*\n" + "\n".join(analysis_lines)

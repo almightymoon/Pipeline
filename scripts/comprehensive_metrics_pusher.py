@@ -503,6 +503,7 @@ def collect_all_metrics():
         f'unit_tests_coverage_percentage{{repository="{repository}"}} {unit_test_metrics["coverage"]}',
         f'unit_tests_duration_seconds{{repository="{repository}"}} {unit_test_metrics["duration"]}'
     ])
+    print(f"📊 Unit Test Metrics: Total={unit_test_metrics['total']}, Passed={unit_test_metrics['passed']}, Failed={unit_test_metrics['failed']}, Coverage={unit_test_metrics['coverage']}%, Duration={unit_test_metrics['duration']}s")
     
     # Performance test metrics
     performance_test_metrics = read_performance_test_metrics()
@@ -516,6 +517,7 @@ def collect_all_metrics():
         f'performance_error_rate_percentage{{repository="{repository}"}} {performance_test_metrics["error_rate"]}',
         f'performance_throughput_rps{{repository="{repository}"}} {performance_test_metrics["throughput"]}'
     ])
+    print(f"📊 Performance Test Metrics: Total={performance_test_metrics['total']}, Passed={performance_test_metrics['passed']}, Failed={performance_test_metrics['failed']}, Avg Response={performance_test_metrics['avg_response_time']}ms, Throughput={performance_test_metrics['throughput']}rps")
     
     print(f"✅ Collected {len(prom_metrics)} metrics")
     print(f"  - Quality: TODO={quality_metrics['todo_comments']}, Debug={quality_metrics['debug_statements']}, Large={quality_metrics['large_files']}")
@@ -1450,7 +1452,10 @@ def read_unit_test_metrics():
                     print(f"⚠️  Error reading unit test metrics from {text_file}: {e}")
                     continue
     
-    print(f"📊 Unit test metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
+    if metrics['total'] == 0:
+        print(f"⚠️  No unit test metrics found - test files may not exist or tests weren't run")
+    else:
+        print(f"✅ Successfully read unit test metrics: Total={metrics['total']}, Passed={metrics['passed']}, Failed={metrics['failed']}, Coverage={metrics['coverage']}%, Duration={metrics['duration']}s")
     return metrics
 
 def read_performance_test_metrics():
@@ -1558,7 +1563,10 @@ def read_performance_test_metrics():
                     print(f"⚠️  Error reading performance test metrics from {text_file}: {e}")
                     continue
     
-    print(f"📊 Performance test metrics: Avg={metrics['avg_response_time']}ms, P95={metrics['p95_response_time']}ms, P99={metrics['p99_response_time']}ms, Error Rate={metrics['error_rate']}%, Throughput={metrics['throughput']}rps")
+    if metrics['total'] == 0 and metrics['avg_response_time'] == 0:
+        print(f"⚠️  No performance test metrics found - test files may not exist or tests weren't run")
+    else:
+        print(f"✅ Successfully read performance test metrics: Total={metrics['total']}, Avg={metrics['avg_response_time']}ms, P95={metrics['p95_response_time']}ms, P99={metrics['p99_response_time']}ms, Error Rate={metrics['error_rate']}%, Throughput={metrics['throughput']}rps")
     return metrics
 
 if __name__ == "__main__":
