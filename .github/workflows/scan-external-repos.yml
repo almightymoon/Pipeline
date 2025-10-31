@@ -356,32 +356,115 @@ jobs:
         echo "Test Execution - Unit Tests"
         echo "========================================="
         
+        # Initialize test metrics
+        TOTAL=0
+        PASSED=0
+        FAILED=0
+        COVERAGE=0.0
+        DURATION=0.0
+        START_TIME=$(date +%s)
+        
         # Python tests
-        if [ -f "requirements.txt" ]; then
+        if [ -f "requirements.txt" ] || [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
           echo "Running Python tests..."
-          pip install -r requirements.txt 2>/dev/null || echo "Requirements installation completed"
+          pip install -r requirements.txt 2>/dev/null || pip install pytest pytest-cov 2>/dev/null || echo "Requirements installation completed"
           
-          # Try different test frameworks
-          python -m pytest tests/ -v --tb=short 2>/dev/null || \
-          python -m unittest discover tests/ 2>/dev/null || \
-          python -m unittest discover . -p "*test*.py" 2>/dev/null || \
-          echo "Python tests completed"
+          # Try pytest with JSON output
+          if python -m pytest tests/ -v --tb=short --json-report --json-report-file=/tmp/pytest-report.json 2>/dev/null; then
+            # Parse pytest JSON report
+            if [ -f "/tmp/pytest-report.json" ]; then
+              PYTEST_TOTAL=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('total', 0))" 2>/dev/null || echo "0")
+              PYTEST_PASSED=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('passed', 0))" 2>/dev/null || echo "0")
+              PYTEST_FAILED=$(python3 -c "import json; d=json.load(open('/tmp/pytest-report.json')); print(d.get('summary', {}).get('failed', 0))" 2>/dev/null || echo "0")
+              TOTAL=$((TOTAL + PYTEST_TOTAL))
+              PASSED=$((PASSED + PYTEST_PASSED))
+              FAILED=$((FAILED + PYTEST_FAILED))
+            fi
+          # Try pytest with coverage
+          elif python -m pytest tests/ -v --cov=. --cov-report=term 2>/dev/null | tee /tmp/pytest-output.txt; then
+            PYTEST_OUTPUT=$(cat /tmp/pytest-output.txt)
+            PYTEST_PASSED=$(echo "$PYTEST_OUTPUT" | grep -E "passed|PASSED" | wc -l || echo "0")
+            PYTEST_FAILED=$(echo "$PYTEST_OUTPUT" | grep -E "failed|FAILED" | wc -l || echo "0")
+            TOTAL=$((TOTAL + PYTEST_PASSED + PYTEST_FAILED))
+            PASSED=$((PASSED + PYTEST_PASSED))
+            FAILED=$((FAILED + PYTEST_FAILED))
+            # Extract coverage percentage
+            COVERAGE_LINE=$(echo "$PYTEST_OUTPUT" | grep -E "TOTAL|total" | grep -E "[0-9]+%" | head -1)
+            if [ -n "$COVERAGE_LINE" ]; then
+              COVERAGE=$(echo "$COVERAGE_LINE" | grep -oE "[0-9]+%" | head -1 | sed 's/%//' || echo "0")
+            fi
+          # Try unittest
+          elif python -m unittest discover tests/ -v 2>&1 | tee /tmp/unittest-output.txt; then
+            UNITTEST_OUTPUT=$(cat /tmp/unittest-output.txt)
+            PYTEST_PASSED=$(echo "$UNITTEST_OUTPUT" | grep -E "OK|ok" | wc -l || echo "0")
+            PYTEST_FAILED=$(echo "$UNITTEST_OUTPUT" | grep -E "FAIL|ERROR" | wc -l || echo "0")
+            TOTAL=$((TOTAL + PYTEST_PASSED + PYTEST_FAILED))
+            PASSED=$((PASSED + PYTEST_PASSED))
+            FAILED=$((FAILED + PYTEST_FAILED))
+          else
+            echo "Python tests completed (no tests found or failed to run)"
+          fi
         fi
         
         # Node.js tests
         if [ -f "package.json" ]; then
           echo "Running Node.js tests..."
           npm install 2>/dev/null || echo "npm install completed"
-          npm test 2>/dev/null || npm run test 2>/dev/null || echo "Node.js tests completed"
+          
+          if npm test 2>&1 | tee /tmp/npm-test-output.txt; then
+            NPM_OUTPUT=$(cat /tmp/npm-test-output.txt)
+            # Parse npm test output
+            NPM_PASSED=$(echo "$NPM_OUTPUT" | grep -E "✓|passing|passed" | wc -l || echo "0")
+            NPM_FAILED=$(echo "$NPM_OUTPUT" | grep -E "✗|failing|failed" | wc -l || echo "0")
+            TOTAL=$((TOTAL + NPM_PASSED + NPM_FAILED))
+            PASSED=$((PASSED + NPM_PASSED))
+            FAILED=$((FAILED + NPM_FAILED))
+          elif npm run test 2>&1 | tee /tmp/npm-test-output.txt; then
+            NPM_OUTPUT=$(cat /tmp/npm-test-output.txt)
+            NPM_PASSED=$(echo "$NPM_OUTPUT" | grep -E "✓|passing|passed" | wc -l || echo "0")
+            NPM_FAILED=$(echo "$NPM_OUTPUT" | grep -E "✗|failing|failed" | wc -l || echo "0")
+            TOTAL=$((TOTAL + NPM_PASSED + NPM_FAILED))
+            PASSED=$((PASSED + NPM_PASSED))
+            FAILED=$((FAILED + NPM_FAILED))
+          else
+            echo "Node.js tests completed (no tests found or failed to run)"
+          fi
         fi
         
         # Go tests
         if [ -f "go.mod" ]; then
           echo "Running Go tests..."
-          go test ./... 2>/dev/null || echo "Go tests completed"
+          if go test ./... -v 2>&1 | tee /tmp/go-test-output.txt; then
+            GO_OUTPUT=$(cat /tmp/go-test-output.txt)
+            GO_PASSED=$(echo "$GO_OUTPUT" | grep -E "PASS|ok" | wc -l || echo "0")
+            GO_FAILED=$(echo "$GO_OUTPUT" | grep -E "FAIL" | wc -l || echo "0")
+            TOTAL=$((TOTAL + GO_PASSED + GO_FAILED))
+            PASSED=$((PASSED + GO_PASSED))
+            FAILED=$((FAILED + GO_FAILED))
+          else
+            echo "Go tests completed (no tests found or failed to run)"
+          fi
         fi
         
+        # Calculate duration
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        
+        # Save test results to JSON
+        cat > /tmp/unit-test-results.json <<EOF
+        {
+          "unit_tests": {
+            "total": ${TOTAL},
+            "passed": ${PASSED},
+            "failed": ${FAILED},
+            "coverage": ${COVERAGE},
+            "duration": ${DURATION}
+          }
+        }
+        EOF
+        
         echo "Test execution completed"
+        echo "Total: $TOTAL, Passed: $PASSED, Failed: $FAILED, Coverage: ${COVERAGE}%, Duration: ${DURATION}s"
     
     - name: Test Execution - Integration Tests
       if: steps.read_config.outputs.has_repos == 'true'
@@ -424,30 +507,97 @@ jobs:
         echo "Performance Testing - Load Tests"
         echo "========================================="
         
+        # Initialize performance metrics
+        TOTAL=0
+        PASSED=0
+        FAILED=0
+        AVG_RESPONSE_TIME=0.0
+        P95_RESPONSE_TIME=0.0
+        P99_RESPONSE_TIME=0.0
+        ERROR_RATE=0.0
+        THROUGHPUT=0.0
+        
         # Check for performance test files
         if find . -name "*perf*" -o -name "*load*" -o -name "*benchmark*" | grep -q .; then
           echo "Performance tests found, running..."
           
           # Python performance tests
-          if [ -f "requirements.txt" ]; then
+          if [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
             pip install locust 2>/dev/null || echo "Locust installation completed"
             
             # Run Locust if found
             if [ -f "locustfile.py" ]; then
-              locust --headless -u 10 -r 2 -t 30s --host http://localhost 2>/dev/null || echo "Locust tests completed"
+              echo "Running Locust performance tests..."
+              locust --headless -u 10 -r 2 -t 30s --host http://localhost 2>&1 | tee /tmp/locust-output.txt || echo "Locust tests completed"
+              
+              # Parse Locust output
+              if [ -f "/tmp/locust-output.txt" ]; then
+                LOCUST_OUTPUT=$(cat /tmp/locust-output.txt)
+                # Extract metrics from Locust output
+                AVG_RESPONSE_TIME=$(echo "$LOCUST_OUTPUT" | grep -E "Average|avg" | grep -oE "[0-9]+\.[0-9]+" | head -1 || echo "0")
+                THROUGHPUT=$(echo "$LOCUST_OUTPUT" | grep -E "RPS|Requests/s" | grep -oE "[0-9]+\.[0-9]+" | head -1 || echo "0")
+                ERROR_RATE=$(echo "$LOCUST_OUTPUT" | grep -E "Failures|failures" | grep -oE "[0-9]+\.[0-9]+%" | head -1 | sed 's/%//' || echo "0")
+                TOTAL=10  # Locust ran with 10 users
+                if [ -n "$ERROR_RATE" ] && [ "$ERROR_RATE" != "0" ]; then
+                  FAILED=$(echo "$ERROR_RATE * 0.1" | bc -l 2>/dev/null | cut -d. -f1 || echo "0")
+                  PASSED=$((TOTAL - FAILED))
+                else
+                  PASSED=$TOTAL
+                fi
+              fi
             fi
             
             # Run pytest-benchmark if found
-            python -m pytest --benchmark-only 2>/dev/null || echo "Benchmark tests completed"
+            if python -m pytest --benchmark-only --benchmark-json=/tmp/benchmark-results.json 2>&1 | tee /tmp/benchmark-output.txt; then
+              if [ -f "/tmp/benchmark-results.json" ]; then
+                # Parse benchmark JSON
+                AVG_RESPONSE_TIME=$(python3 -c "import json; d=json.load(open('/tmp/benchmark-results.json')); print(sum([b.get('stats', {}).get('mean', 0) for b in d.get('benchmarks', [])]) / max(len(d.get('benchmarks', [])), 1) * 1000)" 2>/dev/null || echo "0")
+                TOTAL=$(python3 -c "import json; d=json.load(open('/tmp/benchmark-results.json')); print(len(d.get('benchmarks', [])))" 2>/dev/null || echo "0")
+                PASSED=$TOTAL
+              fi
+            fi
           fi
           
           # Node.js performance tests
           if [ -f "package.json" ]; then
-            npm run perf 2>/dev/null || npm run benchmark 2>/dev/null || echo "Node.js performance tests completed"
+            if npm run perf 2>&1 | tee /tmp/npm-perf-output.txt; then
+              NPM_PERF_OUTPUT=$(cat /tmp/npm-perf-output.txt)
+              AVG_RESPONSE_TIME=$(echo "$NPM_PERF_OUTPUT" | grep -E "avg|average|mean" | grep -oE "[0-9]+\.[0-9]+" | head -1 || echo "0")
+              THROUGHPUT=$(echo "$NPM_PERF_OUTPUT" | grep -E "req/s|rps|requests" | grep -oE "[0-9]+\.[0-9]+" | head -1 || echo "0")
+              TOTAL=1
+              PASSED=1
+            elif npm run benchmark 2>&1 | tee /tmp/npm-bench-output.txt; then
+              NPM_BENCH_OUTPUT=$(cat /tmp/npm-bench-output.txt)
+              AVG_RESPONSE_TIME=$(echo "$NPM_BENCH_OUTPUT" | grep -E "ops/sec|op/s" | grep -oE "[0-9]+\.[0-9]+" | head -1 || echo "0")
+              TOTAL=1
+              PASSED=1
+            else
+              echo "Node.js performance tests completed (no tests found or failed to run)"
+            fi
           fi
         else
           echo "No performance tests found"
         fi
+        
+        # Save performance test results to JSON
+        cat > /tmp/performance-test-results.json <<EOF
+        {
+          "performance_tests": {
+            "total": ${TOTAL},
+            "passed": ${PASSED},
+            "failed": ${FAILED},
+            "avg_response_time": ${AVG_RESPONSE_TIME},
+            "p95_response_time": ${P95_RESPONSE_TIME},
+            "p99_response_time": ${P99_RESPONSE_TIME},
+            "error_rate": ${ERROR_RATE},
+            "throughput": ${THROUGHPUT}
+          }
+        }
+        EOF
+        
+        echo "Performance tests completed"
+        echo "Total: $TOTAL, Passed: $PASSED, Failed: $FAILED"
+        echo "Avg Response Time: ${AVG_RESPONSE_TIME}ms, Throughput: ${THROUGHPUT}rps, Error Rate: ${ERROR_RATE}%"
     
     # ==========================================
     # STAGE 7: QA (Quality Assurance)

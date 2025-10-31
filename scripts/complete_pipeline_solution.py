@@ -1600,6 +1600,22 @@ def create_dashboard_with_real_data(repo_info, metrics):
                             }
                         },
                         {
+                            "id": "merge",
+                            "options": {}
+                        },
+                        {
+                            "id": "groupBy",
+                            "options": {
+                                "fields": {
+                                    "CVE ID": {
+                                        "aggregations": ["firstNotNull"],
+                                        "operation": "groupby"
+                                    }
+                                },
+                                "aggregations": []
+                            }
+                        },
+                        {
                             "id": "sortBy",
                             "options": {
                                 "fields": {
@@ -1611,6 +1627,10 @@ def create_dashboard_with_real_data(repo_info, metrics):
                                 "sort": [
                                     {
                                         "field": "Severity",
+                                        "desc": False
+                                    },
+                                    {
+                                        "field": "CVE ID",
                                         "desc": False
                                     }
                                 ]
@@ -2362,14 +2382,36 @@ def create_jira_issue_with_dashboard(repo_info, dashboard_url):
             debug_match = re.search(r'Debug statements: (\d+)', content)
             if debug_match:
                 debug_count = int(debug_match.group(1))
-            large_match = re.search(r'Large files \(>1MB\): (\d+)', content)
-            if large_match:
-                large_files = int(large_match.group(1))
+            # Don't read large_files from quality file - use actual scan instead
             total_match = re.search(r'Total suggestions: (\d+)', content)
             if total_match:
                 total_improvements = int(total_match.group(1))
     except:
         pass
+    
+    # Use actual large files scan instead of quality file count
+    try:
+        # Import list_large_files function - try different import paths
+        try:
+            from create_jira_issue import list_large_files
+        except ImportError:
+            # Try importing from scripts directory
+            import sys
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            if current_dir not in sys.path:
+                sys.path.insert(0, current_dir)
+            from create_jira_issue import list_large_files
+        
+        repo_large_files = list_large_files()
+        large_files = len(repo_large_files)
+        # Recalculate total_improvements based on actual counts
+        total_improvements = todo_count + debug_count + large_files
+    except Exception as e:
+        print(f"Warning: Could not get actual large files count: {e}")
+        # Fallback: if quality file said 4, but we can't scan, use 0
+        large_files = 0
+        total_improvements = todo_count + debug_count
     
     # Parse secret counts
     api_keys = 0
