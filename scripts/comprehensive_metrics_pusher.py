@@ -1930,11 +1930,18 @@ def collect_performance_failure_details(repository: str, performance_metrics: di
             print(f"⚠️  Error processing performance log {path}: {e}")
             continue
 
-    if not metrics and int(performance_metrics.get('failed', 0) or 0) > 0:
-        add_metric(
-            "summary",
-            f"{int(performance_metrics.get('failed', 0))} performance tests reported failures, but no log details were captured."
-        )
+    failures = int(performance_metrics.get('failed', 0) or 0)
+    if not metrics:
+        if failures > 0:
+            add_metric(
+                "summary",
+                f"{failures} performance tests reported failures, but no log details were captured."
+            )
+        else:
+            add_metric(
+                "summary",
+                "No performance test failures detected in the latest run."
+            )
 
     return metrics
 
