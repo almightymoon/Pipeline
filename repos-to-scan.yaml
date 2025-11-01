@@ -23,7 +23,7 @@ repositories:
 
   - url: https://github.com/almightymoon/dockerized-hello-world-app 
     name: dockerized-hello-world-app
-    branch: main       
+    branch: main         
     scan_type: full                                                                         
     # ci-touch: trigger pipeline
        

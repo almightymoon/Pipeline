@@ -1191,24 +1191,32 @@ jobs:
         mkdir -p ~/.ssh
         chmod 700 ~/.ssh
 
-        printf '%s' "$VPS_SSH_KEY" > ~/.ssh/vps_ed25519
+        printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps_ed25519
         chmod 600 ~/.ssh/vps_ed25519
 
+        eval "$(ssh-agent -s)"
         if [ -n "$VPS_SSH_PASSPHRASE" ]; then
-          if ! ssh-keygen -p -P "$VPS_SSH_PASSPHRASE" -N "" -f ~/.ssh/vps_ed25519 >/dev/null; then
-            echo "❌ Failed to decrypt SSH key with the provided passphrase."
+          ASKPASS_SCRIPT=$(mktemp)
+          printf '%s\n' '#!/usr/bin/env bash' 'echo "$VPS_SSH_PASSPHRASE"' > "$ASKPASS_SCRIPT"
+          chmod 700 "$ASKPASS_SCRIPT"
+          export SSH_ASKPASS="$ASKPASS_SCRIPT"
+          export SSH_ASKPASS_REQUIRE=force
+          export DISPLAY=:0
+          if ! setsid ssh-add ~/.ssh/vps_ed25519 < /dev/null >/dev/null 2>&1; then
+            echo "❌ Failed to load SSH key with the provided passphrase."
+            rm -f "$ASKPASS_SCRIPT"
             exit 1
           fi
+          rm -f "$ASKPASS_SCRIPT"
+        else
+          ssh-add ~/.ssh/vps_ed25519 >/dev/null
         fi
-
-        eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/vps_ed25519 >/dev/null
         ssh-keyscan -H 213.109.162.134 >> ~/.ssh/known_hosts
 
         echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
         echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
 
-        unset VPS_SSH_KEY VPS_SSH_PASSPHRASE
+        unset VPS_SSH_KEY VPS_SSH_PASSPHRASE SSH_ASKPASS SSH_ASKPASS_REQUIRE DISPLAY ASKPASS_SCRIPT
 
     - name: Transfer and Load Docker Image to K3s
       if: steps.read_config.outputs.has_repos == 'true' && steps.check_dockerfile.outputs.dockerfile_exists == 'true'
