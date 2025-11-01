@@ -1409,7 +1409,25 @@ jobs:
         
         # Wait for deployment to be ready
         echo "Waiting for deployment to be ready..."
-        kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s
+        if ! kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s; then
+          echo "❌ Deployment failed to become ready within the timeout"
+          echo "🔍 Current pod status:"
+          kubectl get pods -n $NAMESPACE -l app=${{ steps.read_config.outputs.repo_name }} || true
+          echo "\n📄 Deployment details:"
+          kubectl describe deployment $DEPLOYMENT_NAME -n $NAMESPACE || true
+          echo "\n📄 ReplicaSet details:"
+          kubectl describe rs -l app=${{ steps.read_config.outputs.repo_name }} -n $NAMESPACE || true
+          POD_NAME=$(kubectl get pods -n $NAMESPACE -l app=${{ steps.read_config.outputs.repo_name }} -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+          if [ -n "$POD_NAME" ]; then
+            echo "\n📄 Pod details ($POD_NAME):"
+            kubectl describe pod "$POD_NAME" -n $NAMESPACE || true
+            echo "\n📝 Recent pod logs ($POD_NAME):"
+            kubectl logs "$POD_NAME" -n $NAMESPACE --all-containers --tail=200 || true
+          else
+            echo "⚠️  No pods found for app label."
+          fi
+          exit 1
+        fi
         
         # Get the service endpoint
         NODE_PORT=$(kubectl get service $SERVICE_NAME -n $NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
