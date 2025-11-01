@@ -38,8 +38,7 @@ Before integrating Jira, you need the following information:
 
 **Option A: Interactive Setup**
 ```bash
-ssh ubuntu@213.109.162.134
-# Password: qwert1234
+ssh -i /path/to/EdDSA-channel-3.pem ubuntu@213.109.162.134
 
 cd ~/Pipeline
 ./setup-jira-integration.sh

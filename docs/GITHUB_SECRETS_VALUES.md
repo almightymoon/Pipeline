@@ -30,9 +30,11 @@ gh secret set VAULT_TOKEN --body "sample-vault-token"
 gh secret set JIRA_URL --body "https://faniqueprimus.atlassian.net"
 gh secret set JIRA_PROJECT_KEY --body "KAN"
 gh secret set PROMETHEUS_PUSHGATEWAY_URL --body "http://213.109.162.134:30091"
+gh secret set VPS_SSH_KEY < /path/to/EdDSA-channel-3.pem
+gh secret set VPS_SSH_PASSPHRASE --body "penthouseprime12"
 
-# Get Kubernetes config from your server
-KUBECONFIG_BASE64=$(sshpass -p 'qwert1234' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'kubectl config view --raw --minify | base64 -w 0')
+# Get Kubernetes config from your server using the SSH key
+KUBECONFIG_BASE64=$(ssh -i /path/to/EdDSA-channel-3.pem -o StrictHostKeyChecking=no -o IdentitiesOnly=yes ubuntu@213.109.162.134 'kubectl config view --raw --minify | base64 -w 0')
 gh secret set KUBECONFIG --body "$KUBECONFIG_BASE64"
 
 # Optional: Slack webhook (set if you have one)
@@ -56,6 +58,8 @@ Go to your repository → **Settings** → **Secrets and variables** → **Actio
 | `JIRA_URL` | `https://faniqueprimus.atlassian.net` |
 | `JIRA_PROJECT_KEY` | `KAN` |
 | `PROMETHEUS_PUSHGATEWAY_URL` | `http://213.109.162.134:30091` |
+| `VPS_SSH_KEY` | *(paste entire contents of `EdDSA-channel-3.pem`)* |
+| `VPS_SSH_PASSPHRASE` | `penthouseprime12` |
 | `SLACK_WEBHOOK_URL` | *(optional)* |
 
 ---
@@ -66,7 +70,7 @@ Run this command to get your Kubernetes config:
 
 ```bash
 # Get the base64 encoded kubeconfig
-sshpass -p 'qwert1234' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'kubectl config view --raw --minify | base64 -w 0'
+ssh -i /path/to/EdDSA-channel-3.pem -o StrictHostKeyChecking=no -o IdentitiesOnly=yes ubuntu@213.109.162.134 'kubectl config view --raw --minify | base64 -w 0'
 ```
 
 Copy the output and use it as the `KUBECONFIG` secret value.

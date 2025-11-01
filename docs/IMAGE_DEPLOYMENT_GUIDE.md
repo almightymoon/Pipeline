@@ -149,7 +149,8 @@ KUBECONFIG              # Base64 encoded kubeconfig file
 
 # VPS Access
 VPS_USER                # SSH username
-VPS_PASSWORD            # SSH password
+VPS_SSH_KEY             # Full PEM private key (multi-line)
+VPS_SSH_PASSPHRASE      # Passphrase for the private key (if set)
 
 # Jira Integration
 JIRA_URL                # Your Jira URL (e.g., https://yourcompany.atlassian.net)

@@ -86,14 +86,32 @@ echo ""
 echo "☸️  Getting Kubernetes configuration..."
 read -p "Do you want to set KUBECONFIG secret? (y/n): " SETUP_KUBE
 if [ "$SETUP_KUBE" = "y" ] || [ "$SETUP_KUBE" = "Y" ]; then
-    echo "   Connecting to server..."
-    KUBECONFIG_BASE64=$(sshpass -p 'qwert1234' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'kubectl config view --raw --minify' | base64 -w 0 2>/dev/null || sshpass -p 'qwert1234' ssh -o StrictHostKeyChecking=no ubuntu@213.109.162.134 'kubectl config view --raw --minify' | base64)
-    
-    if [ -n "$KUBECONFIG_BASE64" ]; then
-        echo "$KUBECONFIG_BASE64" | gh secret set KUBECONFIG --repo "$REPO"
-        echo "   ✅ Kubernetes config set"
+    DEFAULT_VPS_USER=${SSH_USER:-ubuntu}
+    DEFAULT_VPS_HOST=${SSH_HOST:-213.109.162.134}
+    DEFAULT_SSH_KEY_PATH=${SSH_KEY_PATH:-$HOME/EdDSA-channel-3.pem}
+
+    read -p "SSH username [$DEFAULT_VPS_USER]: " INPUT_VPS_USER
+    VPS_USER=${INPUT_VPS_USER:-$DEFAULT_VPS_USER}
+
+    read -p "VPS host [$DEFAULT_VPS_HOST]: " INPUT_VPS_HOST
+    VPS_HOST=${INPUT_VPS_HOST:-$DEFAULT_VPS_HOST}
+
+    read -p "Path to SSH private key [$DEFAULT_SSH_KEY_PATH]: " INPUT_SSH_KEY
+    SSH_KEY_PATH=${INPUT_SSH_KEY:-$DEFAULT_SSH_KEY_PATH}
+
+    if [ ! -f "$SSH_KEY_PATH" ]; then
+        echo "   ❌ SSH key not found at $SSH_KEY_PATH"
     else
-        echo "   ❌ Failed to get Kubernetes config"
+        echo "   Connecting to server with key authentication..."
+        KUBECONFIG_BASE64=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes "$VPS_USER@$VPS_HOST" 'kubectl config view --raw --minify | base64 -w 0' 2>/dev/null)
+
+        if [ -n "$KUBECONFIG_BASE64" ]; then
+            echo "$KUBECONFIG_BASE64" | gh secret set KUBECONFIG --repo "$REPO"
+            echo "   ✅ Kubernetes config set"
+        else
+            echo "   ❌ Failed to get Kubernetes config"
+            echo "      Verify the key path, passphrase, and remote permissions."
+        fi
     fi
 else
     echo "   ⏭️  Skipping Kubernetes configuration"
