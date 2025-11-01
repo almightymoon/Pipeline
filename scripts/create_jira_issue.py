@@ -603,6 +603,61 @@ def get_priority_actions():
     except Exception as e:
         return "• Priority actions error (check logs for details)"
 
+def get_sonarqube_issue_severity(repo_name: str) -> str:
+    """Return a bullet list summarising open SonarQube issues by severity."""
+    sonar_url = os.environ.get('SONARQUBE_URL', 'http://213.109.162.134:30100')
+    sonar_token = os.environ.get('SONARQUBE_TOKEN', '').strip()
+
+    if not sonar_token:
+        return "• SonarQube credentials not configured; issue breakdown unavailable"
+
+    try:
+        response = requests.get(
+            f"{sonar_url}/api/issues/search",
+            params={
+                'componentKeys': repo_name,
+                'resolved': 'false',
+                'facets': 'severities'
+            },
+            auth=(sonar_token, ""),
+            timeout=15
+        )
+
+        if response.status_code != 200:
+            return f"• Unable to query SonarQube issues (HTTP {response.status_code})"
+
+        data = response.json()
+        severity_counts = {
+            'BLOCKER': 0,
+            'CRITICAL': 0,
+            'MAJOR': 0,
+            'MINOR': 0,
+            'INFO': 0
+        }
+
+        for facet in data.get('facets', []):
+            if facet.get('property') == 'severities':
+                for value in facet.get('values', []):
+                    sev = value.get('val', '').upper()
+                    count = value.get('count', 0)
+                    if sev in severity_counts:
+                        severity_counts[sev] = count
+
+        total_issues = sum(severity_counts.values())
+        if total_issues == 0:
+            return "• No open SonarQube issues detected"
+
+        lines = [f"• {severity.title()}: {count}" for severity, count in severity_counts.items() if count > 0]
+        if not lines:
+            lines.append("• No open SonarQube issues detected")
+        else:
+            lines.append(f"• Total open issues: {total_issues}")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"• SonarQube issue fetch error ({str(e)[:60]})"
+
 def get_scan_metrics():
     """Get dynamic scan metrics from the pipeline"""
     try:
@@ -683,6 +738,7 @@ def create_enhanced_description(base_description):
     # Try to get actual scan results
     vulnerabilities_found = get_scan_status()
     security_issues = get_security_issues_summary()
+    sonar_severity_breakdown = get_sonarqube_issue_severity(repo_name)
     
     # Get the dynamic dashboard URL for this specific repository
     dashboard_url = get_dashboard_url_for_repo(repo_name)
@@ -735,6 +791,9 @@ def create_enhanced_description(base_description):
 • Status: {vulnerabilities_found}
 • Issues Found: {security_issues}
 • Scan Completed: ✅
+
+*SonarQube Issues by Severity:*
+{sonar_severity_breakdown}
 
 {get_detailed_vulnerability_list()}
 
