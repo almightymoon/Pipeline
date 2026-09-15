@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Fail-closed local security gates across the repository.
 set -euo pipefail
 
 ROOT="${ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -6,31 +7,60 @@ REPORTS="${REPORTS:-$ROOT/reports}"
 mkdir -p "$REPORTS"
 fail=0
 
-echo "=== Gitleaks (secrets) ==="
-gitleaks detect --source "$ROOT" --no-git -v --report-path "$REPORTS/gitleaks.json" \
-  --config "$ROOT/security/scanning/gitleaks.toml" || fail=1
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Missing required tool for make security: $1"
+    fail=1
+    return 1
+  fi
+}
 
-echo "=== Trivy filesystem (deps + config) ==="
-trivy fs --exit-code 1 --severity HIGH,CRITICAL \
-  --scanners vuln,secret,misconfig \
-  --ignorefile "$ROOT/security/scanning/.trivyignore" \
-  "$ROOT/examples/demo-app" | tee "$REPORTS/trivy-fs.txt" || fail=1
+require gitleaks || true
+require trivy || true
 
-echo "=== Checkov (IaC) ==="
-if command -v checkov >/dev/null 2>&1; then
-  checkov -d "$ROOT/gitops" -d "$ROOT/charts" -d "$ROOT/platform" \
+echo "=== Gitleaks (secrets, whole repo) ==="
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks detect --source "$ROOT" --no-git -v --report-path "$REPORTS/gitleaks.json" \
+    --config "$ROOT/security/scanning/gitleaks.toml" || fail=1
+fi
+
+echo "=== Trivy filesystem (whole repo) ==="
+if command -v trivy >/dev/null 2>&1; then
+  trivy fs --exit-code 1 --severity HIGH,CRITICAL \
+    --scanners vuln,secret,misconfig \
+    --skip-dirs "$ROOT/tests/negative,$ROOT/.git,$ROOT/.venv,$ROOT/reports,$ROOT/.demo-state,$ROOT/.cosign" \
+    --ignorefile "$ROOT/security/scanning/.trivyignore" \
+    "$ROOT" | tee "$REPORTS/trivy-fs.txt" || fail=1
+fi
+
+echo "=== Checkov (IaC) — required ==="
+if ! command -v checkov >/dev/null 2>&1; then
+  echo "checkov is required for make security (pip install checkov / brew install checkov)"
+  fail=1
+else
+  checkov -d "$ROOT/gitops" -d "$ROOT/charts" -d "$ROOT/platform" -d "$ROOT/tekton" \
     --framework kubernetes,helm \
     --compact --quiet \
     -o json > "$REPORTS/checkov.json" || fail=1
-else
-  echo "  (checkov not installed — skip)"
 fi
 
-echo "=== Kyverno policy test (if kubectl ctx available) ==="
-if kubectl get clusterpolicy >/dev/null 2>&1; then
-  echo "  Cluster policies present: $(kubectl get clusterpolicy --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+echo "=== Helm / kubeconform ==="
+if command -v helm >/dev/null 2>&1; then
+  helm lint "$ROOT/charts/demo-app" || fail=1
 else
-  echo "  (no cluster / kyverno — skip live policy check)"
+  echo "helm missing — fail closed"
+  fail=1
+fi
+
+echo "=== Kyverno policy presence (optional live cluster) ==="
+if kubectl get clusterpolicy >/dev/null 2>&1; then
+  count="$(kubectl get clusterpolicy --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+  echo "  Cluster policies present: $count"
+  if [[ "$count" -lt 1 ]]; then
+    fail=1
+  fi
+else
+  echo "  (no cluster / kyverno — skipped)"
 fi
 
 if [[ "$fail" -ne 0 ]]; then

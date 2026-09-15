@@ -3,17 +3,16 @@ kind: Deployment
 metadata:
   name: demo-app
 spec:
-  replicas: 3
+  replicas: 2
   template:
     spec:
       containers:
         - name: demo-app
-          image: localhost:5001/demo-app@sha256:0000000000000000000000000000000000000000000000000000000000000000
           env:
             - name: APP_VERSION
-              value: "production"
+              value: "performance"
             - name: ENV
-              value: "production"
+              value: "performance"
           resources:
             requests:
               cpu: 100m

@@ -3,14 +3,13 @@ kind: Deployment
 metadata:
   name: demo-app
 spec:
-  replicas: 2
+  replicas: 1
   template:
     spec:
       containers:
         - name: demo-app
-          image: localhost:5001/demo-app@sha256:0000000000000000000000000000000000000000000000000000000000000000
           env:
             - name: APP_VERSION
-              value: "qa"
+              value: "dev"
             - name: ENV
-              value: "qa"
+              value: "dev"

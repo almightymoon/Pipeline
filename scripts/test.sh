@@ -18,5 +18,6 @@ bash "$ROOT/tests/smoke/test_scripts_exist.sh"
 
 echo "=== Integration checks (manifests parse) ==="
 bash "$ROOT/tests/integration/test_manifests.sh"
+bash "$ROOT/tests/integration/test_gitops_digest.sh"
 
 echo "✓ All tests passed"

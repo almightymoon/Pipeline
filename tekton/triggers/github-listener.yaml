@@ -1,5 +1,6 @@
-# Example Tekton Trigger binding for GitHub push events (full / cluster installs).
-# For local demos, use `make demo` / `make run-pipeline` instead of webhooks.
+# Tekton Triggers for GitHub push / pull_request.
+# Installed by scripts/install-platform.sh (requires Tekton Triggers).
+# Configure webhook URL to the EventListener Service and set secret github-webhook-secret.
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
@@ -8,31 +9,50 @@ metadata:
   labels:
     app.kubernetes.io/part-of: pipeline-demo
 spec:
-  serviceAccountName: tekton-build
+  serviceAccountName: tekton-triggers
   triggers:
-    - name: github-push
+    - name: github-push-or-pr
       interceptors:
         - ref:
             name: "github"
+            kind: ClusterInterceptor
           params:
+            - name: "secretRef"
+              value:
+                secretName: github-webhook-secret
+                secretKey: secretToken
             - name: "eventTypes"
               value: ["push", "pull_request"]
+        - ref:
+            name: "cel"
+            kind: ClusterInterceptor
+          params:
+            - name: "overlays"
+              value:
+                - key: git_revision
+                  expression: "has(body.head_commit) && body.head_commit != null ? body.head_commit.id : body.pull_request.head.sha"
+                - key: git_repo_url
+                  expression: "body.repository.clone_url"
+                - key: source_subdir
+                  expression: "'examples/demo-app'"
       bindings:
-        - ref: github-push-binding
+        - ref: github-binding
       template:
         ref: secure-ci-template
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
-  name: github-push-binding
+  name: github-binding
   namespace: pipeline-ci
 spec:
   params:
     - name: git-revision
-      value: $(body.head_commit.id)
+      value: $(extensions.git_revision)
     - name: git-repo-url
-      value: $(body.repository.clone_url)
+      value: $(extensions.git_repo_url)
+    - name: source-subdir
+      value: $(extensions.source_subdir)
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
@@ -43,6 +63,8 @@ spec:
   params:
     - name: git-revision
     - name: git-repo-url
+    - name: source-subdir
+      default: examples/demo-app
   resourcetemplates:
     - apiVersion: tekton.dev/v1
       kind: PipelineRun
@@ -51,11 +73,21 @@ spec:
         namespace: pipeline-ci
         labels:
           pipeline.devops/trigger: github
+          app.kubernetes.io/part-of: pipeline-demo
       spec:
         pipelineRef:
           name: secure-ci
         timeouts:
           pipeline: "30m"
+        taskRunSpecs:
+          - pipelineTaskName: gitleaks
+            serviceAccountName: tekton-gitleaks
+          - pipelineTaskName: sca
+            serviceAccountName: tekton-scan
+          - pipelineTaskName: iac-scan
+            serviceAccountName: tekton-scan
+          - pipelineTaskName: unit-test
+            serviceAccountName: tekton-test
         workspaces:
           - name: source
             volumeClaimTemplate:
@@ -67,7 +99,80 @@ spec:
           - name: reports
             emptyDir: {}
         params:
-          - name: image
-            value: localhost:5001/demo-app
+          - name: git-url
+            value: $(tt.params.git-repo-url)
+          - name: git-revision
+            value: $(tt.params.git-revision)
           - name: source-subdir
-            value: examples/demo-app
+            value: $(tt.params.source-subdir)
+          - name: image
+            value: ""
+          - name: verify-signature
+            value: "false"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-triggers
+  namespace: pipeline-ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-triggers
+  namespace: pipeline-ci
+rules:
+  - apiGroups: ["triggers.tekton.dev"]
+    resources: ["eventlisteners", "triggers", "triggerbindings", "triggertemplates", "interceptors"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["pipelineruns", "taskruns", "pipelines", "tasks"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "serviceaccounts", "pods", "pods/log", "persistentvolumeclaims", "limitranges"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-triggers-binding
+  namespace: pipeline-ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-triggers
+subjects:
+  - kind: ServiceAccount
+    name: tekton-triggers
+    namespace: pipeline-ci
+---
+# Placeholder secret — replace before exposing the webhook publicly.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-webhook-secret
+  namespace: pipeline-ci
+type: Opaque
+stringData:
+  secretToken: "replace-me-before-exposing-webhook"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: el-github-listener
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/part-of: pipeline-demo
+    eventlistener: github-listener
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort
+  selector:
+    eventlistener: github-listener

@@ -175,10 +175,12 @@ More: [docs/operations.md](docs/operations.md), [docs/runbooks/](docs/runbooks/)
 ## Limitations (honest)
 
 - Local Cosign uses **key-based** signing with Rekor upload disabled; production should use keyless/Fulcio + transparency log where possible.
-- Minimal profile applies GitOps with `kubectl apply -k` rather than a long-running Argo CD controller.
-- On kind, Kyverno cannot dial the host registry at `localhost:5001` (pod loopback). Signature admission is enforced on the host via `cosign verify` during `make demo`; set `COSIGN_ENFORCE=1` with a cluster-reachable registry for in-cluster Enforce.
-- DAST (OWASP ZAP) is policy-wired for QA+; it is not forced on the laptop-friendly happy path.
-- kind + single-node PVC/hostPath workspaces are for **demo fidelity**, not multi-tenant production isolation.
+- Minimal profile applies GitOps with `kubectl apply -k` rather than a long-running Argo CD controller (`PROFILE=full` installs Argo CD).
+- On kind, Kyverno cannot dial the host registry at `localhost:5001` (pod loopback). Signature admission is **not** Enforce in minimal; host `cosign verify` (demo + promote) is the gate. Use `COSIGN_ENFORCE=1` with a cluster-reachable registry for in-cluster Enforce.
+- SBOM + Cosign **sign** run host-side in `make demo`. Tekton includes `sbom-syft` / `cosign-verify` tasks when params are set; signing inside Tekton still expects registry credentials.
+- DAST (`scripts/dast-zap.sh`) is optional and not part of the default promote path unless `DAST_REQUIRED=1`.
+- GitHub EventListener is installed by bootstrap when Triggers CRDs are present; you must set a real `github-webhook-secret` and point GitHub at the listener Service before it is useful.
+- kind + PVC/hostPath workspaces are for **demo fidelity**, not multi-tenant production isolation.
 
 ## Contributing
 

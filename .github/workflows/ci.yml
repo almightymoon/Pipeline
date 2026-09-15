@@ -14,6 +14,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GITLEAKS_VERSION: "8.30.1"
+  HELM_VERSION: "v3.16.2"
+
 jobs:
   lint-test:
     name: Lint & Unit Tests
@@ -30,8 +34,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff pytest pyyaml
           pip install -r examples/demo-app/requirements.txt
-          curl -sSfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz gitleaks
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar -xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
           sudo mv gitleaks /usr/local/bin/
 
       - name: Ruff
@@ -48,6 +53,24 @@ jobs:
       - name: Manifest smoke
         run: bash tests/smoke/test_scripts_exist.sh
 
+      - name: Shell syntax
+        run: |
+          while IFS= read -r -d '' f; do bash -n "$f"; done < <(find scripts -name '*.sh' -print0)
+
+      - name: GitOps digest-update preserves env-patch
+        run: |
+          cp gitops/qa/env-patch.yaml /tmp/env-patch.before
+          cp gitops/qa/kustomization.yaml /tmp/kust.before
+          # Use a non-placeholder fake digest format
+          FAKE='localhost:5001/demo-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+          bash scripts/update-gitops-digest.sh qa "$FAKE"
+          cmp /tmp/env-patch.before gitops/qa/env-patch.yaml
+          # restore
+          mv /tmp/kust.before gitops/qa/kustomization.yaml
+          echo 'localhost:5001/demo-app@sha256:0000000000000000000000000000000000000000000000000000000000000000' > gitops/qa/image-digest.txt
+          rm -f gitops/qa/image-digest.previous.txt
+          echo "✓ env-patch unchanged after digest update"
+
       - name: Gitleaks
         run: gitleaks detect --source . --config security/scanning/gitleaks.toml
 
@@ -57,22 +80,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy FS
-        uses: aquasecurity/trivy-action@0.24.0
+      - name: Trivy FS (repository)
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
-          scan-ref: examples/demo-app
+          scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: "1"
-          scanners: vuln,secret
+          scanners: vuln,secret,misconfig
+          skip-dirs: tests/negative,.git,.venv,reports,.demo-state,.cosign
 
       - name: Negative tests (subset)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          HELM_VERSION: "v3.16.2"
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq curl
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz gitleaks
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
           sudo mv gitleaks /usr/local/bin/
-          curl -sSfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          # Expect failures on fixtures
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar -xz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
           if gitleaks detect --source tests/negative/leaked-secret --no-git --config tests/negative/gitleaks-strict.toml; then
             echo "expected gitleaks to fail"; exit 1
           fi

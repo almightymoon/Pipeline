@@ -85,6 +85,10 @@ spec:
     value: "${IMAGE}"
   - name: source-subdir
     value: "examples/demo-app"
+  - name: git-url
+    value: ""
+  - name: verify-signature
+    value: "false"
 EOF
 
 echo "→ Waiting for PipelineRun/${RUN_NAME}"

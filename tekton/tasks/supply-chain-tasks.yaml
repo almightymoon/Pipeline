@@ -1,0 +1,146 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Clone a git repository into the source workspace
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: main
+  workspaces:
+    - name: output
+      description: Git clone destination
+  steps:
+    - name: clone
+      image: alpine/git:v2.45.2
+      workingDir: $(workspaces.output.path)
+      env:
+        - name: URL
+          value: $(params.url)
+        - name: REVISION
+          value: $(params.revision)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        rm -rf ./*
+        git clone --depth 1 "${URL}" repo
+        cd repo
+        git fetch --depth 1 origin "${REVISION}" || true
+        git checkout "${REVISION}" 2>/dev/null || git checkout FETCH_HEAD
+        cd ..
+        # Flatten into workspace root for downstream tasks
+        find repo -mindepth 1 -maxdepth 1 -exec mv {} . \;
+        rm -rf repo
+        ls -la
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sbom-syft
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Generate an SBOM for a container image with Syft
+  params:
+    - name: image
+      type: string
+  workspaces:
+    - name: reports
+  results:
+    - name: sbom-path
+      description: Path to SPDX SBOM in reports workspace
+  steps:
+    - name: syft
+      image: anchore/syft:v1.16.0
+      env:
+        - name: IMAGE
+          value: $(params.image)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      script: |
+        #!/bin/sh
+        set -eu
+        OUT="$(workspaces.reports.path)/sbom.spdx.json"
+        syft "${IMAGE}" -o spdx-json > "${OUT}"
+        printf '%s' "${OUT}" > "$(results.sbom-path.path)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cosign-verify
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Verify a Cosign signature using the platform public key ConfigMap
+  params:
+    - name: image
+      type: string
+  steps:
+    - name: verify
+      image: ghcr.io/sigstore/cosign/cosign:v2.4.1
+      env:
+        - name: IMAGE
+          value: $(params.image)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      volumeMounts:
+        - name: cosign-pub
+          mountPath: /cosign
+          readOnly: true
+      script: |
+        #!/bin/sh
+        set -eu
+        if [ ! -f /cosign/cosign.pub ]; then
+          echo "cosign.pub not mounted — fail closed"
+          exit 1
+        fi
+        cosign verify --key /cosign/cosign.pub --insecure-ignore-tlog=true --allow-insecure-registry "${IMAGE}"
+  volumes:
+    - name: cosign-pub
+      configMap:
+        name: cosign-pub
+        optional: false

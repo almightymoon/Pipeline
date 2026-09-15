@@ -11,44 +11,43 @@
 
 Please **do not** open a public GitHub issue for security vulnerabilities.
 
-1. Email the maintainers (or use GitHub Security Advisories for this repository).
+1. Use GitHub Security Advisories for this repository (preferred), or contact the maintainers privately.
 2. Include a clear description, steps to reproduce, and impact assessment.
 3. Allow reasonable time for a fix before public disclosure.
 
 We aim to acknowledge reports within **72 hours**.
 
-## Security model (what this project enforces)
+## What this project actually enforces today
 
-This platform is designed so that the following conditions **fail the pipeline or admission**:
-
-| Gate | Tool | Failure mode |
-|------|------|--------------|
-| Leaked secrets in source | Gitleaks | Pipeline fails |
-| Vulnerable dependencies | pip-audit / Trivy fs | Pipeline fails on HIGH/CRITICAL |
-| Vulnerable container image | Trivy image | Pipeline fails on HIGH/CRITICAL |
-| Missing / invalid SBOM | Syft | Pipeline fails |
-| Unsigned image | Cosign + Kyverno | Admission denied |
-| `:latest` or unpinned tag | Kyverno | Admission denied |
-| Root containers | Kyverno / PSS Restricted | Admission denied |
-| Invalid Helm / K8s manifests | helm lint, kubeconform | Pipeline fails |
-| IaC misconfigurations | Checkov | Pipeline fails on CRITICAL |
-| Unsigned provenance | Cosign verify-attestation | Deploy blocked |
+| Gate | Where it runs | Failure mode |
+|------|---------------|--------------|
+| Leaked secrets | `make security`, Tekton `gitleaks`, GitHub Actions | Exit non-zero |
+| Vulnerable deps / misconfig | Trivy FS (repo) in CI + `make security` | HIGH/CRITICAL fail |
+| Vulnerable container image | Host-side Trivy in `make demo` | HIGH/CRITICAL fail |
+| SBOM generation | Host-side Syft in `make demo`; Tekton `sbom-syft` when `image` param set | Missing SBOM fails the task |
+| Image signing | Host-side Cosign in `make demo` | Sign/verify required for demo success |
+| Signature admission (Kyverno) | **Not Enforce on kind/minimal** (`localhost:5001` unreachable from pods). Host `cosign verify` + `make promote` verify instead. Set `COSIGN_ENFORCE=1` with a reachable registry for in-cluster Enforce. | — |
+| `:latest` / non-digest / root / missing resources | Kyverno ClusterPolicies (Enforce) | Admission denied |
+| Invalid Helm | `helm lint` / `helm template` + negative fixtures | Exit non-zero |
+| IaC (selected CIS) | Checkov in Tekton + **required** for `make security` | Exit non-zero |
+| DAST (OWASP ZAP) | Optional via `scripts/dast-zap.sh`; **not** a default promotion gate | Manual / `DAST_REQUIRED=1` |
+| Provenance (Tekton Chains) | Installed in `PROFILE=full` only | Optional |
 
 ## Secrets handling
 
-- Never commit real credentials, kubeconfigs, or signing private keys.
+- Never commit real credentials, kubeconfigs, or Cosign private keys.
 - Bootstrap generates Cosign keys under `.cosign/` (gitignored).
-- Use Kubernetes Secrets / sealed-secrets / external secret managers in real environments.
-- Example placeholders live in `docs/` and `.env.example` only.
+- `tests/negative/leaked-secret/` holds **fake** fixtures for gate testing only.
+- Replace `pipeline-ci/github-webhook-secret` before exposing the EventListener.
 
-## Supply-chain trust chain
+## Supply-chain flow (demo / intended)
 
 ```
-Build → Scan → SBOM (Syft) → Sign (Cosign) → Publish (digest)
-      → Verify signature + attestation → GitOps digest update → Deploy
+Build → Trivy image → Syft SBOM → Cosign sign (+ attest) → publish digest
+      → cosign verify → GitOps digest-only update → Kyverno (digest/non-root/…) → Deploy
 ```
 
-Images must be referenced by **digest** (`@sha256:…`), never by floating tags in GitOps environments.
+Images in GitOps must use **digest** pins via `kustomization.yaml` `images:`; `env-patch.yaml` must never carry `image:`.
 
 ## Disclosure timeline
 

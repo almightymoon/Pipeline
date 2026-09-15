@@ -5,18 +5,30 @@ metadata:
   namespace: pipeline-ci
   labels:
     app.kubernetes.io/part-of: pipeline-demo
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.0"
   annotations:
-    description: "Validate → secret scan → SCA → IaC → unit tests → manifest validation"
+    description: "Optional clone → secrets → SCA → tests → manifests → IaC → optional SBOM/verify"
 spec:
   description: CI security and quality gates (CD is GitOps)
   params:
     - name: image
       type: string
-      description: Image reference being validated (informational)
+      description: Image reference (tag or digest) for SBOM/verify when digest-pinned
     - name: source-subdir
       type: string
       default: "examples/demo-app"
+      description: App subdir for unit tests / app SCA
+    - name: git-url
+      type: string
+      default: ""
+      description: If set, clone this repo into the source workspace first
+    - name: git-revision
+      type: string
+      default: main
+    - name: verify-signature
+      type: string
+      default: "false"
+      description: Set true to run cosign-verify (requires cosign-pub ConfigMap)
   workspaces:
     - name: source
     - name: reports
@@ -25,9 +37,28 @@ spec:
       description: Pipeline completion status
       value: $(tasks.report.results.summary)
   tasks:
+    - name: clone
+      retries: 1
+      timeout: "10m"
+      when:
+        - input: "$(params.git-url)"
+          operator: notin
+          values: [""]
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source
+      params:
+        - name: url
+          value: "$(params.git-url)"
+        - name: revision
+          value: "$(params.git-revision)"
+
     - name: gitleaks
       retries: 1
       timeout: "10m"
+      runAfter: ["clone"]
       taskRef:
         name: gitleaks
       workspaces:
@@ -36,8 +67,9 @@ spec:
         - name: reports
           workspace: reports
       params:
+        # Empty = whole workspace (fail closed on any leaked secret)
         - name: source-subdir
-          value: "$(params.source-subdir)"
+          value: ""
 
     - name: sca
       retries: 1
@@ -91,8 +123,39 @@ spec:
         - name: reports
           workspace: reports
 
+    - name: sbom
+      retries: 1
+      timeout: "10m"
+      runAfter: ["sca"]
+      when:
+        - input: "$(params.image)"
+          operator: notin
+          values: [""]
+      taskRef:
+        name: sbom-syft
+      workspaces:
+        - name: reports
+          workspace: reports
+      params:
+        - name: image
+          value: "$(params.image)"
+
+    - name: verify
+      retries: 1
+      timeout: "10m"
+      runAfter: ["sbom"]
+      when:
+        - input: "$(params.verify-signature)"
+          operator: in
+          values: ["true", "True", "1"]
+      taskRef:
+        name: cosign-verify
+      params:
+        - name: image
+          value: "$(params.image)"
+
     - name: report
-      runAfter: ["sca", "unit-test", "iac-scan"]
+      runAfter: ["unit-test", "iac-scan", "sbom", "verify"]
       taskRef:
         name: report-results
       workspaces:

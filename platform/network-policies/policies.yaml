@@ -1,3 +1,7 @@
+# Network policies for demo environments and pipeline-ci.
+# Default-deny ingress everywhere; allow only labeled peers to demo-app:8080.
+# CI egress is allowlisted (DNS + registry/HTTPS) — not 0.0.0.0/0.
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -19,10 +23,68 @@ spec:
   policyTypes: ["Ingress"]
   ingress:
     - from:
-        - podSelector: {}
         - namespaceSelector:
             matchLabels:
               app.kubernetes.io/part-of: pipeline-demo
+          podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: demo-qa
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-demo-app
+  namespace: demo-qa
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: demo-app
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: pipeline-demo
+          podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: demo-performance
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-demo-app
+  namespace: demo-performance
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: demo-app
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: pipeline-demo
+          podSelector: {}
       ports:
         - protocol: TCP
           port: 8080
@@ -47,30 +109,91 @@ spec:
       app.kubernetes.io/name: demo-app
   policyTypes: ["Ingress"]
   ingress:
-    - ports:
+    # Production: only same-namespace peers (e.g. ingress controller / probes in-ns)
+    # and explicitly labeled platform namespaces — never open to the world.
+    - from:
+        - podSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: pipeline-demo
+          podSelector: {}
+      ports:
         - protocol: TCP
           port: 8080
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: pipeline-ci-egress-limited
+  name: default-deny-egress
+  namespace: pipeline-ci
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pipeline-ci-egress-allowlist
   namespace: pipeline-ci
 spec:
   podSelector: {}
   policyTypes: ["Egress"]
   egress:
-    # DNS
+    # kube-dns
     - to:
-        - namespaceSelector: {}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
-    # Cluster + registry / internet for pulls (tighten further in production)
+    # In-cluster services (Tekton API, registry Service if present)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: pipeline-demo
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tekton-pipelines
+    # Local/kind registry (private networks, registry ports only)
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 5000
+        - protocol: TCP
+          port: 5001
+    - to:
+        - ipBlock:
+            cidr: 172.16.0.0/12
+      ports:
+        - protocol: TCP
+          port: 5000
+        - protocol: TCP
+          port: 5001
+    - to:
+        - ipBlock:
+            cidr: 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 5000
+        - protocol: TCP
+          port: 5001
+    # External HTTPS/HTTP for image and tool pulls (not all ports on 0.0.0.0/0)
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
             except:
               - 169.254.169.254/32
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80

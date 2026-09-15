@@ -1,0 +1,38 @@
+# Pinned platform component versions — bump intentionally.
+# Used by scripts/install-platform.sh
+
+tekton_pipelines_version: "v1.0.0"
+# Official release YAML (ghcr.io images). Pin by version path, not /latest/.
+tekton_pipelines_url: "https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.68.0/release.yaml"
+
+# If v0.68.0 still uses gcr.io in some regions, prefer a known-good ghcr release:
+# Override with TEKTON_RELEASE_URL at install time when needed.
+tekton_pipelines_url_ghcr_fallback: "https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml"
+
+tekton_triggers_version: "v0.31.0"
+tekton_triggers_url: "https://storage.googleapis.com/tekton-releases/triggers/previous/v0.31.0/release.yaml"
+tekton_triggers_interceptors_url: "https://storage.googleapis.com/tekton-releases/triggers/previous/v0.31.0/interceptors.yaml"
+
+tekton_chains_version: "v0.24.0"
+tekton_chains_url: "https://storage.googleapis.com/tekton-releases/chains/previous/v0.24.0/release.yaml"
+
+kyverno_chart_version: "3.3.4"
+kyverno_chart_repo: "https://kyverno.github.io/kyverno/"
+
+argo_cd_version: "v2.13.2"
+argo_cd_url: "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.2/manifests/install.yaml"
+
+kube_prometheus_stack_chart_version: "65.1.0"
+
+# Task images (pin tags used in tekton/tasks)
+images:
+  gitleaks: "zricethezav/gitleaks:v8.18.4"
+  trivy: "aquasec/trivy:0.57.1"
+  checkov: "bridgecrew/checkov:3.3.17"
+  python: "python:3.12-slim-bookworm"
+  helm: "alpine/helm:3.15.3"
+  kubeconform: "ghcr.io/yannh/kubeconform:v0.6.7"
+  busybox: "busybox:1.36"
+  syft: "anchore/syft:v1.16.0"
+  cosign: "gcr.io/projectsigstore/cosign:v2.4.1"
+  git: "alpine/git:v2.45.2"

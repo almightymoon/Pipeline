@@ -26,6 +26,11 @@ make rollback ENV=qa
 - Git is the backup for desired state (`gitops/**/image-digest*.txt`).
 - Protect `.cosign/cosign.key` offline; losing it means re-signing images with a new trust root and rotating Kyverno keys.
 
-## Upgrades
+## GitHub webhook (Tekton Triggers)
 
-Pin Tekton/Kyverno versions in `scripts/install-platform.sh` (`TEKTON_VERSION`, helm chart versions). Bump intentionally and re-run `make demo`.
+Bootstrap installs Tekton Triggers and applies `tekton/triggers/github-listener.yaml` when CRDs are available.
+
+1. Replace `secretToken` in Secret `pipeline-ci/github-webhook-secret`.
+2. Point a GitHub repo webhook at the EventListener Service (`el-github-listener`, NodePort `30080` on kind).
+3. Content type: `application/json`; secret must match; events: `push`, `pull_request`.
+4. The CEL interceptor normalizes `git_revision` for both push (`head_commit.id`) and PR (`pull_request.head.sha`), then the TriggerTemplate starts `secure-ci` with `git-url` / `git-revision` so the pipeline **clones** before scanning.

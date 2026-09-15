@@ -16,6 +16,9 @@ required=(
   tekton/pipelines/secure-ci.yaml
   security/policies/kyverno-policies.yaml
   gitops/base/deployment.yaml
+  gitops/dev/env-patch.yaml
+  scripts/update-gitops-digest.sh
+  platform/versions.yaml
 )
 
 missing=0

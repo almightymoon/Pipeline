@@ -1,8 +1,16 @@
-# SPDX / CycloneDX SBOM outputs land in reports/ during make demo
-# This file documents the expected SBOM contract for the platform.
+# SBOM contract
 
-# Contract:
-# 1. syft <image> -o spdx-json    → reports/sbom.spdx.json
-# 2. syft <image> -o cyclonedx-json → reports/sbom.cdx.json
-# 3. cosign attest --predicate reports/sbom.spdx.json --type spdxjson <image@digest>
-# 4. Deployment references image by digest only
+## What runs where
+
+| Step | Host (`make demo`) | Tekton |
+|------|--------------------|--------|
+| Syft SPDX + CycloneDX | Yes → `reports/` | Task `sbom-syft` when Pipeline param `image` is set |
+| Cosign sign + attest | Yes | Not default (needs registry push credentials in-cluster) |
+| Cosign verify | Yes (+ `make promote`) | Task `cosign-verify` when `verify-signature=true` |
+
+## Expected outputs (demo)
+
+1. `reports/sbom.spdx.json`
+2. `reports/sbom.cdx.json`
+3. Cosign signature on `image@sha256:…`
+4. GitOps pin via `gitops/<env>/kustomization.yaml` `images[].digest` only

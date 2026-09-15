@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+        - name: demo-app
+          env:
+            - name: APP_VERSION
+              value: "qa"
+            - name: ENV
+              value: "qa"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi

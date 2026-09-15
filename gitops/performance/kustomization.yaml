@@ -4,4 +4,7 @@ namespace: demo-performance
 resources:
   - ../base
 patches:
-  - path: image-patch.yaml
+  - path: env-patch.yaml
+images:
+  - name: localhost:5001/demo-app
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

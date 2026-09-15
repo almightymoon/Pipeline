@@ -4,5 +4,8 @@ namespace: demo-dev
 resources:
   - ../base
 patches:
-  - path: image-patch.yaml
-images: []
+  - path: env-patch.yaml
+# Image digest is the ONLY field updated by scripts/update-gitops-digest.sh
+images:
+  - name: localhost:5001/demo-app
+    digest: sha256:8fefda56d04d451711b24caddd5dff620a669437026daecbfca4cb7f62aa8da9
