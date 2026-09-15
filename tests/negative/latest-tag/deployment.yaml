@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latest-tag-fixture
+  namespace: demo-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: latest-fixture
+  template:
+    metadata:
+      labels:
+        app: latest-fixture
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          image: localhost:5001/demo-app:latest
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi

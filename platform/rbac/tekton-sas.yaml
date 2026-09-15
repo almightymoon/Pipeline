@@ -1,0 +1,93 @@
+# Least-privilege service accounts for Tekton tasks (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-gitleaks
+  namespace: pipeline-ci
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-scan
+  namespace: pipeline-ci
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-test
+  namespace: pipeline-ci
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-build
+  namespace: pipeline-ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-task-workspace
+  namespace: pipeline-ci
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "configmaps", "secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["taskruns", "pipelineruns", "tasks", "pipelines"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-gitleaks-binding
+  namespace: pipeline-ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-task-workspace
+subjects:
+  - kind: ServiceAccount
+    name: tekton-gitleaks
+    namespace: pipeline-ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-scan-binding
+  namespace: pipeline-ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-task-workspace
+subjects:
+  - kind: ServiceAccount
+    name: tekton-scan
+    namespace: pipeline-ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-test-binding
+  namespace: pipeline-ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-task-workspace
+subjects:
+  - kind: ServiceAccount
+    name: tekton-test
+    namespace: pipeline-ci
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-build-binding
+  namespace: pipeline-ci
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-task-workspace
+subjects:
+  - kind: ServiceAccount
+    name: tekton-build
+    namespace: pipeline-ci

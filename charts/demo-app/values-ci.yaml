@@ -1,0 +1,5 @@
+# Used by CI / helm template smoke tests
+image:
+  repository: localhost:5001/demo-app
+  digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  tag: ""

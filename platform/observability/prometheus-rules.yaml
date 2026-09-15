@@ -1,0 +1,29 @@
+# Requires Prometheus Operator CRDs (installed by full profile).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: demo-app
+  namespace: pipeline-system
+  labels:
+    app.kubernetes.io/part-of: pipeline-demo
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: demo-app
+      rules:
+        - alert: DemoAppDown
+          expr: demo_app_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "demo-app is down"
+            runbook_url: "docs/runbooks/demo-app-down.md"
+        - alert: PipelineRunFailed
+          expr: increase(tekton_pipelinerun_failed_total[15m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Tekton PipelineRun failures detected"
+            runbook_url: "docs/runbooks/pipeline-failure.md"

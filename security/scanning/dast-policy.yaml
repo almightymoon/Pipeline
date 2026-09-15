@@ -1,0 +1,28 @@
+# DAST gate (OWASP ZAP) — enabled in full profile / CI when a live target exists.
+# Local minimal demos skip DAST because no ingress is required.
+#
+# Example Tekton step (reference):
+#   image: ghcr.io/zaproxy/zaproxy:stable
+#   script: |
+#     zap-baseline.py -t http://demo-app.demo-dev.svc:8080 -r /workspace/reports/zap.html -I
+#     # Use -I carefully; prefer failing on High findings in production.
+#
+# Policy: High/Critical DAST findings fail the release promotion to QA+.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dast-policy
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/part-of: pipeline-demo
+data:
+  policy.yaml: |
+    tool: owasp-zap
+    fail_on:
+      - High
+      - Critical
+    target_path: /healthz
+    environments:
+      - qa
+      - performance
+      - production

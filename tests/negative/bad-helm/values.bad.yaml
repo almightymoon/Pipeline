@@ -1,0 +1,9 @@
+# INTENTIONAL bad values for helm lint / template failure
+replicaCount: "not-a-number"
+image:
+  repository: localhost:5001/demo-app
+  tag: latest
+  digest: ""
+resources:
+  requests: {}
+  limits: {}

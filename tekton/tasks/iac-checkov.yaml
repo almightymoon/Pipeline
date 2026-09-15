@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: iac-checkov
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: IaC misconfiguration scan with Checkov (selected CIS controls)
+  workspaces:
+    - name: source
+    - name: reports
+  steps:
+    - name: scan
+      image: bridgecrew/checkov:3.3.17
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      script: |
+        #!/bin/sh
+        set -eu
+        OUT="$(workspaces.reports.path)/checkov.txt"
+        # Scan only production-intended hardened manifests (not negative fixtures)
+        if [ -d gitops/base ]; then
+          checkov -f gitops/base/deployment.yaml --framework kubernetes \
+            --check CKV_K8S_8,CKV_K8S_9,CKV_K8S_10,CKV_K8S_11,CKV_K8S_12,CKV_K8S_13,CKV_K8S_20,CKV_K8S_22,CKV_K8S_28,CKV_K8S_29,CKV_K8S_30,CKV_K8S_37,CKV_K8S_40 \
+            --compact | tee "$OUT"
+        else
+          echo "gitops/base missing in workspace; skipping" | tee "$OUT"
+        fi

@@ -1,0 +1,1 @@
+localhost:5001/demo-app@sha256:8fefda56d04d451711b24caddd5dff620a669437026daecbfca4cb7f62aa8da9

@@ -1,0 +1,73 @@
+# Example Tekton Trigger binding for GitHub push events (full / cluster installs).
+# For local demos, use `make demo` / `make run-pipeline` instead of webhooks.
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-listener
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/part-of: pipeline-demo
+spec:
+  serviceAccountName: tekton-build
+  triggers:
+    - name: github-push
+      interceptors:
+        - ref:
+            name: "github"
+          params:
+            - name: "eventTypes"
+              value: ["push", "pull_request"]
+      bindings:
+        - ref: github-push-binding
+      template:
+        ref: secure-ci-template
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: github-push-binding
+  namespace: pipeline-ci
+spec:
+  params:
+    - name: git-revision
+      value: $(body.head_commit.id)
+    - name: git-repo-url
+      value: $(body.repository.clone_url)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: secure-ci-template
+  namespace: pipeline-ci
+spec:
+  params:
+    - name: git-revision
+    - name: git-repo-url
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: secure-ci-
+        namespace: pipeline-ci
+        labels:
+          pipeline.devops/trigger: github
+      spec:
+        pipelineRef:
+          name: secure-ci
+        timeouts:
+          pipeline: "30m"
+        workspaces:
+          - name: source
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: 1Gi
+          - name: reports
+            emptyDir: {}
+        params:
+          - name: image
+            value: localhost:5001/demo-app
+          - name: source-subdir
+            value: examples/demo-app

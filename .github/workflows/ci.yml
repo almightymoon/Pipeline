@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest pyyaml
+          pip install -r examples/demo-app/requirements.txt
+          curl -sSfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Ruff
+        run: ruff check examples/demo-app
+
+      - name: Helm lint
+        run: helm lint charts/demo-app
+
+      - name: Unit tests
+        run: |
+          cd examples/demo-app
+          pytest -q
+
+      - name: Manifest smoke
+        run: bash tests/smoke/test_scripts_exist.sh
+
+      - name: Gitleaks
+        run: gitleaks detect --source . --config security/scanning/gitleaks.toml
+
+  security:
+    name: Security Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy FS
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: examples/demo-app
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          scanners: vuln,secret
+
+      - name: Negative tests (subset)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq curl
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+          curl -sSfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          # Expect failures on fixtures
+          if gitleaks detect --source tests/negative/leaked-secret --no-git --config tests/negative/gitleaks-strict.toml; then
+            echo "expected gitleaks to fail"; exit 1
+          fi
+          if helm template demo charts/demo-app -f tests/negative/bad-helm/values.bad.yaml; then
+            echo "expected helm template to fail"; exit 1
+          fi
+          echo "✓ negative fixtures blocked"

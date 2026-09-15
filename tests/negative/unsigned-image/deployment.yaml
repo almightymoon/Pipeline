@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unsigned-image-fixture
+  namespace: demo-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unsigned
+  template:
+    metadata:
+      labels:
+        app: unsigned
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: app
+          # Digest that will not have a local Cosign signature
+          image: localhost:5001/demo-app@sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi

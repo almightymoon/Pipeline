@@ -1,0 +1,124 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: secure-ci
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/part-of: pipeline-demo
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    description: "Validate → secret scan → SCA → IaC → unit tests → manifest validation"
+spec:
+  description: CI security and quality gates (CD is GitOps)
+  params:
+    - name: image
+      type: string
+      description: Image reference being validated (informational)
+    - name: source-subdir
+      type: string
+      default: "examples/demo-app"
+  workspaces:
+    - name: source
+    - name: reports
+  results:
+    - name: status
+      description: Pipeline completion status
+      value: $(tasks.report.results.summary)
+  tasks:
+    - name: gitleaks
+      retries: 1
+      timeout: "10m"
+      taskRef:
+        name: gitleaks
+      workspaces:
+        - name: source
+          workspace: source
+        - name: reports
+          workspace: reports
+      params:
+        - name: source-subdir
+          value: "$(params.source-subdir)"
+
+    - name: sca
+      retries: 1
+      timeout: "15m"
+      runAfter: ["gitleaks"]
+      taskRef:
+        name: sca-trivy
+      workspaces:
+        - name: source
+          workspace: source
+        - name: reports
+          workspace: reports
+      params:
+        - name: source-subdir
+          value: "$(params.source-subdir)"
+
+    - name: unit-test
+      retries: 1
+      timeout: "10m"
+      runAfter: ["gitleaks"]
+      taskRef:
+        name: unit-test-python
+      workspaces:
+        - name: source
+          workspace: source
+        - name: reports
+          workspace: reports
+      params:
+        - name: source-subdir
+          value: "$(params.source-subdir)"
+
+    - name: manifests
+      retries: 1
+      timeout: "10m"
+      runAfter: ["gitleaks"]
+      taskRef:
+        name: helm-kubeconform
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: iac-scan
+      retries: 1
+      timeout: "10m"
+      runAfter: ["manifests"]
+      taskRef:
+        name: iac-checkov
+      workspaces:
+        - name: source
+          workspace: source
+        - name: reports
+          workspace: reports
+
+    - name: report
+      runAfter: ["sca", "unit-test", "iac-scan"]
+      taskRef:
+        name: report-results
+      workspaces:
+        - name: reports
+          workspace: reports
+
+  finally:
+    - name: cleanup-note
+      taskSpec:
+        steps:
+          - name: echo
+            image: busybox:1.36
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 65534
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: ["ALL"]
+            computeResources:
+              requests:
+                cpu: 10m
+                memory: 16Mi
+              limits:
+                cpu: 50m
+                memory: 32Mi
+            script: |
+              #!/bin/sh
+              echo "Pipeline finished. Reports retained in workspace for collectors."

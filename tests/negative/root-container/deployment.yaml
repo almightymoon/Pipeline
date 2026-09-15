@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: root-container-fixture
+  namespace: demo-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: root-fixture
+  template:
+    metadata:
+      labels:
+        app: root-fixture
+    spec:
+      containers:
+        - name: root
+          image: localhost:5001/demo-app@sha256:0000000000000000000000000000000000000000000000000000000000000001
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi

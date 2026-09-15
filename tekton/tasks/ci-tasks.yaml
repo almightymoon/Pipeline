@@ -1,0 +1,236 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: gitleaks
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+  annotations:
+    description: "Fail if secrets are present in source"
+spec:
+  description: Secret scanning with Gitleaks
+  workspaces:
+    - name: source
+    - name: reports
+  params:
+    - name: source-subdir
+      type: string
+      default: ""
+    - name: config
+      type: string
+      default: "security/scanning/gitleaks.toml"
+  steps:
+    - name: scan
+      image: zricethezav/gitleaks:v8.18.4
+      env:
+        - name: SOURCE_SUBDIR
+          value: $(params.source-subdir)
+        - name: CONFIG
+          value: $(params.config)
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        CFG="$(workspaces.source.path)/${CONFIG}"
+        TARGET="$(workspaces.source.path)"
+        if [ -n "${SOURCE_SUBDIR}" ]; then
+          TARGET="${TARGET}/${SOURCE_SUBDIR}"
+        fi
+        gitleaks detect --source "${TARGET}" --no-git -v \
+          --config "${CFG}" \
+          --report-path "$(workspaces.reports.path)/gitleaks.json"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sca-trivy
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Dependency and filesystem vulnerability scan
+  workspaces:
+    - name: source
+    - name: reports
+  params:
+    - name: source-subdir
+      type: string
+      default: "examples/demo-app"
+    - name: severity
+      type: string
+      default: "HIGH,CRITICAL"
+  steps:
+    - name: scan
+      image: aquasec/trivy:0.54.1
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      script: |
+        #!/bin/sh
+        set -eu
+        trivy fs --exit-code 1 --severity "$(params.severity)" \
+          --scanners vuln,secret \
+          "$(workspaces.source.path)/$(params.source-subdir)" \
+          | tee "$(workspaces.reports.path)/trivy-fs.txt"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: unit-test-python
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Run pytest for the demo app
+  workspaces:
+    - name: source
+    - name: reports
+  params:
+    - name: source-subdir
+      type: string
+      default: "examples/demo-app"
+  steps:
+    - name: test
+      image: python:3.12-slim-bookworm
+      workingDir: $(workspaces.source.path)/$(params.source-subdir)
+      env:
+        - name: HOME
+          value: /tmp
+        - name: PIP_CACHE_DIR
+          value: /tmp/pip-cache
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        pip install --user -q -r requirements.txt pytest
+        export PATH="$HOME/.local/bin:$PATH"
+        pytest -q | tee "$(workspaces.reports.path)/pytest.txt"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: helm-kubeconform
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Helm lint and kubeconform validation
+  workspaces:
+    - name: source
+  steps:
+    - name: helm-lint
+      image: alpine/helm:3.15.3
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        helm lint charts/demo-app
+    - name: kubeconform
+      image: ghcr.io/yannh/kubeconform:v0.6.7
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+      args:
+        - "-summary"
+        - "-ignore-missing-schemas"
+        - "gitops/base"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: report-results
+  namespace: pipeline-ci
+  labels:
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  description: Summarize reports workspace
+  workspaces:
+    - name: reports
+  results:
+    - name: summary
+      description: Text summary of available reports
+  steps:
+    - name: summarize
+      image: busybox:1.36
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      computeResources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+      script: |
+        #!/bin/sh
+        set -eu
+        ls -la "$(workspaces.reports.path)" || true
+        echo "reports-ok" | tee "$(results.summary.path)"

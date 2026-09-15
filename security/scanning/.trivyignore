@@ -1,0 +1,5 @@
+# Demo-app intentionally uses a slim base; document accepted risks here.
+# Prefer fixing over ignoring.
+
+# Example:
+# CVE-XXXX-YYYY
