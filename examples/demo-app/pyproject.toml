@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
   "flask==3.0.3",
   "gunicorn==22.0.0",
-  "prometheus-client==0.20.0",
+  "prometheus-client==0.26.0",
 ]
 
 [tool.pytest.ini_options]
