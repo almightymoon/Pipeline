@@ -1,0 +1,11 @@
+# Trivy config for repository scans
+# Strategic merge patches are incomplete Deployments by design (securityContext lives in base).
+# Misconfig is enforced on rendered overlays + platform/charts instead (see CI).
+
+scan:
+  skip-files:
+    - "gitops/**/env-patch.yaml"
+    - "gitops/**/kustomization.yaml"
+    - "gitops/**/image-digest*.txt"
+    - "tests/negative/**"
+    - "tekton/triggers/github-listener.yaml"  # contains placeholder webhook secret stringData

@@ -59,17 +59,7 @@ jobs:
 
       - name: GitOps digest-update preserves env-patch
         run: |
-          cp gitops/qa/env-patch.yaml /tmp/env-patch.before
-          cp gitops/qa/kustomization.yaml /tmp/kust.before
-          # Use a non-placeholder fake digest format
-          FAKE='localhost:5001/demo-app@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-          bash scripts/update-gitops-digest.sh qa "$FAKE"
-          cmp /tmp/env-patch.before gitops/qa/env-patch.yaml
-          # restore
-          mv /tmp/kust.before gitops/qa/kustomization.yaml
-          echo 'localhost:5001/demo-app@sha256:0000000000000000000000000000000000000000000000000000000000000000' > gitops/qa/image-digest.txt
-          rm -f gitops/qa/image-digest.previous.txt
-          echo "✓ env-patch unchanged after digest update"
+          bash tests/integration/test_gitops_digest.sh
 
       - name: Gitleaks
         run: gitleaks detect --source . --config security/scanning/gitleaks.toml
@@ -80,15 +70,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Trivy FS (repository)
+      # Partial StrategicMergePatch YAMLs are not full Deployments — do not misconfig-scan them.
+      - name: Trivy FS (vuln + secret, whole repo)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: "1"
-          scanners: vuln,secret,misconfig
+          scanners: vuln,secret
           skip-dirs: tests/negative,.git,.venv,reports,.demo-state,.cosign
+          trivyignores: security/scanning/.trivyignore
+
+      - name: Trivy config (rendered GitOps + platform + charts)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          skip-dirs: tests/negative,.git,.venv,reports,.demo-state,.cosign,gitops/dev,gitops/qa,gitops/performance,gitops/production,tekton
+          # Still scans gitops/base, platform/, charts/, examples/
+
+      - name: Trivy config on kustomize-rendered overlays
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          mkdir -p /tmp/rendered
+          for env in dev qa performance production; do
+            kubectl kustomize "gitops/${env}" > "/tmp/rendered/${env}.yaml"
+          done
+          trivy config --exit-code 1 --severity HIGH,CRITICAL /tmp/rendered
 
       - name: Negative tests (subset)
         env:

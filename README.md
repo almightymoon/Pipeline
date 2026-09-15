@@ -1,5 +1,9 @@
 # Secure Supply-Chain CI/CD Platform
 
+[![CI](https://github.com/almightymoon/Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/almightymoon/Pipeline/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/almightymoon/Pipeline?include_prereleases)](https://github.com/almightymoon/Pipeline/releases)
+
 A **reproducible, enforceable** DevSecOps platform: Tekton for CI security gates, GitOps for deployment, Cosign/Kyverno for artifact trust, and a one-command local demo.
 
 This repository is designed so another engineer can **clone → `make demo` → watch a safe release succeed**, then **`make negative-tests` → watch bad releases fail**.
@@ -170,7 +174,7 @@ Rollback restores `gitops/<env>/image-digest.previous.txt` and re-applies the ov
 | PipelineRun pending | `kubectl -n pipeline-ci get pods`; check Tekton controller logs |
 | Port-forward smoke fails | `kubectl -n demo-dev get pods,svc`; `kubectl -n demo-dev describe deploy/demo-app` |
 
-More: [docs/operations.md](docs/operations.md), [docs/runbooks/](docs/runbooks/).
+More: [docs/operations.md](docs/operations.md), [docs/runbooks/](docs/runbooks/), [docs/evidence.md](docs/evidence.md).
 
 ## Limitations (honest)
 

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- CI Trivy misconfig no longer scans incomplete StrategicMergePatch `env-patch.yaml` files; rendered kustomize overlays are scanned instead
+
+## [0.2.0] - 2026-09-15
+
+### Fixed
+
 - CI Trivy action pinned to `aquasecurity/trivy-action@v0.36.0` (0.24.0 was unresolvable)
 - GitOps digest updates only change `kustomization.yaml` `images[].digest` — never rewrite env overlays
 - `make promote` / `make rollback` fail on rollout errors and verify Cosign signatures when keys exist
@@ -21,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Tekton tasks: `git-clone`, `sbom-syft`, `cosign-verify`
 - Integration test proving digest updates preserve `env-patch.yaml`
+- README badges and `docs/evidence.md`
 
 ### Changed
 

@@ -24,13 +24,28 @@ if command -v gitleaks >/dev/null 2>&1; then
     --config "$ROOT/security/scanning/gitleaks.toml" || fail=1
 fi
 
-echo "=== Trivy filesystem (whole repo) ==="
+echo "=== Trivy filesystem (vuln + secret, whole repo) ==="
 if command -v trivy >/dev/null 2>&1; then
   trivy fs --exit-code 1 --severity HIGH,CRITICAL \
-    --scanners vuln,secret,misconfig \
+    --scanners vuln,secret \
     --skip-dirs "$ROOT/tests/negative,$ROOT/.git,$ROOT/.venv,$ROOT/reports,$ROOT/.demo-state,$ROOT/.cosign" \
     --ignorefile "$ROOT/security/scanning/.trivyignore" \
     "$ROOT" | tee "$REPORTS/trivy-fs.txt" || fail=1
+
+  echo "=== Trivy config (base/platform/charts + rendered overlays) ==="
+  trivy config --exit-code 1 --severity HIGH,CRITICAL \
+    --skip-dirs "$ROOT/tests/negative,$ROOT/.git,$ROOT/.venv,$ROOT/gitops/dev,$ROOT/gitops/qa,$ROOT/gitops/performance,$ROOT/gitops/production,$ROOT/tekton" \
+    "$ROOT" | tee "$REPORTS/trivy-config.txt" || fail=1
+
+  if command -v kubectl >/dev/null 2>&1; then
+    mkdir -p "$REPORTS/rendered"
+    for env in dev qa performance production; do
+      kubectl kustomize "$ROOT/gitops/${env}" > "$REPORTS/rendered/${env}.yaml"
+    done
+    trivy config --exit-code 1 --severity HIGH,CRITICAL "$REPORTS/rendered" | tee "$REPORTS/trivy-rendered.txt" || fail=1
+  else
+    echo "kubectl missing — skip rendered overlay misconfig scan"
+  fi
 fi
 
 echo "=== Checkov (IaC) — required ==="
